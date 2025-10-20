@@ -37,6 +37,25 @@ impl Trait {
     }
 }
 
+pub struct Genotype {
+    version: u32,
+    traits: Vec<Trait>,
+}
+
+impl Genotype {
+    pub fn new(version: u32, traits: Vec<Trait>) -> Self {
+        Self { version, traits }
+    }
+
+    pub fn version(&self) -> u32 {
+        self.version
+    }
+
+    pub fn traits(&self) -> &[Trait] {
+        &self.traits
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,5 +93,27 @@ mod tests {
 
         assert_eq!(trait_def.key(), "title");
         assert!(trait_def.state().is_required());
+    }
+
+    #[test]
+    fn genotype_has_version() {
+        let genotype = Genotype::new(1, vec![]);
+
+        assert_eq!(genotype.version(), 1);
+    }
+
+    #[test]
+    fn genotype_exposes_its_traits() {
+        let genotype = Genotype::new(
+            1,
+            vec![
+                Trait::new("title".to_string(), TraitState::Dominant),
+                Trait::new("description".to_string(), TraitState::Recessive),
+            ],
+        );
+
+        assert_eq!(genotype.traits().len(), 2);
+        assert_eq!(genotype.traits()[0].key(), "title");
+        assert_eq!(genotype.traits()[1].key(), "description");
     }
 }
