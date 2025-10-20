@@ -1,43 +1,78 @@
-use serde::{Deserialize, Serialize};
-
-pub type GeneId = String;
-pub type Locus = String;
-
-#[derive(Debug, Clone, Serialize)]
-pub struct Mutation {
-    id: String,
-    gene_id: GeneId,
-    locus: Locus,
-    value: serde_json::Value,
-    created_at: i64,
+pub enum TraitState {
+    Dominant,
+    Recessive,
+    Vestigial,
 }
 
-impl Mutation {
-    pub fn new(
-        id: String,
-        gene_id: String,
-        locus: Locus,
-        value: serde_json::Value,
-        created_at: i64,
-    ) -> Self {
-        Self {
-            id,
-            gene_id,
-            locus,
-            value,
-            created_at,
-        }
+impl TraitState {
+    pub fn is_required(&self) -> bool {
+        matches!(self, TraitState::Dominant)
     }
 
-    pub fn gene_id(&self) -> &GeneId {
-        &self.gene_id
+    pub fn is_writable(&self) -> bool {
+        matches!(self, TraitState::Dominant | TraitState::Recessive)
     }
 
-    pub fn locus(&self) -> &Locus {
-        &self.locus
+    pub fn is_visible(&self) -> bool {
+        matches!(self, TraitState::Dominant | TraitState::Recessive)
+    }
+}
+
+pub struct Trait {
+    key: String,
+    state: TraitState,
+}
+
+impl Trait {
+    pub fn new(key: String, state: TraitState) -> Self {
+        Self { key, state }
     }
 
-    pub fn value(&self) -> &serde_json::Value {
-        &self.value
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn state(&self) -> &TraitState {
+        &self.state
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trait_state_dominant_is_required_writable_and_visible() {
+        let state = TraitState::Dominant;
+
+        assert!(state.is_required());
+        assert!(state.is_writable());
+        assert!(state.is_visible());
+    }
+
+    #[test]
+    fn trait_state_recessive_is_optional_writable_and_visible() {
+        let state = TraitState::Recessive;
+
+        assert!(!state.is_required());
+        assert!(state.is_writable());
+        assert!(state.is_visible());
+    }
+
+    #[test]
+    fn trait_state_vestigial_is_not_required_not_writable_and_not_visible() {
+        let state = TraitState::Vestigial;
+
+        assert!(!state.is_required());
+        assert!(!state.is_writable());
+        assert!(!state.is_visible());
+    }
+
+    #[test]
+    fn trait_has_key_and_state() {
+        let trait_def = Trait::new("title".to_string(), TraitState::Dominant);
+
+        assert_eq!(trait_def.key(), "title");
+        assert!(trait_def.state().is_required());
     }
 }
