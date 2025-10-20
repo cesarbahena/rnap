@@ -42,9 +42,20 @@ pub struct Genotype {
     traits: Vec<Trait>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum GenotypeError {
+    DuplicateTraitKey(String),
+}
+
 impl Genotype {
-    pub fn new(version: u32, traits: Vec<Trait>) -> Self {
-        Self { version, traits }
+    pub fn new(version: u32, traits: Vec<Trait>) -> Result<Self, GenotypeError> {
+        let mut seen = std::collections::HashSet::new();
+        for t in &traits {
+            if !seen.insert(t.key().to_string()) {
+                return Err(GenotypeError::DuplicateTraitKey(t.key().to_string()));
+            }
+        }
+        Ok(Self { version, traits })
     }
 
     pub fn version(&self) -> u32 {
@@ -97,7 +108,7 @@ mod tests {
 
     #[test]
     fn genotype_has_version() {
-        let genotype = Genotype::new(1, vec![]);
+        let genotype = Genotype::new(1, vec![]).unwrap();
 
         assert_eq!(genotype.version(), 1);
     }
@@ -110,10 +121,24 @@ mod tests {
                 Trait::new("title".to_string(), TraitState::Dominant),
                 Trait::new("description".to_string(), TraitState::Recessive),
             ],
-        );
+        )
+        .unwrap();
 
         assert_eq!(genotype.traits().len(), 2);
         assert_eq!(genotype.traits()[0].key(), "title");
         assert_eq!(genotype.traits()[1].key(), "description");
+    }
+
+    #[test]
+    fn genotype_rejects_duplicate_trait_keys() {
+        let result = Genotype::new(
+            1,
+            vec![
+                Trait::new("title".to_string(), TraitState::Dominant),
+                Trait::new("title".to_string(), TraitState::Recessive),
+            ],
+        );
+
+        assert!(result.is_err());
     }
 }
