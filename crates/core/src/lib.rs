@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 pub enum TraitState {
     Dominant,
     Recessive,
@@ -37,6 +39,71 @@ impl Trait {
     }
 }
 
+pub enum Actor {
+    Human,
+    Llm,
+}
+
+pub struct Mutation {
+    id: uuid::Uuid,
+    gene_id: uuid::Uuid,
+    trait_key: String,
+    value: serde_json::Value,
+    actor: Actor,
+    context: String,
+    created_at: i64,
+}
+
+impl Mutation {
+    pub fn new(
+        id: uuid::Uuid,
+        gene_id: uuid::Uuid,
+        trait_key: String,
+        value: serde_json::Value,
+        actor: Actor,
+        context: String,
+        created_at: i64,
+    ) -> Self {
+        Self {
+            id,
+            gene_id,
+            trait_key,
+            value,
+            actor,
+            context,
+            created_at,
+        }
+    }
+
+    pub fn id(&self) -> uuid::Uuid {
+        self.id
+    }
+
+    pub fn gene_id(&self) -> &uuid::Uuid {
+        &self.gene_id
+    }
+
+    pub fn trait_key(&self) -> &str {
+        &self.trait_key
+    }
+
+    pub fn value(&self) -> &serde_json::Value {
+        &self.value
+    }
+
+    pub fn actor(&self) -> &Actor {
+        &self.actor
+    }
+
+    pub fn context(&self) -> &str {
+        &self.context
+    }
+
+    pub fn created_at(&self) -> i64 {
+        self.created_at
+    }
+}
+
 pub struct Genotype {
     version: u32,
     traits: Vec<Trait>,
@@ -49,7 +116,7 @@ pub enum GenotypeError {
 
 impl Genotype {
     pub fn new(version: u32, traits: Vec<Trait>) -> Result<Self, GenotypeError> {
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = HashSet::new();
         for t in &traits {
             if !seen.insert(t.key().to_string()) {
                 return Err(GenotypeError::DuplicateTraitKey(t.key().to_string()));
@@ -140,5 +207,25 @@ mod tests {
         );
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn mutation_can_be_created_with_all_fields() {
+        let gene_id = uuid::Uuid::new_v4();
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "title".to_string(),
+            serde_json::json!("Hello"),
+            Actor::Human,
+            "initial requirement".to_string(),
+            1000,
+        );
+
+        assert_eq!(mutation.gene_id(), &gene_id);
+        assert_eq!(mutation.trait_key(), "title");
+        assert_eq!(mutation.value(), &serde_json::json!("Hello"));
+        assert!(matches!(mutation.actor(), Actor::Human));
+        assert_eq!(mutation.context(), "initial requirement");
     }
 }
