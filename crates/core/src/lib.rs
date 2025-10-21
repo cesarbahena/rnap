@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 pub enum TraitState {
     Dominant,
@@ -132,28 +133,39 @@ impl Genotype {
     pub fn traits(&self) -> &[Trait] {
         &self.traits
     }
+
+    pub fn find_trait(&self, key: &str) -> Option<&Trait> {
+        self.traits.iter().find(|t| t.key() == key)
+    }
 }
 
 pub struct Gene {
     id: uuid::Uuid,
+    genotype: Arc<Genotype>,
     mutations: Vec<Mutation>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum GeneError {
     MutationGeneIdMismatch,
+    TraitIsVestigial(String),
 }
 
 impl Gene {
-    pub fn new(id: uuid::Uuid) -> Self {
+    pub fn new(id: uuid::Uuid, genotype: Arc<Genotype>) -> Self {
         Self {
             id,
+            genotype,
             mutations: Vec::new(),
         }
     }
 
     pub fn id(&self) -> &uuid::Uuid {
         &self.id
+    }
+
+    pub fn genotype(&self) -> &Arc<Genotype> {
+        &self.genotype
     }
 
     pub fn mutations(&self) -> &[Mutation] {
@@ -163,6 +175,13 @@ impl Gene {
     pub fn append_mutation(&mut self, mutation: Mutation) -> Result<(), GeneError> {
         if mutation.gene_id() != &self.id {
             return Err(GeneError::MutationGeneIdMismatch);
+        }
+        if let Some(trait_def) = self.genotype.find_trait(mutation.trait_key()) {
+            if !trait_def.state().is_writable() {
+                return Err(GeneError::TraitIsVestigial(
+                    mutation.trait_key().to_string(),
+                ));
+            }
         }
         self.mutations.push(mutation);
         Ok(())
@@ -267,7 +286,8 @@ mod tests {
     #[test]
     fn gene_can_be_created_with_id_and_empty_mutations() {
         let gene_id = uuid::Uuid::new_v4();
-        let gene = Gene::new(gene_id);
+        let genotype = Arc::new(Genotype::new(1, vec![]).unwrap());
+        let gene = Gene::new(gene_id, genotype);
 
         assert_eq!(gene.id(), &gene_id);
         assert!(gene.mutations().is_empty());
@@ -276,7 +296,8 @@ mod tests {
     #[test]
     fn gene_can_append_a_mutation() {
         let gene_id = uuid::Uuid::new_v4();
-        let mut gene = Gene::new(gene_id);
+        let genotype = Arc::new(Genotype::new(1, vec![]).unwrap());
+        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
 
         let mutation = Mutation::new(
             uuid::Uuid::new_v4(),
@@ -298,7 +319,8 @@ mod tests {
     fn gene_rejects_mutation_with_wrong_gene_id() {
         let gene_id = uuid::Uuid::new_v4();
         let wrong_gene_id = uuid::Uuid::new_v4();
-        let mut gene = Gene::new(gene_id);
+        let genotype = Arc::new(Genotype::new(1, vec![]).unwrap());
+        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
 
         let mutation = Mutation::new(
             uuid::Uuid::new_v4(),
@@ -307,6 +329,35 @@ mod tests {
             serde_json::json!("Hello"),
             Actor::Human,
             "initial requirement".to_string(),
+            1000,
+        );
+
+        let result = gene.append_mutation(mutation);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn gene_rejects_mutation_targeting_vestigial_trait() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genotype = Arc::new(
+            Genotype::new(
+                1,
+                vec![Trait::new(
+                    "deprecated_field".to_string(),
+                    TraitState::Vestigial,
+                )],
+            )
+            .unwrap(),
+        );
+        let mut gene = Gene::new(gene_id, genotype);
+
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "deprecated_field".to_string(),
+            serde_json::json!("value"),
+            Actor::Human,
+            "trying to write vestigial".to_string(),
             1000,
         );
 
