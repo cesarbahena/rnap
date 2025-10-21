@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 pub enum TraitState {
@@ -186,6 +186,14 @@ impl Gene {
         self.mutations.push(mutation);
         Ok(())
     }
+
+    pub fn current_state(&self) -> HashMap<&str, &Mutation> {
+        let mut state: HashMap<&str, &Mutation> = HashMap::new();
+        for mutation in &self.mutations {
+            state.insert(mutation.trait_key(), mutation);
+        }
+        state
+    }
 }
 
 #[cfg(test)]
@@ -363,5 +371,66 @@ mod tests {
 
         let result = gene.append_mutation(mutation);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn gene_current_state_returns_last_mutation_per_trait() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genotype = Arc::new(
+            Genotype::new(
+                1,
+                vec![
+                    Trait::new("title".to_string(), TraitState::Dominant),
+                    Trait::new("status".to_string(), TraitState::Recessive),
+                ],
+            )
+            .unwrap(),
+        );
+        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
+
+        gene.append_mutation(Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "title".to_string(),
+            serde_json::json!("First title"),
+            Actor::Human,
+            "first".to_string(),
+            1000,
+        ))
+        .unwrap();
+
+        gene.append_mutation(Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "status".to_string(),
+            serde_json::json!("draft"),
+            Actor::Human,
+            "initial status".to_string(),
+            2000,
+        ))
+        .unwrap();
+
+        gene.append_mutation(Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "title".to_string(),
+            serde_json::json!("Updated title"),
+            Actor::Llm,
+            "refined".to_string(),
+            3000,
+        ))
+        .unwrap();
+
+        let state = gene.current_state();
+
+        assert_eq!(state.len(), 2);
+        assert_eq!(
+            state.get("title").unwrap().value(),
+            &serde_json::json!("Updated title")
+        );
+        assert_eq!(
+            state.get("status").unwrap().value(),
+            &serde_json::json!("draft")
+        );
     }
 }
