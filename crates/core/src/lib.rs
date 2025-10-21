@@ -134,6 +134,32 @@ impl Genotype {
     }
 }
 
+pub struct Gene {
+    id: uuid::Uuid,
+    mutations: Vec<Mutation>,
+}
+
+impl Gene {
+    pub fn new(id: uuid::Uuid) -> Self {
+        Self {
+            id,
+            mutations: Vec::new(),
+        }
+    }
+
+    pub fn id(&self) -> &uuid::Uuid {
+        &self.id
+    }
+
+    pub fn mutations(&self) -> &[Mutation] {
+        &self.mutations
+    }
+
+    pub fn append_mutation(&mut self, mutation: Mutation) {
+        self.mutations.push(mutation);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -227,5 +253,35 @@ mod tests {
         assert_eq!(mutation.value(), &serde_json::json!("Hello"));
         assert!(matches!(mutation.actor(), Actor::Human));
         assert_eq!(mutation.context(), "initial requirement");
+    }
+
+    #[test]
+    fn gene_can_be_created_with_id_and_empty_mutations() {
+        let gene_id = uuid::Uuid::new_v4();
+        let gene = Gene::new(gene_id);
+
+        assert_eq!(gene.id(), &gene_id);
+        assert!(gene.mutations().is_empty());
+    }
+
+    #[test]
+    fn gene_can_append_a_mutation() {
+        let gene_id = uuid::Uuid::new_v4();
+        let mut gene = Gene::new(gene_id);
+
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "title".to_string(),
+            serde_json::json!("Hello"),
+            Actor::Human,
+            "initial requirement".to_string(),
+            1000,
+        );
+
+        gene.append_mutation(mutation);
+
+        assert_eq!(gene.mutations().len(), 1);
+        assert_eq!(gene.mutations()[0].trait_key(), "title");
     }
 }
