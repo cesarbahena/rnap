@@ -139,6 +139,11 @@ pub struct Gene {
     mutations: Vec<Mutation>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum GeneError {
+    MutationGeneIdMismatch,
+}
+
 impl Gene {
     pub fn new(id: uuid::Uuid) -> Self {
         Self {
@@ -155,8 +160,12 @@ impl Gene {
         &self.mutations
     }
 
-    pub fn append_mutation(&mut self, mutation: Mutation) {
+    pub fn append_mutation(&mut self, mutation: Mutation) -> Result<(), GeneError> {
+        if mutation.gene_id() != &self.id {
+            return Err(GeneError::MutationGeneIdMismatch);
+        }
         self.mutations.push(mutation);
+        Ok(())
     }
 }
 
@@ -279,9 +288,29 @@ mod tests {
             1000,
         );
 
-        gene.append_mutation(mutation);
+        gene.append_mutation(mutation).unwrap();
 
         assert_eq!(gene.mutations().len(), 1);
         assert_eq!(gene.mutations()[0].trait_key(), "title");
+    }
+
+    #[test]
+    fn gene_rejects_mutation_with_wrong_gene_id() {
+        let gene_id = uuid::Uuid::new_v4();
+        let wrong_gene_id = uuid::Uuid::new_v4();
+        let mut gene = Gene::new(gene_id);
+
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            wrong_gene_id,
+            "title".to_string(),
+            serde_json::json!("Hello"),
+            Actor::Human,
+            "initial requirement".to_string(),
+            1000,
+        );
+
+        let result = gene.append_mutation(mutation);
+        assert!(result.is_err());
     }
 }
