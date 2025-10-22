@@ -194,6 +194,15 @@ impl Gene {
         }
         state
     }
+
+    pub fn is_ready(&self) -> bool {
+        let state = self.current_state();
+        self.genotype
+            .traits()
+            .iter()
+            .filter(|t| t.state().is_required())
+            .all(|t| state.contains_key(t.key()))
+    }
 }
 
 #[cfg(test)]
@@ -432,5 +441,37 @@ mod tests {
             state.get("status").unwrap().value(),
             &serde_json::json!("draft")
         );
+    }
+
+    #[test]
+    fn gene_is_ready_when_all_dominant_traits_have_mutations() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genotype = Arc::new(
+            Genotype::new(
+                1,
+                vec![
+                    Trait::new("title".to_string(), TraitState::Dominant),
+                    Trait::new("status".to_string(), TraitState::Recessive),
+                ],
+            )
+            .unwrap(),
+        );
+        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
+
+        gene.append_mutation(Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "title".to_string(),
+            serde_json::json!("Hello"),
+            Actor::Human,
+            "initial".to_string(),
+            1000,
+        ))
+        .unwrap();
+
+        assert!(gene.is_ready());
+
+        let empty_gene = Gene::new(uuid::Uuid::new_v4(), Arc::clone(&genotype));
+        assert!(!empty_gene.is_ready());
     }
 }
