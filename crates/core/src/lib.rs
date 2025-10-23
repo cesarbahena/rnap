@@ -106,6 +106,8 @@ impl Mutation {
 }
 
 pub struct Genotype {
+    kind: String,
+    name: String,
     generation: u32,
     traits: Vec<Trait>,
 }
@@ -116,14 +118,32 @@ pub enum GenotypeError {
 }
 
 impl Genotype {
-    pub fn new(generation: u32, traits: Vec<Trait>) -> Result<Self, GenotypeError> {
+    pub fn new(
+        kind: String,
+        name: String,
+        generation: u32,
+        traits: Vec<Trait>,
+    ) -> Result<Self, GenotypeError> {
         let mut seen = HashSet::new();
         for t in &traits {
             if !seen.insert(t.key().to_string()) {
                 return Err(GenotypeError::DuplicateTraitKey(t.key().to_string()));
             }
         }
-        Ok(Self { generation, traits })
+        Ok(Self {
+            kind,
+            name,
+            generation,
+            traits,
+        })
+    }
+
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn generation(&self) -> u32 {
@@ -209,6 +229,18 @@ impl Gene {
 mod tests {
     use super::*;
 
+    fn test_genotype() -> Arc<Genotype> {
+        Arc::new(
+            Genotype::new("FEAT".to_string(), "Feature Request".to_string(), 1, vec![]).unwrap(),
+        )
+    }
+
+    fn test_genotype_with_traits(traits: Vec<Trait>) -> Arc<Genotype> {
+        Arc::new(
+            Genotype::new("FEAT".to_string(), "Feature Request".to_string(), 1, traits).unwrap(),
+        )
+    }
+
     #[test]
     fn trait_state_dominant_is_required_writable_and_visible() {
         let state = TraitState::Dominant;
@@ -245,15 +277,19 @@ mod tests {
     }
 
     #[test]
-    fn genotype_has_generation() {
-        let genotype = Genotype::new(1, vec![]).unwrap();
+    fn genotype_has_kind_and_name() {
+        let genotype =
+            Genotype::new("FEAT".to_string(), "Feature Request".to_string(), 1, vec![]).unwrap();
 
-        assert_eq!(genotype.generation(), 1);
+        assert_eq!(genotype.kind(), "FEAT");
+        assert_eq!(genotype.name(), "Feature Request");
     }
 
     #[test]
     fn genotype_exposes_its_traits() {
         let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
             1,
             vec![
                 Trait::new("title".to_string(), TraitState::Dominant),
@@ -270,6 +306,8 @@ mod tests {
     #[test]
     fn genotype_rejects_duplicate_trait_keys() {
         let result = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
             1,
             vec![
                 Trait::new("title".to_string(), TraitState::Dominant),
@@ -303,7 +341,7 @@ mod tests {
     #[test]
     fn gene_can_be_created_with_id_and_empty_mutations() {
         let gene_id = uuid::Uuid::new_v4();
-        let genotype = Arc::new(Genotype::new(1, vec![]).unwrap());
+        let genotype = test_genotype();
         let gene = Gene::new(gene_id, genotype);
 
         assert_eq!(gene.id(), &gene_id);
@@ -313,7 +351,7 @@ mod tests {
     #[test]
     fn gene_can_append_a_mutation() {
         let gene_id = uuid::Uuid::new_v4();
-        let genotype = Arc::new(Genotype::new(1, vec![]).unwrap());
+        let genotype = test_genotype();
         let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
 
         let mutation = Mutation::new(
@@ -336,7 +374,7 @@ mod tests {
     fn gene_rejects_mutation_with_wrong_gene_id() {
         let gene_id = uuid::Uuid::new_v4();
         let wrong_gene_id = uuid::Uuid::new_v4();
-        let genotype = Arc::new(Genotype::new(1, vec![]).unwrap());
+        let genotype = test_genotype();
         let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
 
         let mutation = Mutation::new(
@@ -356,16 +394,10 @@ mod tests {
     #[test]
     fn gene_rejects_mutation_targeting_vestigial_trait() {
         let gene_id = uuid::Uuid::new_v4();
-        let genotype = Arc::new(
-            Genotype::new(
-                1,
-                vec![Trait::new(
-                    "deprecated_field".to_string(),
-                    TraitState::Vestigial,
-                )],
-            )
-            .unwrap(),
-        );
+        let genotype = test_genotype_with_traits(vec![Trait::new(
+            "deprecated_field".to_string(),
+            TraitState::Vestigial,
+        )]);
         let mut gene = Gene::new(gene_id, genotype);
 
         let mutation = Mutation::new(
@@ -385,16 +417,10 @@ mod tests {
     #[test]
     fn gene_current_state_returns_last_mutation_per_trait() {
         let gene_id = uuid::Uuid::new_v4();
-        let genotype = Arc::new(
-            Genotype::new(
-                1,
-                vec![
-                    Trait::new("title".to_string(), TraitState::Dominant),
-                    Trait::new("status".to_string(), TraitState::Recessive),
-                ],
-            )
-            .unwrap(),
-        );
+        let genotype = test_genotype_with_traits(vec![
+            Trait::new("title".to_string(), TraitState::Dominant),
+            Trait::new("status".to_string(), TraitState::Recessive),
+        ]);
         let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
 
         gene.append_mutation(Mutation::new(
@@ -446,16 +472,10 @@ mod tests {
     #[test]
     fn gene_is_ready_when_all_dominant_traits_have_mutations() {
         let gene_id = uuid::Uuid::new_v4();
-        let genotype = Arc::new(
-            Genotype::new(
-                1,
-                vec![
-                    Trait::new("title".to_string(), TraitState::Dominant),
-                    Trait::new("status".to_string(), TraitState::Recessive),
-                ],
-            )
-            .unwrap(),
-        );
+        let genotype = test_genotype_with_traits(vec![
+            Trait::new("title".to_string(), TraitState::Dominant),
+            Trait::new("status".to_string(), TraitState::Recessive),
+        ]);
         let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
 
         gene.append_mutation(Mutation::new(
