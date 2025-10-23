@@ -106,7 +106,7 @@ impl Mutation {
 }
 
 pub struct Genotype {
-    version: u32,
+    generation: u32,
     traits: Vec<Trait>,
 }
 
@@ -116,18 +116,18 @@ pub enum GenotypeError {
 }
 
 impl Genotype {
-    pub fn new(version: u32, traits: Vec<Trait>) -> Result<Self, GenotypeError> {
+    pub fn new(generation: u32, traits: Vec<Trait>) -> Result<Self, GenotypeError> {
         let mut seen = HashSet::new();
         for t in &traits {
             if !seen.insert(t.key().to_string()) {
                 return Err(GenotypeError::DuplicateTraitKey(t.key().to_string()));
             }
         }
-        Ok(Self { version, traits })
+        Ok(Self { generation, traits })
     }
 
-    pub fn version(&self) -> u32 {
-        self.version
+    pub fn generation(&self) -> u32 {
+        self.generation
     }
 
     pub fn traits(&self) -> &[Trait] {
@@ -245,10 +245,10 @@ mod tests {
     }
 
     #[test]
-    fn genotype_has_version() {
+    fn genotype_has_generation() {
         let genotype = Genotype::new(1, vec![]).unwrap();
 
-        assert_eq!(genotype.version(), 1);
+        assert_eq!(genotype.generation(), 1);
     }
 
     #[test]
