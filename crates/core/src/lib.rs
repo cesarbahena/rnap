@@ -40,7 +40,7 @@ impl Trait {
     }
 }
 
-pub enum Actor {
+pub enum By {
     Human,
     Llm,
 }
@@ -50,7 +50,7 @@ pub struct Mutation {
     gene_id: uuid::Uuid,
     trait_key: String,
     value: serde_json::Value,
-    actor: Actor,
+    by: By,
     context: String,
     created_at: i64,
 }
@@ -61,7 +61,7 @@ impl Mutation {
         gene_id: uuid::Uuid,
         trait_key: String,
         value: serde_json::Value,
-        actor: Actor,
+        by: By,
         context: String,
         created_at: i64,
     ) -> Self {
@@ -70,7 +70,7 @@ impl Mutation {
             gene_id,
             trait_key,
             value,
-            actor,
+            by,
             context,
             created_at,
         }
@@ -92,8 +92,8 @@ impl Mutation {
         &self.value
     }
 
-    pub fn actor(&self) -> &Actor {
-        &self.actor
+    pub fn by(&self) -> &By {
+        &self.by
     }
 
     pub fn context(&self) -> &str {
@@ -332,7 +332,7 @@ mod tests {
             gene_id,
             "title".to_string(),
             serde_json::json!("Hello"),
-            Actor::Human,
+            By::Human,
             "initial requirement".to_string(),
             1000,
         );
@@ -340,7 +340,7 @@ mod tests {
         assert_eq!(mutation.gene_id(), &gene_id);
         assert_eq!(mutation.trait_key(), "title");
         assert_eq!(mutation.value(), &serde_json::json!("Hello"));
-        assert!(matches!(mutation.actor(), Actor::Human));
+        assert!(matches!(mutation.by(), By::Human));
         assert_eq!(mutation.context(), "initial requirement");
     }
 
@@ -378,7 +378,7 @@ mod tests {
             gene_id,
             "title".to_string(),
             serde_json::json!("Hello"),
-            Actor::Human,
+            By::Human,
             "initial requirement".to_string(),
             1000,
         );
@@ -405,7 +405,7 @@ mod tests {
             wrong_gene_id,
             "title".to_string(),
             serde_json::json!("Hello"),
-            Actor::Human,
+            By::Human,
             "initial requirement".to_string(),
             1000,
         );
@@ -428,7 +428,7 @@ mod tests {
             gene_id,
             "deprecated_field".to_string(),
             serde_json::json!("value"),
-            Actor::Human,
+            By::Human,
             "trying to write vestigial".to_string(),
             1000,
         );
@@ -455,7 +455,7 @@ mod tests {
             gene_id,
             "title".to_string(),
             serde_json::json!("First title"),
-            Actor::Human,
+            By::Human,
             "first".to_string(),
             1000,
         ))
@@ -466,7 +466,7 @@ mod tests {
             gene_id,
             "status".to_string(),
             serde_json::json!("draft"),
-            Actor::Human,
+            By::Human,
             "initial status".to_string(),
             2000,
         ))
@@ -477,7 +477,7 @@ mod tests {
             gene_id,
             "title".to_string(),
             serde_json::json!("Updated title"),
-            Actor::Llm,
+            By::Llm,
             "refined".to_string(),
             3000,
         ))
@@ -514,7 +514,7 @@ mod tests {
             gene_id,
             "title".to_string(),
             serde_json::json!("Hello"),
-            Actor::Human,
+            By::Human,
             "initial".to_string(),
             1000,
         ))
