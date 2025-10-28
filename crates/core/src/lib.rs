@@ -161,6 +161,7 @@ impl Genotype {
 
 pub struct Gene {
     id: uuid::Uuid,
+    name: String,
     genotype: Arc<Genotype>,
     mutations: Vec<Mutation>,
 }
@@ -172,9 +173,10 @@ pub enum GeneError {
 }
 
 impl Gene {
-    pub fn new(id: uuid::Uuid, genotype: Arc<Genotype>) -> Self {
+    pub fn new(id: uuid::Uuid, name: String, genotype: Arc<Genotype>) -> Self {
         Self {
             id,
+            name,
             genotype,
             mutations: Vec::new(),
         }
@@ -182,6 +184,10 @@ impl Gene {
 
     pub fn id(&self) -> &uuid::Uuid {
         &self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn genotype(&self) -> &Arc<Genotype> {
@@ -342,17 +348,30 @@ mod tests {
     fn gene_can_be_created_with_id_and_empty_mutations() {
         let gene_id = uuid::Uuid::new_v4();
         let genotype = test_genotype();
-        let gene = Gene::new(gene_id, genotype);
+        let gene = Gene::new(gene_id, "FEAT-0001-user-auth".to_string(), genotype);
 
         assert_eq!(gene.id(), &gene_id);
         assert!(gene.mutations().is_empty());
     }
 
     #[test]
+    fn gene_has_name() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genotype = test_genotype();
+        let gene = Gene::new(gene_id, "FEAT-0001-user-auth".to_string(), genotype);
+
+        assert_eq!(gene.name(), "FEAT-0001-user-auth");
+    }
+
+    #[test]
     fn gene_can_append_a_mutation() {
         let gene_id = uuid::Uuid::new_v4();
         let genotype = test_genotype();
-        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            Arc::clone(&genotype),
+        );
 
         let mutation = Mutation::new(
             uuid::Uuid::new_v4(),
@@ -375,7 +394,11 @@ mod tests {
         let gene_id = uuid::Uuid::new_v4();
         let wrong_gene_id = uuid::Uuid::new_v4();
         let genotype = test_genotype();
-        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            Arc::clone(&genotype),
+        );
 
         let mutation = Mutation::new(
             uuid::Uuid::new_v4(),
@@ -398,7 +421,7 @@ mod tests {
             "deprecated_field".to_string(),
             TraitState::Vestigial,
         )]);
-        let mut gene = Gene::new(gene_id, genotype);
+        let mut gene = Gene::new(gene_id, "FEAT-0001-user-auth".to_string(), genotype);
 
         let mutation = Mutation::new(
             uuid::Uuid::new_v4(),
@@ -421,7 +444,11 @@ mod tests {
             Trait::new("title".to_string(), TraitState::Dominant),
             Trait::new("status".to_string(), TraitState::Recessive),
         ]);
-        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            Arc::clone(&genotype),
+        );
 
         gene.append_mutation(Mutation::new(
             uuid::Uuid::new_v4(),
@@ -476,7 +503,11 @@ mod tests {
             Trait::new("title".to_string(), TraitState::Dominant),
             Trait::new("status".to_string(), TraitState::Recessive),
         ]);
-        let mut gene = Gene::new(gene_id, Arc::clone(&genotype));
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            Arc::clone(&genotype),
+        );
 
         gene.append_mutation(Mutation::new(
             uuid::Uuid::new_v4(),
@@ -491,7 +522,11 @@ mod tests {
 
         assert!(gene.is_ready());
 
-        let empty_gene = Gene::new(uuid::Uuid::new_v4(), Arc::clone(&genotype));
+        let empty_gene = Gene::new(
+            uuid::Uuid::new_v4(),
+            "FEAT-0002-another".to_string(),
+            Arc::clone(&genotype),
+        );
         assert!(!empty_gene.is_ready());
     }
 }
