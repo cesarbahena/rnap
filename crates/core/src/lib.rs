@@ -129,6 +129,7 @@ pub struct Genotype {
     name: String,
     generation: u32,
     traits: Vec<Trait>,
+    genome_id: uuid::Uuid,
 }
 
 #[derive(Debug, PartialEq)]
@@ -141,6 +142,7 @@ impl Genotype {
         kind: String,
         name: String,
         generation: u32,
+        genome_id: uuid::Uuid,
         traits: Vec<Trait>,
     ) -> Result<Self, GenotypeError> {
         let mut seen = HashSet::new();
@@ -153,6 +155,7 @@ impl Genotype {
             kind,
             name,
             generation,
+            genome_id,
             traits,
         })
     }
@@ -167,6 +170,10 @@ impl Genotype {
 
     pub fn generation(&self) -> u32 {
         self.generation
+    }
+
+    pub fn genome_id(&self) -> &uuid::Uuid {
+        &self.genome_id
     }
 
     pub fn traits(&self) -> &[Trait] {
@@ -256,13 +263,27 @@ mod tests {
 
     fn test_genotype() -> Arc<Genotype> {
         Arc::new(
-            Genotype::new("FEAT".to_string(), "Feature Request".to_string(), 1, vec![]).unwrap(),
+            Genotype::new(
+                "FEAT".to_string(),
+                "Feature Request".to_string(),
+                1,
+                uuid::Uuid::new_v4(),
+                vec![],
+            )
+            .unwrap(),
         )
     }
 
     fn test_genotype_with_traits(traits: Vec<Trait>) -> Arc<Genotype> {
         Arc::new(
-            Genotype::new("FEAT".to_string(), "Feature Request".to_string(), 1, traits).unwrap(),
+            Genotype::new(
+                "FEAT".to_string(),
+                "Feature Request".to_string(),
+                1,
+                uuid::Uuid::new_v4(),
+                traits,
+            )
+            .unwrap(),
         )
     }
 
@@ -303,11 +324,19 @@ mod tests {
 
     #[test]
     fn genotype_has_kind_and_name() {
-        let genotype =
-            Genotype::new("FEAT".to_string(), "Feature Request".to_string(), 1, vec![]).unwrap();
+        let genome_id = uuid::Uuid::new_v4();
+        let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![],
+        )
+        .unwrap();
 
         assert_eq!(genotype.kind(), "FEAT");
         assert_eq!(genotype.name(), "Feature Request");
+        assert_eq!(genotype.genome_id(), &genome_id);
     }
 
     #[test]
@@ -316,6 +345,7 @@ mod tests {
             "FEAT".to_string(),
             "Feature Request".to_string(),
             1,
+            uuid::Uuid::new_v4(),
             vec![
                 Trait::new("title".to_string(), TraitState::Dominant),
                 Trait::new("description".to_string(), TraitState::Recessive),
@@ -334,6 +364,7 @@ mod tests {
             "FEAT".to_string(),
             "Feature Request".to_string(),
             1,
+            uuid::Uuid::new_v4(),
             vec![
                 Trait::new("title".to_string(), TraitState::Dominant),
                 Trait::new("title".to_string(), TraitState::Recessive),

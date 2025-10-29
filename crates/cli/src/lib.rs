@@ -5,14 +5,10 @@ use clap::Parser;
 #[command(about = "Requirements Normalization and Assessment Platform")]
 pub enum Cli {
     Create {
-        #[arg(help = "Gene name in TYPE-slug format (e.g., FEAT-user-auth)")]
+        #[arg(help = "Genotype kind (e.g., FEAT, BUG)")]
+        kind: String,
+        #[arg(help = "Gene name (e.g., user authentication)")]
         name: String,
-        #[arg(
-            short,
-            long,
-            help = "Trait definitions (e.g., title:dominant,description:recessive)"
-        )]
-        traits: String,
     },
     Mutate {
         #[arg(help = "Gene name (e.g., FEAT-0001-user-auth)")]
@@ -38,18 +34,12 @@ mod tests {
 
     #[test]
     fn parse_create_command() {
-        let cli = Cli::try_parse_from([
-            "rnap",
-            "create",
-            "FEAT-user-auth",
-            "--traits",
-            "title:dominant",
-        ]);
+        let cli = Cli::try_parse_from(["rnap", "create", "FEAT", "user authentication"]);
 
         assert!(cli.is_ok());
-        if let Cli::Create { name, traits } = cli.unwrap() {
-            assert_eq!(name, "FEAT-user-auth");
-            assert_eq!(traits, "title:dominant");
+        if let Cli::Create { kind, name } = cli.unwrap() {
+            assert_eq!(kind, "FEAT");
+            assert_eq!(name, "user authentication");
         } else {
             panic!("Expected Create variant");
         }
