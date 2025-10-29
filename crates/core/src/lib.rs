@@ -1,6 +1,25 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+pub struct Genome {
+    id: uuid::Uuid,
+    name: String,
+}
+
+impl Genome {
+    pub fn new(id: uuid::Uuid, name: String) -> Self {
+        Self { id, name }
+    }
+
+    pub fn id(&self) -> &uuid::Uuid {
+        &self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 pub enum TraitState {
     Dominant,
     Recessive,
@@ -528,5 +547,14 @@ mod tests {
             Arc::clone(&genotype),
         );
         assert!(!empty_gene.is_ready());
+    }
+
+    #[test]
+    fn genome_has_id_and_name() {
+        let id = uuid::Uuid::new_v4();
+        let genome = Genome::new(id, "acme-corp".to_string());
+
+        assert_eq!(genome.id(), &id);
+        assert_eq!(genome.name(), "acme-corp");
     }
 }
