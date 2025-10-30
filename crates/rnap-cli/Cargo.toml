@@ -1,0 +1,16 @@
+[package]
+name = "rnap-cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "rnap"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+rnap-genome = { path = "../rnap-genome" }
+rnap-genotype = { path = "../rnap-genotype" }
+rnap-gene = { path = "../rnap-gene" }
+rnap-chromosome = { path = "../rnap-chromosome" }
+rnap-phenotype = { path = "../rnap-phenotype" }

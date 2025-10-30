@@ -1,3 +1,11 @@
 [workspace]
-members = ["crates/core", "crates/storage", "crates/cli"]
+members = [
+    "crates/rnap-genome",
+    "crates/rnap-genotype",
+    "crates/rnap-gene",
+    "crates/rnap-chromosome",
+    "crates/rnap-phenotype",
+    "crates/rnap-storage",
+    "crates/rnap-cli",
+]
 resolver = "2"

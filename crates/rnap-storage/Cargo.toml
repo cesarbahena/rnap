@@ -1,0 +1,16 @@
+[package]
+name = "rnap-storage"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rnap-genome = { path = "../rnap-genome" }
+rnap-genotype = { path = "../rnap-genotype" }
+rnap-gene = { path = "../rnap-gene" }
+rnap-chromosome = { path = "../rnap-chromosome" }
+rnap-phenotype = { path = "../rnap-phenotype" }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "json", "chrono"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
+dotenvy = "0.15"
