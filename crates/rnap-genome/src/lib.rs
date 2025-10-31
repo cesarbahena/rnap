@@ -23,6 +23,26 @@ impl From<uuid::Uuid> for GenomeId {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Genome {
+    id: GenomeId,
+    name: String,
+}
+
+impl Genome {
+    pub fn new(id: GenomeId, name: String) -> Self {
+        Self { id, name }
+    }
+
+    pub fn id(&self) -> &GenomeId {
+        &self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -32,5 +52,13 @@ mod tests {
         let id = uuid::Uuid::new_v4();
         let genome_id = GenomeId::from(id);
         assert_eq!(genome_id.to_string(), id.to_string());
+    }
+
+    #[test]
+    fn genome_has_id_and_name() {
+        let id = GenomeId::new();
+        let genome = Genome::new(id, "acme-corp".to_string());
+        assert_eq!(genome.name(), "acme-corp");
+        assert_eq!(genome.id(), &id);
     }
 }
