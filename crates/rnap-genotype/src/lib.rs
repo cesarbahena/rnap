@@ -19,6 +19,26 @@ impl TraitState {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Trait {
+    key: String,
+    state: TraitState,
+}
+
+impl Trait {
+    pub fn new(key: String, state: TraitState) -> Self {
+        Self { key, state }
+    }
+
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn state(&self) -> &TraitState {
+        &self.state
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,5 +65,12 @@ mod tests {
         assert!(!state.is_required());
         assert!(!state.is_writable());
         assert!(!state.is_visible());
+    }
+
+    #[test]
+    fn trait_has_key_and_state() {
+        let t = Trait::new("title".to_string(), TraitState::Dominant);
+        assert_eq!(t.key(), "title");
+        assert!(t.state().is_required());
     }
 }
