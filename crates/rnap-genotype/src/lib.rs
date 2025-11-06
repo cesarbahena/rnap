@@ -39,9 +39,95 @@ impl Trait {
     }
 }
 
+#[derive(Debug, thiserror::Error, PartialEq)]
+pub enum GenotypeError {
+    #[error("duplicate trait key: {0}")]
+    DuplicateTraitKey(String),
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Genotype {
+    kind: String,
+    name: String,
+    generation: u32,
+    genome_id: rnap_genome::GenomeId,
+    traits: Vec<Trait>,
+}
+
+impl Genotype {
+    pub fn new(
+        kind: String,
+        name: String,
+        generation: u32,
+        genome_id: rnap_genome::GenomeId,
+        traits: Vec<Trait>,
+    ) -> Result<Self, GenotypeError> {
+        let mut seen = std::collections::HashSet::new();
+        for t in &traits {
+            if !seen.insert(t.key().to_string()) {
+                return Err(GenotypeError::DuplicateTraitKey(t.key().to_string()));
+            }
+        }
+        Ok(Self {
+            kind,
+            name,
+            generation,
+            genome_id,
+            traits,
+        })
+    }
+
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    pub fn genome_id(&self) -> &rnap_genome::GenomeId {
+        &self.genome_id
+    }
+
+    pub fn traits(&self) -> &[Trait] {
+        &self.traits
+    }
+
+    pub fn find_trait(&self, key: &str) -> Option<&Trait> {
+        self.traits.iter().find(|t| t.key() == key)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rnap_genome::GenomeId;
+
+    fn test_genotype() -> Genotype {
+        Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            GenomeId::new(),
+            vec![],
+        )
+        .unwrap()
+    }
+
+    fn test_genotype_with_traits(traits: Vec<Trait>) -> Genotype {
+        Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            GenomeId::new(),
+            traits,
+        )
+        .unwrap()
+    }
 
     #[test]
     fn trait_state_dominant_is_required_writable_and_visible() {
@@ -72,5 +158,47 @@ mod tests {
         let t = Trait::new("title".to_string(), TraitState::Dominant);
         assert_eq!(t.key(), "title");
         assert!(t.state().is_required());
+    }
+
+    #[test]
+    fn genotype_has_kind_and_name() {
+        let genome_id = GenomeId::new();
+        let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![],
+        )
+        .unwrap();
+        assert_eq!(genotype.kind(), "FEAT");
+        assert_eq!(genotype.name(), "Feature Request");
+        assert_eq!(genotype.genome_id(), &genome_id);
+    }
+
+    #[test]
+    fn genotype_exposes_its_traits() {
+        let genotype = test_genotype_with_traits(vec![
+            Trait::new("title".to_string(), TraitState::Dominant),
+            Trait::new("description".to_string(), TraitState::Recessive),
+        ]);
+        assert_eq!(genotype.traits().len(), 2);
+        assert_eq!(genotype.traits()[0].key(), "title");
+        assert_eq!(genotype.traits()[1].key(), "description");
+    }
+
+    #[test]
+    fn genotype_rejects_duplicate_trait_keys() {
+        let result = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            GenomeId::new(),
+            vec![
+                Trait::new("title".to_string(), TraitState::Dominant),
+                Trait::new("title".to_string(), TraitState::Recessive),
+            ],
+        );
+        assert!(result.is_err());
     }
 }
