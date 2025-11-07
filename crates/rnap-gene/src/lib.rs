@@ -65,6 +65,56 @@ impl Mutation {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Gene {
+    id: uuid::Uuid,
+    name: String,
+    genome_id: rnap_genome::GenomeId,
+    genotype_id: rnap_genome::GenomeId,
+    mutations: Vec<Mutation>,
+}
+
+impl Gene {
+    pub fn new(
+        id: uuid::Uuid,
+        name: String,
+        genome_id: rnap_genome::GenomeId,
+        genotype_id: rnap_genome::GenomeId,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            genome_id,
+            genotype_id,
+            mutations: Vec::new(),
+        }
+    }
+
+    pub fn id(&self) -> &uuid::Uuid {
+        &self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn genome_id(&self) -> &rnap_genome::GenomeId {
+        &self.genome_id
+    }
+
+    pub fn genotype_id(&self) -> &rnap_genome::GenomeId {
+        &self.genotype_id
+    }
+
+    pub fn mutations(&self) -> &[Mutation] {
+        &self.mutations
+    }
+
+    pub fn append_mutation(&mut self, mutation: Mutation) {
+        self.mutations.push(mutation);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,5 +145,23 @@ mod tests {
         assert!(matches!(mutation.by(), By::Human));
         assert_eq!(mutation.context(), "initial requirement");
         assert_eq!(mutation.created_at(), now);
+    }
+
+    #[test]
+    fn gene_can_be_created_with_id_name_genome_id_genotype_id() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenomeId::new();
+        let gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
+        );
+        assert_eq!(gene.id(), &gene_id);
+        assert_eq!(gene.name(), "FEAT-0001-user-auth");
+        assert_eq!(gene.genome_id(), &genome_id);
+        assert_eq!(gene.genotype_id(), &genotype_id);
+        assert!(gene.mutations().is_empty());
     }
 }
