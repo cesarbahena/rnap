@@ -147,9 +147,23 @@ impl GeneService {
                 mutation_gene_id: *mutation.gene_id(),
             });
         }
+        if gene.genome_id() != genotype.genome_id() {
+            return Err(GeneError::TenantIsolationViolation {
+                gene_genome: gene.genome_id().to_string(),
+                genotype_genome: genotype.genome_id().to_string(),
+            });
+        }
         if genotype.find_trait(mutation.trait_key()).is_none() {
             return Err(GeneError::UnknownTraitKey(mutation.trait_key().to_string()));
         }
+        if let Some(trait_def) = genotype.find_trait(mutation.trait_key()) {
+            if !trait_def.state().is_writable() {
+                return Err(GeneError::TraitIsVestigial(
+                    mutation.trait_key().to_string(),
+                ));
+            }
+        }
+        gene.append_mutation(mutation);
         Ok(())
     }
 
@@ -238,7 +252,7 @@ mod tests {
             "FEAT".to_string(),
             "Feature Request".to_string(),
             1,
-            rnap_genome::GenomeId::new(),
+            genome_id,
             vec![],
         )
         .unwrap();
@@ -272,7 +286,7 @@ mod tests {
             "FEAT".to_string(),
             "Feature Request".to_string(),
             1,
-            rnap_genome::GenomeId::new(),
+            genome_id,
             vec![rnap_genotype::Trait::new(
                 "title".to_string(),
                 rnap_genotype::TraitState::Dominant,
@@ -295,5 +309,218 @@ mod tests {
             result,
             Err(GeneError::UnknownTraitKey("nonexistent".to_string()))
         );
+    }
+
+    #[test]
+    fn gene_service_rejects_mutation_targeting_vestigial_trait() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenomeId::new();
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
+        );
+        let genotype = rnap_genotype::Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![rnap_genotype::Trait::new(
+                "deprecated_field".to_string(),
+                rnap_genotype::TraitState::Vestigial,
+            )],
+        )
+        .unwrap();
+
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "deprecated_field".to_string(),
+            serde_json::json!("value"),
+            By::Human,
+            "trying to write vestigial".to_string(),
+            chrono::Utc::now(),
+        );
+
+        let result = GeneService::validate_and_append(&mut gene, mutation, &genotype);
+        assert_eq!(
+            result,
+            Err(GeneError::TraitIsVestigial("deprecated_field".to_string()))
+        );
+    }
+
+    #[test]
+    fn gene_service_rejects_cross_tenant_mutation() {
+        let gene_id = uuid::Uuid::new_v4();
+        let gene_genome_id = rnap_genome::GenomeId::new();
+        let genotype_genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenomeId::new();
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            gene_genome_id,
+            genotype_id,
+        );
+        let genotype = rnap_genotype::Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genotype_genome_id,
+            vec![rnap_genotype::Trait::new(
+                "title".to_string(),
+                rnap_genotype::TraitState::Dominant,
+            )],
+        )
+        .unwrap();
+
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            gene_id,
+            "title".to_string(),
+            serde_json::json!("Hello"),
+            By::Human,
+            "cross-tenant attempt".to_string(),
+            chrono::Utc::now(),
+        );
+
+        let result = GeneService::validate_and_append(&mut gene, mutation, &genotype);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn gene_service_current_state_returns_last_mutation_per_trait() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype = rnap_genotype::Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![
+                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::TraitState::Dominant),
+                rnap_genotype::Trait::new(
+                    "status".to_string(),
+                    rnap_genotype::TraitState::Recessive,
+                ),
+            ],
+        )
+        .unwrap();
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
+        );
+
+        GeneService::validate_and_append(
+            &mut gene,
+            Mutation::new(
+                uuid::Uuid::new_v4(),
+                gene_id,
+                "title".to_string(),
+                serde_json::json!("First title"),
+                By::Human,
+                "first".to_string(),
+                chrono::Utc::now(),
+            ),
+            &genotype,
+        )
+        .unwrap();
+
+        GeneService::validate_and_append(
+            &mut gene,
+            Mutation::new(
+                uuid::Uuid::new_v4(),
+                gene_id,
+                "status".to_string(),
+                serde_json::json!("draft"),
+                By::Human,
+                "initial status".to_string(),
+                chrono::Utc::now(),
+            ),
+            &genotype,
+        )
+        .unwrap();
+
+        GeneService::validate_and_append(
+            &mut gene,
+            Mutation::new(
+                uuid::Uuid::new_v4(),
+                gene_id,
+                "title".to_string(),
+                serde_json::json!("Updated title"),
+                By::Llm,
+                "refined".to_string(),
+                chrono::Utc::now(),
+            ),
+            &genotype,
+        )
+        .unwrap();
+
+        let state = GeneService::current_state(&gene);
+        assert_eq!(state.len(), 2);
+        assert_eq!(
+            state.get("title").unwrap().value(),
+            &serde_json::json!("Updated title")
+        );
+        assert_eq!(
+            state.get("status").unwrap().value(),
+            &serde_json::json!("draft")
+        );
+    }
+
+    #[test]
+    fn gene_service_is_ready_when_all_dominant_traits_have_mutations() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype = rnap_genotype::Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![
+                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::TraitState::Dominant),
+                rnap_genotype::Trait::new(
+                    "status".to_string(),
+                    rnap_genotype::TraitState::Recessive,
+                ),
+            ],
+        )
+        .unwrap();
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
+        );
+
+        GeneService::validate_and_append(
+            &mut gene,
+            Mutation::new(
+                uuid::Uuid::new_v4(),
+                gene_id,
+                "title".to_string(),
+                serde_json::json!("Hello"),
+                By::Human,
+                "initial".to_string(),
+                chrono::Utc::now(),
+            ),
+            &genotype,
+        )
+        .unwrap();
+
+        assert!(GeneService::is_ready(&gene, &genotype));
+
+        let empty_gene = Gene::new(
+            uuid::Uuid::new_v4(),
+            "FEAT-0002-another".to_string(),
+            genome_id,
+            genotype_id,
+        );
+        assert!(!GeneService::is_ready(&empty_gene, &genotype));
     }
 }
