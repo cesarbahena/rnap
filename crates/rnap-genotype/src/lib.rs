@@ -19,7 +19,7 @@ impl TraitState {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Trait {
     key: String,
     state: TraitState,
@@ -37,6 +37,13 @@ impl Trait {
     pub fn state(&self) -> &TraitState {
         &self.state
     }
+
+    fn with_state(&self, new_state: TraitState) -> Self {
+        Self {
+            key: self.key.clone(),
+            state: new_state,
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -45,7 +52,7 @@ pub enum GenotypeError {
     DuplicateTraitKey(String),
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Genotype {
     kind: String,
     name: String,
@@ -100,6 +107,53 @@ impl Genotype {
     pub fn find_trait(&self, key: &str) -> Option<&Trait> {
         self.traits.iter().find(|t| t.key() == key)
     }
+
+    pub fn evolve(&self, transitions: Vec<TraitTransition>) -> Result<Genotype, EvolutionError> {
+        let mut new_traits: Vec<Trait> = self.traits.clone();
+
+        for transition in transitions {
+            let idx = new_traits.iter().position(|t| t.key() == transition.key);
+
+            let Some(idx) = idx else {
+                return Err(EvolutionError::UnknownTraitKey(transition.key.clone()));
+            };
+
+            if matches!(new_traits[idx].state(), TraitState::Vestigial) {
+                return Err(EvolutionError::VestigialTraitCannotTransition {
+                    key: transition.key.clone(),
+                });
+            }
+
+            new_traits[idx] = new_traits[idx].with_state(transition.new_state);
+        }
+
+        Genotype::new(
+            self.kind.clone(),
+            self.name.clone(),
+            self.generation + 1,
+            self.genome_id,
+            new_traits,
+        )
+        .map_err(|e| match e {
+            GenotypeError::DuplicateTraitKey(key) => EvolutionError::DuplicateTraitKey(key),
+        })
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TraitTransition {
+    pub key: String,
+    pub new_state: TraitState,
+}
+
+#[derive(Debug, thiserror::Error, PartialEq)]
+pub enum EvolutionError {
+    #[error("unknown trait key: {0}")]
+    UnknownTraitKey(String),
+    #[error("vestigial trait cannot transition: {key}")]
+    VestigialTraitCannotTransition { key: String },
+    #[error("duplicate trait key: {0}")]
+    DuplicateTraitKey(String),
 }
 
 #[cfg(test)]
@@ -200,5 +254,79 @@ mod tests {
             ],
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn evolve_transitions_dominant_to_recessive() {
+        let genome_id = GenomeId::new();
+        let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![
+                Trait::new("title".to_string(), TraitState::Dominant),
+                Trait::new("description".to_string(), TraitState::Recessive),
+            ],
+        )
+        .unwrap();
+
+        let evolved = genotype
+            .evolve(vec![TraitTransition {
+                key: "title".to_string(),
+                new_state: TraitState::Recessive,
+            }])
+            .unwrap();
+
+        assert_eq!(evolved.generation(), 2);
+        assert_eq!(evolved.genome_id(), &genome_id);
+        assert_eq!(evolved.kind(), "FEAT");
+        let title_trait = evolved.find_trait("title").unwrap();
+        assert!(matches!(title_trait.state(), TraitState::Recessive));
+    }
+
+    #[test]
+    fn evolve_rejects_vestigial_trait_transition() {
+        let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            GenomeId::new(),
+            vec![Trait::new("deprecated".to_string(), TraitState::Vestigial)],
+        )
+        .unwrap();
+
+        let result = genotype.evolve(vec![TraitTransition {
+            key: "deprecated".to_string(),
+            new_state: TraitState::Dominant,
+        }]);
+        assert_eq!(
+            result,
+            Err(EvolutionError::VestigialTraitCannotTransition {
+                key: "deprecated".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn evolve_transitions_active_to_vestigial() {
+        let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            GenomeId::new(),
+            vec![Trait::new("notes".to_string(), TraitState::Recessive)],
+        )
+        .unwrap();
+
+        let evolved = genotype
+            .evolve(vec![TraitTransition {
+                key: "notes".to_string(),
+                new_state: TraitState::Vestigial,
+            }])
+            .unwrap();
+
+        let notes_trait = evolved.find_trait("notes").unwrap();
+        assert!(matches!(notes_trait.state(), TraitState::Vestigial));
     }
 }
