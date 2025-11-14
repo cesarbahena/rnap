@@ -156,6 +156,26 @@ pub enum EvolutionError {
     DuplicateTraitKey(String),
 }
 
+pub trait GenotypeRepository {
+    fn find_by_kind(&self, kind: &str) -> Option<Genotype>;
+}
+
+pub struct InMemoryGenotypeRepository {
+    genotypes: std::collections::HashMap<String, Genotype>,
+}
+
+impl InMemoryGenotypeRepository {
+    pub fn new(genotypes: std::collections::HashMap<String, Genotype>) -> Self {
+        Self { genotypes }
+    }
+}
+
+impl GenotypeRepository for InMemoryGenotypeRepository {
+    fn find_by_kind(&self, kind: &str) -> Option<Genotype> {
+        self.genotypes.get(kind).cloned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -328,5 +348,28 @@ mod tests {
 
         let notes_trait = evolved.find_trait("notes").unwrap();
         assert!(matches!(notes_trait.state(), TraitState::Vestigial));
+    }
+
+    #[test]
+    fn in_memory_genotype_repo_finds_by_kind() {
+        let genome_id = GenomeId::new();
+        let genotype = Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![Trait::new("title".to_string(), TraitState::Dominant)],
+        )
+        .unwrap();
+
+        let repo = InMemoryGenotypeRepository::new(
+            vec![("FEAT".to_string(), genotype.clone())]
+                .into_iter()
+                .collect(),
+        );
+
+        let found = repo.find_by_kind("FEAT").unwrap();
+        assert_eq!(found.kind(), "FEAT");
+        assert_eq!(found.traits().len(), 1);
     }
 }
