@@ -186,6 +186,39 @@ impl GeneService {
     }
 }
 
+pub trait GeneRepository {
+    fn save(&mut self, gene: Gene);
+    fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Gene>;
+}
+
+pub struct InMemoryGeneRepository {
+    genes: std::collections::HashMap<uuid::Uuid, Gene>,
+}
+
+impl InMemoryGeneRepository {
+    pub fn new() -> Self {
+        Self {
+            genes: std::collections::HashMap::new(),
+        }
+    }
+}
+
+impl Default for InMemoryGeneRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl GeneRepository for InMemoryGeneRepository {
+    fn save(&mut self, gene: Gene) {
+        self.genes.insert(*gene.id(), gene);
+    }
+
+    fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Gene> {
+        self.genes.get(id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -522,5 +555,24 @@ mod tests {
             genotype_id,
         );
         assert!(!GeneService::is_ready(&empty_gene, &genotype));
+    }
+
+    #[test]
+    fn in_memory_gene_repo_saves_and_finds_gene() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenomeId::new();
+        let gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
+        );
+
+        let mut repo = InMemoryGeneRepository::new();
+        repo.save(gene);
+
+        let found = repo.find_by_id(&gene_id).unwrap();
+        assert_eq!(found.name(), "FEAT-0001-user-auth");
     }
 }
