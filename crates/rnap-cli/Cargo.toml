@@ -10,6 +10,9 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 uuid = { version = "1", features = ["v4"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
 rnap-genome = { path = "../rnap-genome" }
 rnap-genotype = { path = "../rnap-genotype" }
 rnap-gene = { path = "../rnap-gene" }

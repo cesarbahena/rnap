@@ -189,6 +189,7 @@ impl GeneService {
 pub trait GeneRepository {
     fn save(&mut self, gene: Gene);
     fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Gene>;
+    fn find_by_name(&self, name: &str) -> Option<&Gene>;
 }
 
 pub struct InMemoryGeneRepository {
@@ -216,6 +217,10 @@ impl GeneRepository for InMemoryGeneRepository {
 
     fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Gene> {
         self.genes.get(id)
+    }
+
+    fn find_by_name(&self, name: &str) -> Option<&Gene> {
+        self.genes.values().find(|g| g.name() == name)
     }
 }
 
