@@ -33,6 +33,29 @@ impl PostgresGenotypeRepository {
 
         Some(genotype)
     }
+
+pub async fn find_by_genome_id(&self, genome_id: rnap_genome::GenomeId) -> Option<Genotype> {
+        let row = sqlx::query(
+            "SELECT id, kind, name, generation, genome_id, traits FROM genotypes WHERE genome_id = $1"
+        )
+        .bind(genome_id.as_uuid())
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+
+        let genotype = Genotype::new(
+            row.get("kind"),
+            row.get("name"),
+            row.get::<i32, _>("generation") as u32,
+            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
+            serde_json::from_value(row.get("traits")).ok()?,
+        )
+        .ok()?;
+
+        Some(genotype)
+    }
 }
 
 pub struct PostgresGeneRepository {
@@ -44,7 +67,7 @@ impl PostgresGeneRepository {
         Self { pool }
     }
 
-    pub async fn save(&self, gene: Gene) {
+    pub async fn save(&self, gene: &Gene) -> Result<(), String> {
         sqlx::query(
             "INSERT INTO genes (id, name, genome_id, genotype_id) VALUES ($1, $2, $3, $4)"
         )
@@ -54,7 +77,28 @@ impl PostgresGeneRepository {
         .bind(gene.genotype_id().as_uuid())
         .execute(&self.pool)
         .await
-        .ok();
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub async fn find_by_name(&self, name: &str) -> Option<Gene> {
+        let row = sqlx::query(
+            "SELECT id, name, genome_id, genotype_id FROM genes WHERE name = $1"
+        )
+        .bind(name)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+
+        Some(Gene::new(
+            row.get("id"),
+            row.get("name"),
+            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
+            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
+        ))
     }
 }
 
