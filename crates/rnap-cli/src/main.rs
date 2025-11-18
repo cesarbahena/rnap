@@ -95,12 +95,14 @@ fn main() {
                             chrono::Utc::now(),
                         );
 
-                        GeneService::validate_and_append(&mut mutable_gene, mutation, &genotype)
+                        GeneService::validate_and_append(&mut mutable_gene, mutation.clone(), &genotype)
                             .map_err(|e| e.to_string())?;
+                        
+                        // Save mutation to DB
+                        gene_repo.save_mutation(&mutation).await?;
                     }
                 }
 
-                // Save mutations to DB (simplified - just log for now, mutations table not wired)
                 println!("Mutation applied to {}", gene.name());
 
                 Ok(())
@@ -119,8 +121,15 @@ fn main() {
                 let genotype = genotype_repo.find_by_kind("FEAT").await
                     .ok_or_else(|| "FEAT genotype not found".to_string())?;
 
-                // Current state is empty since we don't have mutations in DB
-                // For now, just show gene info
+                // Load mutations from DB
+                let mutations = gene_repo.find_mutations_by_gene(gene.id()).await;
+                
+                // Build state from mutations
+                let mut state: std::collections::HashMap<&str, &Mutation> = std::collections::HashMap::new();
+                for m in &mutations {
+                    state.insert(m.trait_key(), m);
+                }
+
                 println!("Gene: {}", gene.name());
                 println!("ID: {}", gene.id());
                 println!("Kind: {}", genotype.kind());
@@ -131,7 +140,14 @@ fn main() {
                     println!("  - {} ({:?})", t.key(), t.state());
                 }
                 println!("");
-                println!("State: (no mutations yet)");
+                println!("State:");
+                if state.is_empty() {
+                    println!("  (no mutations)");
+                } else {
+                    for (key, m) in &state {
+                        println!("  {} = {}", key, m.value());
+                    }
+                }
 
                 Ok(())
             });

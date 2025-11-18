@@ -1,5 +1,5 @@
 use rnap_genotype::{Genotype, GenotypeRepository};
-use rnap_gene::{Gene, GeneRepository};
+use rnap_gene::{Gene, Mutation, By};
 use sqlx::Row;
 
 pub struct PostgresGenotypeRepository {
@@ -99,6 +99,59 @@ impl PostgresGeneRepository {
             rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
             rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
         ))
+    }
+
+    pub async fn save_mutation(&self, mutation: &Mutation) -> Result<(), String> {
+        let by_str = match mutation.by() {
+            By::Human => "Human",
+            By::Llm => "Llm",
+        };
+        
+        sqlx::query(
+            "INSERT INTO mutations (id, gene_id, trait_key, value, by, context, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        )
+        .bind(mutation.id())
+        .bind(mutation.gene_id())
+        .bind(mutation.trait_key())
+        .bind(mutation.value())
+        .bind(by_str)
+        .bind(mutation.context())
+        .bind(mutation.created_at())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub async fn find_mutations_by_gene(&self, gene_id: &uuid::Uuid) -> Vec<Mutation> {
+        let rows = sqlx::query(
+            "SELECT id, gene_id, trait_key, value, by, context, created_at FROM mutations WHERE gene_id = $1 ORDER BY created_at"
+        )
+        .bind(gene_id)
+        .fetch_all(&self.pool)
+        .await
+        .ok();
+
+        match rows {
+            Some(rows) => rows.iter().filter_map(|row| {
+                let by = match row.get::<String, _>("by").as_str() {
+                    "Llm" => By::Llm,
+                    _ => By::Human,
+                };
+                
+                Some(Mutation::new(
+                    row.get("id"),
+                    row.get("gene_id"),
+                    row.get("trait_key"),
+                    row.get("value"),
+                    by,
+                    row.get("context"),
+                    row.get("created_at"),
+                ))
+            }).collect(),
+            None => vec![],
+        }
     }
 }
 
