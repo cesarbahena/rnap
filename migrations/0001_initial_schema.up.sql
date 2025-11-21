@@ -1,5 +1,4 @@
--- V001_initial_schema.sql
--- RNAP MVP: Core tables for multi-tenant SDLC system
+-- V001: Initial schema
 
 -- Genome is the tenant boundary
 CREATE TABLE genomes (
@@ -11,11 +10,11 @@ CREATE TABLE genomes (
 -- Genotype is the document type definition (generation-versioned schema)
 CREATE TABLE genotypes (
     id UUID PRIMARY KEY,
-    kind TEXT NOT NULL,  -- e.g., "FEAT", "BUG" - used in Gene naming
-    name TEXT NOT NULL,  -- e.g., "Feature Request"
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
     generation INT NOT NULL DEFAULT 1,
     genome_id UUID NOT NULL REFERENCES genomes(id),
-    traits JSONB NOT NULL,  -- [{"key": "title", "state": "Dominant"}, ...]
+    traits JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -25,16 +24,7 @@ CREATE TABLE genes (
     name TEXT NOT NULL,
     genome_id UUID NOT NULL REFERENCES genomes(id),
     genotype_id UUID NOT NULL REFERENCES genotypes(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT unique_gene_name_per_genome UNIQUE (genome_id, name)
-);
-
--- Gene sequence counter for atomic auto-increment (genome-scoped)
-CREATE TABLE gene_counters (
-    genome_id UUID NOT NULL REFERENCES genomes(id),
-    kind TEXT NOT NULL,
-    next_seq BIGINT NOT NULL DEFAULT 2,
-    PRIMARY KEY (genome_id, kind)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Mutation is the source of truth (append-only)
@@ -43,12 +33,12 @@ CREATE TABLE mutations (
     gene_id UUID NOT NULL REFERENCES genes(id),
     trait_key TEXT NOT NULL,
     value JSONB NOT NULL,
-    by TEXT NOT NULL,  -- "Human" or "Llm"
+    by TEXT NOT NULL,
     context TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes for common queries
+-- Indexes
 CREATE INDEX idx_genotypes_kind ON genotypes(kind);
 CREATE INDEX idx_genotypes_genome ON genotypes(genome_id);
 CREATE INDEX idx_genes_name ON genes(name);

@@ -101,6 +101,27 @@ impl PostgresGeneRepository {
         ))
     }
 
+    pub async fn next_sequence_for_kind(
+        &self, 
+        genome_id: &rnap_genome::GenomeId, 
+        kind: &str
+    ) -> Result<u32, String> {
+        let row = sqlx::query(
+            "INSERT INTO gene_counters (genome_id, kind, next_seq) VALUES ($1, $2, 2) \
+             ON CONFLICT (genome_id, kind) \
+             DO UPDATE SET next_seq = gene_counters.next_seq + 1 \
+             RETURNING next_seq - 1 AS allocated_seq"
+        )
+        .bind(genome_id.as_uuid())
+        .bind(kind)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        let seq: i64 = row.get("allocated_seq");
+        Ok(seq as u32)
+    }
+
     pub async fn save_mutation(&self, mutation: &Mutation) -> Result<(), String> {
         let by_str = match mutation.by() {
             By::Human => "Human",

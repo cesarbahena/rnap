@@ -36,8 +36,11 @@ fn main() {
                         let genotype_id = GenomeId::from(
                             uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap()
                         );
+                        
+                        let gene_repo = PostgresGeneRepository::new(pool.clone());
+                        let next_seq = gene_repo.next_sequence_for_kind(&default_genome_id, &kind).await?;
                         let slug: String = name.to_lowercase().replace(' ', "-");
-                        let gene_name = format!("{}-0001-{}", kind, slug);
+                        let gene_name = format!("{}-{:04}-{}", kind, next_seq, slug);
                         let gene_id = uuid::Uuid::new_v4();
                         let gene = Gene::new(
                             gene_id,
@@ -46,7 +49,6 @@ fn main() {
                             genotype_id,
                         );
 
-                        let gene_repo = PostgresGeneRepository::new(pool.clone());
                         gene_repo.save(&gene).await?;
 
                         Ok(rnap_cli::CreateGeneResult { gene_id, gene_name })
