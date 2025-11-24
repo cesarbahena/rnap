@@ -1067,6 +1067,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-chromatine"
+version = "0.1.0"
+dependencies = [
+ "rnap-genome",
+ "serde",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-chromosome"
 version = "0.1.0"
 dependencies = [

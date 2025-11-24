@@ -1,0 +1,10 @@
+[package]
+name = "rnap-chromatine"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rnap-genome = { path = "../rnap-genome" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
