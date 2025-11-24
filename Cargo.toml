@@ -5,6 +5,7 @@ members = [
     "crates/rnap-gene",
     "crates/rnap-chromosome",
     "crates/rnap-phenotype",
+    "crates/rnap-dna",
     "crates/rnap-storage",
     "crates/rnap-cli",
 ]

@@ -1097,6 +1097,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-dna"
+version = "0.1.0"
+dependencies = [
+ "rnap-genome",
+ "serde",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-gene"
 version = "0.1.0"
 dependencies = [
