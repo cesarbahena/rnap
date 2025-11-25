@@ -1150,6 +1150,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-histone"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rnap-genome",
+ "serde",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-phenotype"
 version = "0.1.0"
 dependencies = [
