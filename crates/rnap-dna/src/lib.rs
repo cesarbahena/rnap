@@ -2,6 +2,7 @@
 pub struct Dna {
     id: uuid::Uuid,
     content: String,
+    chromatine_refs: Vec<String>,
     genome_id: rnap_genome::GenomeId,
 }
 
@@ -13,6 +14,7 @@ impl Dna {
         Ok(Self {
             id,
             content,
+            chromatine_refs: vec![],
             genome_id,
         })
     }
@@ -23,6 +25,16 @@ impl Dna {
 
     pub fn content(&self) -> &str {
         &self.content
+    }
+
+    pub fn chromatine_refs(&self) -> &[String] {
+        &self.chromatine_refs
+    }
+
+    pub fn add_chromatine_ref(&mut self, url: String) {
+        if !url.trim().is_empty() && !self.chromatine_refs.contains(&url) {
+            self.chromatine_refs.push(url);
+        }
     }
 
     pub fn genome_id(&self) -> &rnap_genome::GenomeId {
@@ -99,6 +111,50 @@ mod tests {
             genome_id,
         );
         assert_eq!(result, Err(DnaError::EmptyContent));
+    }
+
+    #[test]
+    fn dna_can_be_created_with_empty_chromatine_refs() {
+        let genome_id = GenomeId::new();
+        let dna = Dna::new(
+            uuid::Uuid::new_v4(),
+            "Users must authenticate before accessing data".to_string(),
+            genome_id,
+        ).unwrap();
+
+        assert!(dna.chromatine_refs().is_empty());
+    }
+
+    #[test]
+    fn dna_add_chromatine_ref_appends_without_duplicates() {
+        let genome_id = GenomeId::new();
+        let mut dna = Dna::new(
+            uuid::Uuid::new_v4(),
+            "Users must authenticate before accessing data".to_string(),
+            genome_id,
+        ).unwrap();
+
+        dna.add_chromatine_ref("https://docs.example.com/prd.pdf".to_string());
+        dna.add_chromatine_ref("https://docs.example.com/prd.pdf".to_string()); // duplicate ignored
+        dna.add_chromatine_ref("https://stakeholder.interview/notes".to_string());
+
+        assert_eq!(dna.chromatine_refs().len(), 2);
+        assert_eq!(dna.chromatine_refs()[0], "https://docs.example.com/prd.pdf");
+        assert_eq!(dna.chromatine_refs()[1], "https://stakeholder.interview/notes");
+    }
+
+    #[test]
+    fn dna_ignores_empty_chromatine_refs() {
+        let genome_id = GenomeId::new();
+        let mut dna = Dna::new(
+            uuid::Uuid::new_v4(),
+            "Some requirement".to_string(),
+            genome_id,
+        ).unwrap();
+
+        dna.add_chromatine_ref("   ".to_string());
+
+        assert!(dna.chromatine_refs().is_empty());
     }
 
     #[test]
