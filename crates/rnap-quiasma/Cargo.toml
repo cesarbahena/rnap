@@ -1,0 +1,13 @@
+[package]
+name = "rnap-quiasma"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rnap-genome = { path = "../rnap-genome" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+rnap-genome = { path = "../rnap-genome" }
