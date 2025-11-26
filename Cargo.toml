@@ -8,7 +8,9 @@ members = [
     "crates/rnap-chromatine",
     "crates/rnap-dna",
     "crates/rnap-histone",
+    "crates/rnap-organism",
+    "crates/rnap-quiasma",
     "crates/rnap-storage",
-    "crates/rnap-cli",
+    "crates/rnap-cli", "crates/rnap-locus",
 ]
 resolver = "2"

@@ -1,0 +1,13 @@
+[package]
+name = "rnap-locus"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rnap-genome = { path = "../rnap-genome" }
+rnap-chromosome = { path = "../rnap-chromosome" }
+rnap-quiasma = { path = "../rnap-quiasma" }
+rnap-organism = { path = "../rnap-organism" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
