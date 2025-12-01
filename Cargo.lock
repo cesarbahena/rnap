@@ -1174,6 +1174,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-mrna"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rnap-genome",
+ "serde",
+ "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-organism"
 version = "0.1.0"
 dependencies = [
