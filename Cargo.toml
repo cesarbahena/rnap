@@ -11,6 +11,6 @@ members = [
     "crates/rnap-organism",
     "crates/rnap-quiasma",
     "crates/rnap-storage",
-    "crates/rnap-cli", "crates/rnap-locus", "crates/rnap-mrna",
+    "crates/rnap-cli", "crates/rnap-locus", "crates/rnap-mrna", "crates/rnap-trna",
 ]
 resolver = "2"
