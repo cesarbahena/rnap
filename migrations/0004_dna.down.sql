@@ -1,0 +1,3 @@
+-- Rollback V004
+
+DROP TABLE IF EXISTS dna;
