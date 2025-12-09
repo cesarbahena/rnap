@@ -1,8 +1,7 @@
 use clap::Parser;
 use rnap_cli::Cli;
-use rnap_gene::{By, Gene, GeneRepository, GeneService, Mutation};
+use rnap_gene::{By, Gene, GeneService, Mutation};
 use rnap_genome::GenomeId;
-use rnap_genotype::{Genotype, GenotypeRepository, Trait, TraitState};
 use rnap_storage::{PostgresGenotypeRepository, PostgresGeneRepository};
 use std::env;
 
@@ -31,7 +30,7 @@ fn main() {
             let result = rt.block_on(async {
                 let genotype = genotype_repo.find_by_kind(&kind).await;
                 match genotype {
-                    Some(genotype) => {
+                    Some(_genotype) => {
                         // Use known genotype ID from seeded DB (00000000-0000-0000-0000-000000000002)
                         let genotype_id = GenomeId::from(
                             uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap()

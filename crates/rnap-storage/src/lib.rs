@@ -1,4 +1,4 @@
-use rnap_genotype::{Genotype, GenotypeRepository};
+use rnap_genotype::Genotype;
 use rnap_gene::{Gene, Mutation, By};
 use sqlx::Row;
 
