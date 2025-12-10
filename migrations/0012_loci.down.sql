@@ -1,3 +1,2 @@
--- Rollback V012
-
+DROP INDEX IF EXISTS idx_loci_genome;
 DROP TABLE IF EXISTS loci;

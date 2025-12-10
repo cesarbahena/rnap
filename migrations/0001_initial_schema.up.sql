@@ -4,7 +4,7 @@
 CREATE TABLE genomes (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 -- Genotype is the document type definition (generation-versioned schema)
@@ -15,7 +15,7 @@ CREATE TABLE genotypes (
     generation INT NOT NULL DEFAULT 1,
     genome_id UUID NOT NULL REFERENCES genomes(id),
     traits JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 -- Gene is the primary SDLC artifact (mutation log)
@@ -24,7 +24,7 @@ CREATE TABLE genes (
     name TEXT NOT NULL,
     genome_id UUID NOT NULL REFERENCES genomes(id),
     genotype_id UUID NOT NULL REFERENCES genotypes(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 -- Mutation is the source of truth (append-only)
@@ -35,7 +35,7 @@ CREATE TABLE mutations (
     value JSONB NOT NULL,
     by TEXT NOT NULL,
     context TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 -- Indexes

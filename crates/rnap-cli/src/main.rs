@@ -26,6 +26,19 @@ fn main() {
     );
 
     match cli {
+        Cli::Seed { path } => {
+            let seeds_path = path.unwrap_or_else(|| "seeds".to_string());
+            let result = rt.block_on(async {
+                rnap_cli::run_seeds(&pool, &seeds_path).await
+            });
+            match result {
+                Ok(count) => println!("Seeded {} file(s)", count),
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
         Cli::Create { kind, name } => {
             let result = rt.block_on(async {
                 let genotype = genotype_repo.find_by_kind(&kind).await;

@@ -1,5 +1,3 @@
--- V008: Histones (architecture decision records)
-
 CREATE TABLE histones (
     id UUID PRIMARY KEY,
     title TEXT NOT NULL,
@@ -9,7 +7,7 @@ CREATE TABLE histones (
     gene_id UUID,
     dna_id UUID,
     genome_id UUID NOT NULL REFERENCES genomes(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_histones_genome ON histones(genome_id);

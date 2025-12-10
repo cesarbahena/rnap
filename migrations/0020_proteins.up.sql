@@ -1,13 +1,11 @@
--- V020: Proteins (evaluation results)
-
 CREATE TABLE proteins (
     id UUID PRIMARY KEY,
     phenotype_id UUID NOT NULL REFERENCES phenotypes(id),
     phenome_id UUID NOT NULL REFERENCES phenomes(id),
     gene_id UUID NOT NULL REFERENCES genes(id),
-    result TEXT NOT NULL,
+    result TEXT NOT NULL CHECK (result IN ('Pass', 'Fail', 'Pending')),
     genome_id UUID NOT NULL REFERENCES genomes(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_proteins_phenotype ON proteins(phenotype_id);

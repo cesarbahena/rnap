@@ -1,15 +1,13 @@
--- V011: Quiasmas (typed directed edges)
-
 CREATE TABLE quiasmas (
     id UUID PRIMARY KEY,
     source_id UUID NOT NULL,
-    source_type TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('Chromosome', 'Organism')),
     target_id UUID NOT NULL,
-    target_type TEXT NOT NULL,
-    relationship_type TEXT NOT NULL,
+    target_type TEXT NOT NULL CHECK (target_type IN ('Chromosome', 'Organism')),
+    relationship_type TEXT NOT NULL CHECK (relationship_type IN ('DeliversTo', 'Uses', 'DependsOn', 'Calls', 'Contains', 'AttachTo')),
     description TEXT NOT NULL DEFAULT '',
     genome_id UUID NOT NULL REFERENCES genomes(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_quiasmas_genome ON quiasmas(genome_id);

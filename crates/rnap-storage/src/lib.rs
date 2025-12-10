@@ -69,7 +69,7 @@ impl PostgresGeneRepository {
 
     pub async fn save(&self, gene: &Gene) -> Result<(), String> {
         sqlx::query(
-            "INSERT INTO genes (id, name, genome_id, genotype_id) VALUES ($1, $2, $3, $4)"
+            "INSERT INTO genes (id, name, genome_id, genotype_id, created_at) VALUES ($1, $2, $3, $4, NOW())"
         )
         .bind(gene.id())
         .bind(gene.name())
@@ -189,7 +189,7 @@ mod tests {
         let genome_id = rnap_genome::GenomeId::new();
 
         // First create the genome (required for FK)
-        sqlx::query("INSERT INTO genomes (id, name) VALUES ($1, $2)")
+        sqlx::query("INSERT INTO genomes (id, name, created_at) VALUES ($1, $2, NOW())")
             .bind(genome_id.as_uuid())
             .bind("test-tenant")
             .execute(&pool)
@@ -202,7 +202,7 @@ mod tests {
         ]);
 
         sqlx::query(
-            "INSERT INTO genotypes (id, kind, name, generation, genome_id, traits) VALUES ($1, $2, $3, $4, $5, $6)"
+            "INSERT INTO genotypes (id, kind, name, generation, genome_id, traits, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
         )
         .bind(uuid::Uuid::new_v4())
         .bind("FEAT")

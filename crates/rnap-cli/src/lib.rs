@@ -4,6 +4,10 @@ use clap::Parser;
 #[command(name = "rnap")]
 #[command(about = "Requirements Normalization and Assessment Platform")]
 pub enum Cli {
+    Seed {
+        #[arg(short, long, help = "Path to seeds directory")]
+        path: Option<String>,
+    },
     Create {
         #[arg(help = "Genotype kind (e.g., FEAT, BUG)")]
         kind: String,
@@ -32,6 +36,40 @@ pub enum Cli {
 pub struct CreateGeneResult {
     pub gene_id: uuid::Uuid,
     pub gene_name: String,
+}
+
+pub async fn run_seeds(pool: &sqlx::PgPool, seeds_path: &str) -> Result<usize, String> {
+    use std::fs;
+    use std::path::Path;
+
+    let path = Path::new(seeds_path);
+    if !path.exists() {
+        return Err(format!("Seeds directory not found: {}", seeds_path));
+    }
+
+    let mut ran = 0;
+    let mut entries: Vec<_> = fs::read_dir(path)
+        .map_err(|e| format!("Failed to read seeds directory: {}", e))?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().map_or(false, |ext| ext == "sql"))
+        .collect();
+
+    entries.sort_by_key(|e| e.file_name());
+
+    for entry in entries {
+        let sql = fs::read_to_string(entry.path())
+            .map_err(|e| format!("Failed to read seed file: {}", e))?;
+        
+        sqlx::query(&sql)
+            .execute(pool)
+            .await
+            .map_err(|e| format!("Failed to execute seed {}: {}", entry.file_name().to_string_lossy(), e))?;
+        
+        println!("Ran seed: {}", entry.file_name().to_string_lossy());
+        ran += 1;
+    }
+
+    Ok(ran)
 }
 
 pub fn create_gene(
