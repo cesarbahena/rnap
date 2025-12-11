@@ -83,15 +83,34 @@ impl PostgresGeneRepository {
     }
 
     pub async fn find_by_name(&self, name: &str) -> Option<Gene> {
+        // Try exact match first
         let row = sqlx::query(
             "SELECT id, name, genome_id, genotype_id FROM genes WHERE name = $1"
         )
         .bind(name)
         .fetch_optional(&self.pool)
         .await
-        .ok()?;
+        .ok()
+        .flatten()?;
 
-        let row = row?;
+        Some(Gene::new(
+            row.get("id"),
+            row.get("name"),
+            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
+            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
+        ))
+    }
+
+    pub async fn find_by_name_prefix(&self, prefix: &str) -> Option<Gene> {
+        // Prefix match: "FEAT-0001" matches "FEAT-0001-test-feature"
+        let row = sqlx::query(
+            "SELECT id, name, genome_id, genotype_id FROM genes WHERE name LIKE ($1 || '%') ORDER BY name LIMIT 1"
+        )
+        .bind(prefix)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten()?;
 
         Some(Gene::new(
             row.get("id"),

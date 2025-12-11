@@ -82,18 +82,20 @@ fn main() {
         }
         Cli::Mutate { gene, args, by, .. } => {
             let result: Result<(), String> = rt.block_on(async {
-                let gene = gene_repo.find_by_name(&gene).await
-                    .ok_or_else(|| format!("gene '{}' not found", gene))?;
+                // Try exact match first, then prefix match
+                let exact = gene_repo.find_by_name(&gene).await;
+                let prefix = gene_repo.find_by_name_prefix(&gene).await;
+                let found = exact.or(prefix).ok_or_else(|| format!("gene '{}' not found", gene))?;
 
                 // For now, get any FEAT genotype (simplified - in real app, get by genotype_id)
                 let genotype = genotype_repo.find_by_kind("FEAT").await
                     .ok_or_else(|| "FEAT genotype not found".to_string())?;
 
                 let mut mutable_gene = Gene::new(
-                    *gene.id(),
-                    gene.name().to_string(),
-                    *gene.genome_id(),
-                    *gene.genotype_id(),
+                    *found.id(),
+                    found.name().to_string(),
+                    *found.genome_id(),
+                    *found.genotype_id(),
                 );
 
                 // Parse args: "title=Hello world" -> trait_key="title", value="Hello world"
@@ -101,7 +103,7 @@ fn main() {
                     if let Some((key, value)) = arg.split_once('=') {
                         let mutation = Mutation::new(
                             uuid::Uuid::new_v4(),
-                            *gene.id(),
+                            *found.id(),
                             key.to_string(),
                             serde_json::json!(value),
                             if by == "llm" { By::Llm } else { By::Human },
@@ -117,7 +119,7 @@ fn main() {
                     }
                 }
 
-                println!("Mutation applied to {}", gene.name());
+                println!("Mutation applied to {}", found.name());
 
                 Ok(())
             });
@@ -129,14 +131,16 @@ fn main() {
         }
         Cli::Transcribe { gene } => {
             let result: Result<(), String> = rt.block_on(async {
-                let gene = gene_repo.find_by_name(&gene).await
-                    .ok_or_else(|| format!("gene '{}' not found", gene))?;
+                // Try exact match first, then prefix match
+                let exact = gene_repo.find_by_name(&gene).await;
+                let prefix = gene_repo.find_by_name_prefix(&gene).await;
+                let found = exact.or(prefix).ok_or_else(|| format!("gene '{}' not found", gene))?;
 
                 let genotype = genotype_repo.find_by_kind("FEAT").await
                     .ok_or_else(|| "FEAT genotype not found".to_string())?;
 
                 // Load mutations from DB
-                let mutations = gene_repo.find_mutations_by_gene(gene.id()).await;
+                let mutations = gene_repo.find_mutations_by_gene(found.id()).await;
                 
                 // Build state from mutations
                 let mut state: std::collections::HashMap<&str, &Mutation> = std::collections::HashMap::new();
@@ -144,8 +148,8 @@ fn main() {
                     state.insert(m.trait_key(), m);
                 }
 
-                println!("Gene: {}", gene.name());
-                println!("ID: {}", gene.id());
+                println!("Gene: {}", found.name());
+                println!("ID: {}", found.id());
                 println!("Kind: {}", genotype.kind());
                 println!("Generation: {}", genotype.generation());
                 println!("");
