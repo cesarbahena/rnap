@@ -1253,6 +1253,7 @@ version = "0.1.0"
 dependencies = [
  "dotenvy",
  "rnap-chromosome",
+ "rnap-dna",
  "rnap-gene",
  "rnap-genome",
  "rnap-genotype",

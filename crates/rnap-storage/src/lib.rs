@@ -1,5 +1,7 @@
 use rnap_genotype::Genotype;
 use rnap_gene::{Gene, Mutation, By};
+use rnap_dna::Dna;
+use rnap_genome::GenomeId;
 use sqlx::Row;
 
 pub struct PostgresGenotypeRepository {
@@ -195,6 +197,91 @@ impl PostgresGeneRepository {
     }
 }
 
+pub struct PostgresDnaRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresDnaRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, dna: &Dna) -> Result<(), String> {
+        let chromatine_refs: Vec<String> = dna.chromatine_refs().to_vec();
+        
+        sqlx::query(
+            "INSERT INTO dna (id, content, chromatine_refs, genome_id, created_at) \n             VALUES ($1, $2, $3, $4, NOW())"
+        )
+        .bind(dna.id())
+        .bind(dna.content())
+        .bind(&chromatine_refs)
+        .bind(dna.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Dna> {
+        let row = sqlx::query(
+            "SELECT id, content, chromatine_refs, genome_id FROM dna WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+
+        let chromatine_refs: Vec<String> = row.get("chromatine_refs");
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        let mut dna = Dna::new(
+            row.get("id"),
+            row.get("content"),
+            genome_id,
+        ).ok()?;
+
+        // Restore chromatine_refs (Dna::new initializes empty)
+        for ref_url in chromatine_refs {
+            dna.add_chromatine_ref(ref_url);
+        }
+
+        Some(dna)
+    }
+
+    pub async fn find_by_genome(&self, genome_id: &GenomeId) -> Vec<Dna> {
+        let rows = sqlx::query(
+            "SELECT id, content, chromatine_refs, genome_id FROM dna WHERE genome_id = $1"
+        )
+        .bind(genome_id.as_uuid())
+        .fetch_all(&self.pool)
+        .await
+        .ok();
+
+        match rows {
+            Some(rows) => rows.iter().filter_map(|row| {
+                let chromatine_refs: Vec<String> = row.get("chromatine_refs");
+                let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+                let mut dna = Dna::new(
+                    row.get("id"),
+                    row.get("content"),
+                    genome_id,
+                ).ok()?;
+
+                for ref_url in chromatine_refs {
+                    dna.add_chromatine_ref(ref_url);
+                }
+
+                Some(dna)
+            }).collect(),
+            None => vec![],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,5 +325,43 @@ mod tests {
 
         assert_eq!(found.kind(), "FEAT");
         assert_eq!(found.traits().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn postgres_dna_repo_saves_and_finds_dna() {
+        let pool = sqlx::PgPool::connect(&dotenvy::var("DATABASE_URL").unwrap_or_else(|_| "postgres://rnap:rnap@localhost:5432/rnap".to_string()))
+            .await
+            .unwrap();
+
+        let genome_id = rnap_genome::GenomeId::new();
+
+        // Create genome first (required for FK)
+        sqlx::query("INSERT INTO genomes (id, name, created_at) VALUES ($1, $2, NOW())")
+            .bind(genome_id.as_uuid())
+            .bind("test-tenant")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let dna_id = uuid::Uuid::new_v4();
+        let content = "Users must be able to reset their password";
+
+        // Create DNA with chromatine refs
+        let mut dna = Dna::new(
+            dna_id,
+            content.to_string(),
+            genome_id,
+        ).unwrap();
+        dna.add_chromatine_ref("https://docs.example.com/prd.pdf".to_string());
+
+        let repo = PostgresDnaRepository::new(pool.clone());
+        repo.save(&dna).await.unwrap();
+
+        // Find it back
+        let found = repo.find_by_id(&dna_id).await.unwrap();
+        assert_eq!(found.content(), content);
+        assert_eq!(found.genome_id(), &genome_id);
+        assert_eq!(found.chromatine_refs().len(), 1);
+        assert_eq!(found.chromatine_refs()[0], "https://docs.example.com/prd.pdf");
     }
 }
