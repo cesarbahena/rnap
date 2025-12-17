@@ -30,6 +30,62 @@ pub enum Cli {
         #[arg(help = "Gene name (e.g., FEAT-0001-user-auth)")]
         gene: String,
     },
+    /// Manage structured requirements (DNA entries)
+    Dna {
+        #[command(subcommand)]
+        subcommand: DnaSubcommand,
+    },
+    /// Manage domain nodes (Chromosomes)
+    Chromosome {
+        #[command(subcommand)]
+        subcommand: ChromosomeSubcommand,
+    },
+    /// Manage relationships between domain nodes (Quiasmas)
+    Quiasma {
+        #[command(subcommand)]
+        subcommand: QuiasmaSubcommand,
+    },
+}
+
+#[derive(clap::Subcommand)]
+pub enum DnaSubcommand {
+    /// Create a new DNA entry
+    Create {
+        #[arg(help = "The requirement content")]
+        content: String,
+    },
+    /// List all DNA entries
+    List,
+}
+
+#[derive(clap::Subcommand)]
+pub enum ChromosomeSubcommand {
+    /// Create a new domain node
+    Create {
+        #[arg(help = "The chromosome name")]
+        name: String,
+        #[arg(help = "Description (optional)")]
+        description: Option<String>,
+    },
+    /// List all chromosomes
+    List,
+}
+
+#[derive(clap::Subcommand)]
+pub enum QuiasmaSubcommand {
+    /// Create a new relationship
+    Create {
+        #[arg(help = "Source chromosome name")]
+        source: String,
+        #[arg(help = "Target chromosome name")]
+        target: String,
+        #[arg(help = "Relationship type: DeliversTo, Uses, DependsOn, Calls, Contains, AttachTo")]
+        rel_type: String,
+        #[arg(help = "Description (optional)")]
+        description: Option<String>,
+    },
+    /// List all relationships
+    List,
 }
 
 #[derive(Debug)]

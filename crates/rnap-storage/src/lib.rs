@@ -401,6 +401,28 @@ impl PostgresChromosomeRepository {
             genome_id,
         ).ok()
     }
+
+    pub async fn find_by_genome(&self, genome_id: &GenomeId) -> Vec<Chromosome> {
+        let rows = match sqlx::query(
+            "SELECT id, name, description, genome_id FROM chromosomes WHERE genome_id = $1"
+        )
+        .bind(genome_id.as_uuid())
+        .fetch_all(&self.pool)
+        .await {
+            Ok(rows) => rows,
+            Err(_) => return vec![],
+        };
+
+        rows.iter().filter_map(|row| {
+            let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+            Chromosome::new(
+                row.get("id"),
+                row.get("name"),
+                row.get("description"),
+                genome_id,
+            ).ok()
+        }).collect()
+    }
 }
 
 pub struct PostgresOrganismRepository {
