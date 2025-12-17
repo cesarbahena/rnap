@@ -10,6 +10,15 @@ rnap-gene = { path = "../rnap-gene" }
 rnap-chromosome = { path = "../rnap-chromosome" }
 rnap-phenotype = { path = "../rnap-phenotype" }
 rnap-dna = { path = "../rnap-dna" }
+rnap-chromatine = { path = "../rnap-chromatine" }
+rnap-organism = { path = "../rnap-organism" }
+rnap-quiasma = { path = "../rnap-quiasma" }
+rnap-histone = { path = "../rnap-histone" }
+rnap-mrna = { path = "../rnap-mrna" }
+rnap-trna = { path = "../rnap-trna" }
+rnap-srna = { path = "../rnap-srna" }
+rnap-phenome = { path = "../rnap-phenome" }
+rnap-ribosome = { path = "../rnap-ribosome" }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "json", "chrono"] }
 tokio = { version = "1", features = ["rt", "macros", "rt-multi-thread"] }
 uuid = { version = "1", features = ["v4"] }

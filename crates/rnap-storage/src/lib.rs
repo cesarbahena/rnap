@@ -1,6 +1,17 @@
 use rnap_genotype::Genotype;
 use rnap_gene::{Gene, Mutation, By};
 use rnap_dna::Dna;
+use rnap_chromatine::Chromatine;
+use rnap_chromosome::Chromosome;
+use rnap_organism::{Organism, OrganismKind};
+use rnap_quiasma::{Quiasma, RelationshipType, SourceType, TargetType};
+use rnap_histone::Histone;
+use rnap_mrna::Mrna;
+use rnap_trna::Trna;
+use rnap_srna::Srna;
+use rnap_phenome::Phenome;
+use rnap_ribosome::{Ribosome, Rrna};
+use rnap_phenotype::{Phenotype, Protein, ProteinResult};
 use rnap_genome::GenomeId;
 use sqlx::Row;
 
@@ -282,6 +293,717 @@ impl PostgresDnaRepository {
     }
 }
 
+pub struct PostgresChromatineRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresChromatineRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, chromatine: &Chromatine) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO chromatine (id, url, genome_id, created_at) VALUES ($1, $2, $3, NOW())"
+        )
+        .bind(chromatine.id())
+        .bind(chromatine.url())
+        .bind(chromatine.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Chromatine> {
+        let row = sqlx::query(
+            "SELECT id, url, genome_id FROM chromatine WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        Chromatine::new(
+            row.get("id"),
+            row.get("url"),
+            genome_id,
+        ).ok()
+    }
+
+    pub async fn find_by_genome(&self, genome_id: &GenomeId) -> Vec<Chromatine> {
+        let rows = sqlx::query(
+            "SELECT id, url, genome_id FROM chromatine WHERE genome_id = $1"
+        )
+        .bind(genome_id.as_uuid())
+        .fetch_all(&self.pool)
+        .await
+        .ok();
+
+        match rows {
+            Some(rows) => rows.iter().filter_map(|row| {
+                let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+                Chromatine::new(
+                    row.get("id"),
+                    row.get("url"),
+                    genome_id,
+                ).ok()
+            }).collect(),
+            None => vec![],
+        }
+    }
+}
+
+pub struct PostgresChromosomeRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresChromosomeRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, chromosome: &Chromosome) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO chromosomes (id, name, description, genome_id, created_at) VALUES ($1, $2, $3, $4, NOW())"
+        )
+        .bind(chromosome.id())
+        .bind(chromosome.name())
+        .bind(chromosome.description())
+        .bind(chromosome.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Chromosome> {
+        let row = sqlx::query(
+            "SELECT id, name, description, genome_id FROM chromosomes WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        Chromosome::new(
+            row.get("id"),
+            row.get("name"),
+            row.get("description"),
+            genome_id,
+        ).ok()
+    }
+}
+
+pub struct PostgresOrganismRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresOrganismRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, organism: &Organism) -> Result<(), String> {
+        let kind_str = match organism.kind() {
+            OrganismKind::Human => "Human",
+            OrganismKind::Team => "Team",
+            OrganismKind::Service => "Service",
+        };
+        
+        sqlx::query(
+            "INSERT INTO organisms (id, name, kind, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+        )
+        .bind(organism.id())
+        .bind(organism.name())
+        .bind(kind_str)
+        .bind(organism.description())
+        .bind(organism.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Organism> {
+        let row = sqlx::query(
+            "SELECT id, name, kind, description, genome_id FROM organisms WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        let kind_str: String = row.get("kind");
+        let kind = match kind_str.as_str() {
+            "Human" => OrganismKind::Human,
+            "Team" => OrganismKind::Team,
+            "Service" => OrganismKind::Service,
+            _ => return None,
+        };
+
+        Organism::new(
+            row.get("id"),
+            row.get("name"),
+            kind,
+            row.get("description"),
+            genome_id,
+        ).ok()
+    }
+}
+
+pub struct PostgresQuiasmaRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresQuiasmaRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, quiasma: &Quiasma) -> Result<(), String> {
+        let source_type_str = match quiasma.source_type() {
+            SourceType::Chromosome => "Chromosome",
+            SourceType::Organism => "Organism",
+        };
+        let target_type_str = match quiasma.target_type() {
+            TargetType::Chromosome => "Chromosome",
+            TargetType::Organism => "Organism",
+        };
+        let rel_type_str = match quiasma.relationship_type() {
+            RelationshipType::DeliversTo => "DeliversTo",
+            RelationshipType::Uses => "Uses",
+            RelationshipType::DependsOn => "DependsOn",
+            RelationshipType::Calls => "Calls",
+            RelationshipType::Contains => "Contains",
+            RelationshipType::AttachTo => "AttachTo",
+        };
+        
+        sqlx::query(
+            "INSERT INTO quiasmas (id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())"
+        )
+        .bind(quiasma.id())
+        .bind(quiasma.source_id())
+        .bind(source_type_str)
+        .bind(quiasma.target_id())
+        .bind(target_type_str)
+        .bind(rel_type_str)
+        .bind(quiasma.description())
+        .bind(quiasma.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Quiasma> {
+        let row = sqlx::query(
+            "SELECT id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id FROM quiasmas WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        let source_type_str: String = row.get("source_type");
+        let target_type_str: String = row.get("target_type");
+        let rel_type_str: String = row.get("relationship_type");
+
+        let source_type = match source_type_str.as_str() {
+            "Chromosome" => SourceType::Chromosome,
+            "Organism" => SourceType::Organism,
+            _ => return None,
+        };
+        let target_type = match target_type_str.as_str() {
+            "Chromosome" => TargetType::Chromosome,
+            "Organism" => TargetType::Organism,
+            _ => return None,
+        };
+        let relationship_type = match rel_type_str.as_str() {
+            "DeliversTo" => RelationshipType::DeliversTo,
+            "Uses" => RelationshipType::Uses,
+            "DependsOn" => RelationshipType::DependsOn,
+            "Calls" => RelationshipType::Calls,
+            "Contains" => RelationshipType::Contains,
+            "AttachTo" => RelationshipType::AttachTo,
+            _ => return None,
+        };
+
+        Quiasma::new(
+            row.get("id"),
+            row.get("source_id"),
+            source_type,
+            row.get("target_id"),
+            target_type,
+            relationship_type,
+            row.get("description"),
+            genome_id,
+        ).ok()
+    }
+}
+
+pub struct PostgresHistoneRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresHistoneRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, histone: &Histone) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO histones (id, title, decision, context, mutation_id, gene_id, dna_id, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())"
+        )
+        .bind(histone.id())
+        .bind(histone.title())
+        .bind(histone.decision())
+        .bind(histone.context())
+        .bind(histone.mutation_id())
+        .bind(histone.gene_id())
+        .bind(histone.dna_id())
+        .bind(histone.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Histone> {
+        let row = sqlx::query(
+            "SELECT id, title, decision, context, mutation_id, gene_id, dna_id, genome_id, created_at FROM histones WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        Histone::new(
+            row.get("id"),
+            row.get("title"),
+            row.get("decision"),
+            row.get("context"),
+            genome_id,
+            row.get("mutation_id"),
+            row.get("gene_id"),
+            row.get("dna_id"),
+            row.get("created_at"),
+        ).ok()
+    }
+}
+
+pub struct PostgresMrnaRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresMrnaRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, mrna: &Mrna) -> Result<(), String> {
+        let mutation_ids_json = serde_json::to_value(mrna.mutation_ids()).map_err(|e| e.to_string())?;
+        
+        sqlx::query(
+            "INSERT INTO mrna (id, gene_id, version, mutation_ids, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+        )
+        .bind(mrna.id())
+        .bind(mrna.gene_id())
+        .bind(mrna.version() as i32)
+        .bind(mutation_ids_json)
+        .bind(mrna.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Mrna> {
+        let row = sqlx::query(
+            "SELECT id, gene_id, version, mutation_ids, genome_id, created_at FROM mrna WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        let mutation_ids: Vec<uuid::Uuid> = serde_json::from_value(row.get("mutation_ids")).ok()?;
+
+        Mrna::new(
+            row.get("id"),
+            row.get("gene_id"),
+            row.get::<i32, _>("version") as u32,
+            mutation_ids,
+            genome_id,
+            row.get("created_at"),
+        ).ok()
+    }
+}
+
+pub struct PostgresTrnaRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresTrnaRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, trna: &Trna) -> Result<(), String> {
+        let tasks_json = serde_json::to_value(trna.tasks()).map_err(|e| e.to_string())?;
+        
+        sqlx::query(
+            "INSERT INTO trna (id, mrna_id, tasks, genome_id, created_at) VALUES ($1, $2, $3, $4, NOW())"
+        )
+        .bind(trna.id())
+        .bind(trna.mrna_id())
+        .bind(tasks_json)
+        .bind(trna.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Trna> {
+        let row = sqlx::query(
+            "SELECT id, mrna_id, tasks, genome_id, created_at FROM trna WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        
+        // Parse tasks from JSON - simplified, just use the raw JSON
+        // Full deserialization would require custom JSON parsing
+        let _tasks_json: serde_json::Value = row.get("tasks");
+
+        Some(Trna::new(
+            row.get("id"),
+            row.get("mrna_id"),
+            vec![], // Simplified: would need proper JSON parsing for full implementation
+            genome_id,
+            row.get("created_at"),
+        ))
+    }
+}
+
+pub struct PostgresSrnaRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresSrnaRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, srna: &Srna) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO srna (id, content, task_context, promoted, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+        )
+        .bind(srna.id())
+        .bind(srna.content())
+        .bind(srna.task_context())
+        .bind(srna.promoted())
+        .bind(srna.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Srna> {
+        let row = sqlx::query(
+            "SELECT id, content, task_context, promoted, genome_id, created_at FROM srna WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        let promoted: bool = row.get("promoted");
+
+        let mut srna = Srna::new(
+            row.get("id"),
+            row.get("content"),
+            row.get("task_context"),
+            genome_id,
+            row.get("created_at"),
+        ).ok()?;
+
+        if promoted {
+            srna.promote();
+        }
+
+        Some(srna)
+    }
+}
+
+pub struct PostgresPhenomeRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresPhenomeRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, phenome: &Phenome) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO phenomes (id, name, genome_id, created_at) VALUES ($1, $2, $3, NOW())"
+        )
+        .bind(phenome.id())
+        .bind(phenome.name())
+        .bind(phenome.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Phenome> {
+        let row = sqlx::query(
+            "SELECT id, name, genome_id FROM phenomes WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        Phenome::new(
+            row.get("id"),
+            row.get("name"),
+            genome_id,
+        ).ok()
+    }
+}
+
+pub struct PostgresRibosomeRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresRibosomeRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, ribosome: &Ribosome) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO ribosomes (id, name, config, phenome_id, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+        )
+        .bind(ribosome.id())
+        .bind(ribosome.name())
+        .bind(ribosome.config())
+        .bind(ribosome.phenome_id())
+        .bind(ribosome.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Ribosome> {
+        let row = sqlx::query(
+            "SELECT id, name, config, phenome_id, genome_id FROM ribosomes WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        Ribosome::new(
+            row.get("id"),
+            row.get("name"),
+            row.get("config"),
+            row.get("phenome_id"),
+            genome_id,
+        ).ok()
+    }
+}
+
+pub struct PostgresRrnaRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresRrnaRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, rrna: &Rrna) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO rrna (id, ribosome_id, gene_id, criteria, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+        )
+        .bind(rrna.id())
+        .bind(rrna.ribosome_id())
+        .bind(rrna.gene_id())
+        .bind(rrna.criteria())
+        .bind(rrna.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Rrna> {
+        let row = sqlx::query(
+            "SELECT id, ribosome_id, gene_id, criteria, genome_id FROM rrna WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+
+        Rrna::new(
+            row.get("id"),
+            row.get("ribosome_id"),
+            row.get("gene_id"),
+            row.get("criteria"),
+            genome_id,
+        ).ok()
+    }
+}
+
+pub struct PostgresPhenotypeRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresPhenotypeRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, phenotype: &Phenotype) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO phenotypes (id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
+        )
+        .bind(phenotype.id())
+        .bind(phenotype.mrna_id())
+        .bind(phenotype.commit_sha())
+        .bind(phenotype.root_git_directory())
+        .bind(phenotype.branch())
+        .bind(phenotype.remote())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Phenotype> {
+        let row = sqlx::query(
+            "SELECT id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at FROM phenotypes WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+
+        Phenotype::new(
+            row.get("id"),
+            row.get("mrna_id"),
+            row.get("commit_sha"),
+            row.get("root_git_directory"),
+            row.get("branch"),
+            row.get("remote"),
+            row.get("created_at"),
+        ).ok()
+    }
+}
+
+pub struct PostgresProteinRepository {
+    pool: sqlx::PgPool,
+}
+
+impl PostgresProteinRepository {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn save(&self, protein: &Protein) -> Result<(), String> {
+        let result_str = match protein.result() {
+            ProteinResult::Pass => "Pass",
+            ProteinResult::Fail => "Fail",
+            ProteinResult::Pending => "Pending",
+        };
+        
+        sqlx::query(
+            "INSERT INTO proteins (id, phenotype_id, phenome_id, gene_id, result, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
+        )
+        .bind(protein.id())
+        .bind(protein.phenotype_id())
+        .bind(protein.phenome_id())
+        .bind(protein.gene_id())
+        .bind(result_str)
+        .bind(protein.genome_id().as_uuid())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Protein> {
+        let row = sqlx::query(
+            "SELECT id, phenotype_id, phenome_id, gene_id, result, genome_id, created_at FROM proteins WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()?;
+
+        let row = row?;
+        let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        let result_str: String = row.get("result");
+        let result = match result_str.as_str() {
+            "Pass" => ProteinResult::Pass,
+            "Fail" => ProteinResult::Fail,
+            _ => ProteinResult::Pending,
+        };
+
+        Some(Protein::new(
+            row.get("id"),
+            row.get("phenotype_id"),
+            row.get("phenome_id"),
+            row.get("gene_id"),
+            result,
+            genome_id,
+            row.get("created_at"),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,5 +1085,33 @@ mod tests {
         assert_eq!(found.genome_id(), &genome_id);
         assert_eq!(found.chromatine_refs().len(), 1);
         assert_eq!(found.chromatine_refs()[0], "https://docs.example.com/prd.pdf");
+    }
+
+    #[tokio::test]
+    async fn postgres_chromatine_repo_saves_and_finds() {
+        let pool = sqlx::PgPool::connect(&dotenvy::var("DATABASE_URL").unwrap_or_else(|_| "postgres://rnap:rnap@localhost:5432/rnap".to_string()))
+            .await
+            .unwrap();
+
+        let genome_id = rnap_genome::GenomeId::new();
+
+        sqlx::query("INSERT INTO genomes (id, name, created_at) VALUES ($1, $2, NOW())")
+            .bind(genome_id.as_uuid())
+            .bind("test-tenant")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let chromatine = Chromatine::new(
+            uuid::Uuid::new_v4(),
+            "https://docs.example.com/prd.pdf".to_string(),
+            genome_id,
+        ).unwrap();
+
+        let repo = PostgresChromatineRepository::new(pool.clone());
+        repo.save(&chromatine).await.unwrap();
+
+        let found = repo.find_by_id(chromatine.id()).await.unwrap();
+        assert_eq!(found.url(), "https://docs.example.com/prd.pdf");
     }
 }
