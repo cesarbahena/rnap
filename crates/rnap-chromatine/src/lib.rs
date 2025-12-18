@@ -1,24 +1,24 @@
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Chromatine {
     id: uuid::Uuid,
-    url: String,
+    path: String,
     genome_id: rnap_genome::GenomeId,
 }
 
 impl Chromatine {
-    pub fn new(id: uuid::Uuid, url: String, genome_id: rnap_genome::GenomeId) -> Result<Self, ChromatineError> {
-        if url.trim().is_empty() {
-            return Err(ChromatineError::EmptyUrl);
+    pub fn new(id: uuid::Uuid, path: String, genome_id: rnap_genome::GenomeId) -> Result<Self, ChromatineError> {
+        if path.trim().is_empty() {
+            return Err(ChromatineError::EmptyPath);
         }
-        Ok(Self { id, url, genome_id })
+        Ok(Self { id, path, genome_id })
     }
 
     pub fn id(&self) -> &uuid::Uuid {
         &self.id
     }
 
-    pub fn url(&self) -> &str {
-        &self.url
+    pub fn path(&self) -> &str {
+        &self.path
     }
 
     pub fn genome_id(&self) -> &rnap_genome::GenomeId {
@@ -28,8 +28,8 @@ impl Chromatine {
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum ChromatineError {
-    #[error("chromatine URL must not be empty")]
-    EmptyUrl,
+    #[error("chromatine path must not be empty")]
+    EmptyPath,
 }
 
 pub trait ChromatineRepository {
@@ -71,27 +71,27 @@ mod tests {
     use rnap_genome::GenomeId;
 
     #[test]
-    fn chromatine_can_be_created_with_id_url_and_genome_id() {
+    fn chromatine_can_be_created_with_id_path_and_genome_id() {
         let genome_id = GenomeId::new();
         let chromatine = Chromatine::new(
             uuid::Uuid::new_v4(),
-            "https://docs.example.com/prd-v2.pdf".to_string(),
+            "docs/research/user-interview-2024.md".to_string(),
             genome_id,
         ).unwrap();
 
-        assert_eq!(chromatine.url(), "https://docs.example.com/prd-v2.pdf");
+        assert_eq!(chromatine.path(), "docs/research/user-interview-2024.md");
         assert_eq!(chromatine.genome_id(), &genome_id);
     }
 
     #[test]
-    fn chromatine_rejects_empty_url() {
+    fn chromatine_rejects_empty_path() {
         let genome_id = GenomeId::new();
         let result = Chromatine::new(
             uuid::Uuid::new_v4(),
             "   ".to_string(),
             genome_id,
         );
-        assert_eq!(result, Err(ChromatineError::EmptyUrl));
+        assert!(matches!(result, Err(ChromatineError::EmptyPath)));
     }
 
     #[test]
@@ -100,7 +100,7 @@ mod tests {
         let id = uuid::Uuid::new_v4();
         let chromatine = Chromatine::new(
             id,
-            "https://docs.example.com/prd.pdf".to_string(),
+            "docs/research/prd.pdf".to_string(),
             genome_id,
         ).unwrap();
 
@@ -108,6 +108,6 @@ mod tests {
         repo.save(chromatine);
 
         let found = repo.find_by_id(&id).unwrap();
-        assert_eq!(found.url(), "https://docs.example.com/prd.pdf");
+        assert_eq!(found.path(), "docs/research/prd.pdf");
     }
 }

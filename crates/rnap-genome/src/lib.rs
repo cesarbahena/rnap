@@ -23,6 +23,37 @@ impl From<uuid::Uuid> for GenomeId {
     }
 }
 
+/// Type-safe reference to a Genotype entity. Distinct from GenomeId (tenant
+/// boundary) — GenotypeId identifies a schema version, not a tenant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct GenotypeId(uuid::Uuid);
+
+impl GenotypeId {
+    pub fn new() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+
+    pub fn from_uuid(id: uuid::Uuid) -> Self {
+        Self(id)
+    }
+
+    pub fn as_uuid(&self) -> &uuid::Uuid {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for GenotypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<uuid::Uuid> for GenotypeId {
+    fn from(id: uuid::Uuid) -> Self {
+        Self(id)
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Genome {
     id: GenomeId,

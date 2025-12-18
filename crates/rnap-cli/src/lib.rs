@@ -51,8 +51,8 @@ pub enum Cli {
 pub enum DnaSubcommand {
     /// Create a new DNA entry
     Create {
-        #[arg(help = "The requirement content")]
-        content: String,
+        #[arg(help = "Path to the DNA file in the repo")]
+        path: String,
     },
     /// List all DNA entries
     List,
@@ -92,6 +92,7 @@ pub enum QuiasmaSubcommand {
 pub struct CreateGeneResult {
     pub gene_id: uuid::Uuid,
     pub gene_name: String,
+    pub genotype_id: rnap_genome::GenotypeId,
 }
 
 pub async fn run_seeds(pool: &sqlx::PgPool, seeds_path: &str) -> Result<usize, String> {
@@ -139,14 +140,32 @@ pub fn create_gene(
         .find_by_kind(kind)
         .ok_or_else(|| format!("genotype kind '{}' not found", kind))?;
 
+    // Gene's genome_id must match Genotype's genome_id (tenant isolation)
+    let gene_genome_id = *genotype.genome_id();
+    if gene_genome_id != genome_id {
+        return Err(format!(
+            "tenant isolation violation: genotype belongs to different genome"
+        ));
+    }
+
+    let next_seq = gene_repo.next_sequence_for_kind(&gene_genome_id, kind)?;
     let slug: String = name.to_lowercase().replace(' ', "-");
-    let gene_name = format!("{}-0001-{}", kind, slug);
+    let gene_name = format!("{}-{:04}-{}", kind, next_seq, slug);
     let gene_id = uuid::Uuid::new_v4();
-    let gene = rnap_gene::Gene::new(gene_id, gene_name.clone(), genome_id, *genotype.genome_id());
+    let gene = rnap_gene::Gene::new(
+        gene_id,
+        gene_name.clone(),
+        gene_genome_id,
+        genotype.id(),
+    );
 
     gene_repo.save(gene);
 
-    Ok(CreateGeneResult { gene_id, gene_name })
+    Ok(CreateGeneResult {
+        gene_id,
+        gene_name,
+        genotype_id: genotype.id(),
+    })
 }
 
 #[cfg(test)]
@@ -156,7 +175,6 @@ mod tests {
     #[test]
     fn create_gene_finds_genotype_and_saves_gene() {
         use rnap_gene::GeneRepository;
-        use rnap_genotype::GenotypeRepository;
 
         let genome_id = rnap_genome::GenomeId::new();
         let genotype = rnap_genotype::Genotype::new(
@@ -166,7 +184,7 @@ mod tests {
             genome_id,
             vec![rnap_genotype::Trait::new(
                 "title".to_string(),
-                rnap_genotype::TraitState::Dominant,
+                rnap_genotype::Dominance::Dominant,
             )],
         )
         .unwrap();
@@ -214,7 +232,6 @@ mod tests {
     #[test]
     fn transcribe_gene_computes_state() {
         use rnap_gene::GeneRepository;
-        use rnap_genotype::GenotypeRepository;
 
         let genome_id = rnap_genome::GenomeId::new();
         let genotype = rnap_genotype::Genotype::new(
@@ -224,24 +241,18 @@ mod tests {
             genome_id,
             vec![rnap_genotype::Trait::new(
                 "title".to_string(),
-                rnap_genotype::TraitState::Dominant,
+                rnap_genotype::Dominance::Dominant,
             )],
         )
         .unwrap();
 
-        let genotype_repo = rnap_genotype::InMemoryGenotypeRepository::new(
-            vec![("FEAT".to_string(), genotype.clone())]
-                .into_iter()
-                .collect(),
-        );
-
         let mut gene_repo = rnap_gene::InMemoryGeneRepository::new();
         let gene_name = "FEAT-0001-user-auth".to_string();
-        let mut gene = rnap_gene::Gene::new(
+        let gene = rnap_gene::Gene::new(
             uuid::Uuid::new_v4(),
             gene_name.clone(),
             genome_id,
-            *genotype.genome_id(),
+            genotype.id(),
         );
         gene_repo.save(gene);
 
@@ -253,8 +264,7 @@ mod tests {
 
     #[test]
     fn transcribe_after_mutation_shows_updated_value() {
-        use rnap_gene::{By, GeneRepository, GeneService, Mutation};
-        use rnap_genotype::GenotypeRepository;
+        use rnap_gene::{By, GeneRepository, GeneService};
 
         let genome_id = rnap_genome::GenomeId::new();
         let genotype = rnap_genotype::Genotype::new(
@@ -264,36 +274,28 @@ mod tests {
             genome_id,
             vec![rnap_genotype::Trait::new(
                 "title".to_string(),
-                rnap_genotype::TraitState::Dominant,
+                rnap_genotype::Dominance::Dominant,
             )],
         )
         .unwrap();
-
-        let genotype_repo = rnap_genotype::InMemoryGenotypeRepository::new(
-            vec![("FEAT".to_string(), genotype.clone())]
-                .into_iter()
-                .collect(),
-        );
 
         let mut gene_repo = rnap_gene::InMemoryGeneRepository::new();
         let mut gene = rnap_gene::Gene::new(
             uuid::Uuid::new_v4(),
             "FEAT-0001-user-auth".to_string(),
             genome_id,
-            *genotype.genome_id(),
+            genotype.id(),
         );
 
-        let mutation = Mutation::new(
-            uuid::Uuid::new_v4(),
-            *gene.id(),
+        GeneService::validate_and_append(
+            &mut gene,
             "title".to_string(),
             serde_json::json!("User authentication flow"),
             By::Human,
             "Initial requirement".to_string(),
-            chrono::Utc::now(),
-        );
-
-        GeneService::validate_and_append(&mut gene, mutation, &genotype).unwrap();
+            &genotype,
+        )
+        .unwrap();
         gene_repo.save(gene);
 
         let stored = gene_repo.find_by_name("FEAT-0001-user-auth").unwrap();

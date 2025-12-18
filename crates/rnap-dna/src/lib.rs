@@ -1,20 +1,18 @@
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Dna {
     id: uuid::Uuid,
-    content: String,
-    chromatine_refs: Vec<String>,
+    path: String,
     genome_id: rnap_genome::GenomeId,
 }
 
 impl Dna {
-    pub fn new(id: uuid::Uuid, content: String, genome_id: rnap_genome::GenomeId) -> Result<Self, DnaError> {
-        if content.trim().is_empty() {
-            return Err(DnaError::EmptyContent);
+    pub fn new(id: uuid::Uuid, path: String, genome_id: rnap_genome::GenomeId) -> Result<Self, DnaError> {
+        if path.trim().is_empty() {
+            return Err(DnaError::EmptyPath);
         }
         Ok(Self {
             id,
-            content,
-            chromatine_refs: vec![],
+            path,
             genome_id,
         })
     }
@@ -23,18 +21,8 @@ impl Dna {
         &self.id
     }
 
-    pub fn content(&self) -> &str {
-        &self.content
-    }
-
-    pub fn chromatine_refs(&self) -> &[String] {
-        &self.chromatine_refs
-    }
-
-    pub fn add_chromatine_ref(&mut self, url: String) {
-        if !url.trim().is_empty() && !self.chromatine_refs.contains(&url) {
-            self.chromatine_refs.push(url);
-        }
+    pub fn path(&self) -> &str {
+        &self.path
     }
 
     pub fn genome_id(&self) -> &rnap_genome::GenomeId {
@@ -44,8 +32,8 @@ impl Dna {
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum DnaError {
-    #[error("DNA content must not be empty")]
-    EmptyContent,
+    #[error("DNA path must not be empty")]
+    EmptyPath,
 }
 
 pub trait DnaRepository {
@@ -87,74 +75,30 @@ mod tests {
     use rnap_genome::GenomeId;
 
     #[test]
-    fn dna_can_be_created_with_id_content_and_genome_id() {
+    fn dna_can_be_created_with_id_path_and_genome_id() {
         let genome_id = GenomeId::new();
         let dna = Dna::new(
             uuid::Uuid::new_v4(),
-            "Users must be able to reset their password".to_string(),
+            "dna/2024/q1/req-001.dna".to_string(),
             genome_id,
         ).unwrap();
 
         assert_eq!(
-            dna.content(),
-            "Users must be able to reset their password"
+            dna.path(),
+            "dna/2024/q1/req-001.dna"
         );
         assert_eq!(dna.genome_id(), &genome_id);
     }
 
     #[test]
-    fn dna_rejects_empty_content() {
+    fn dna_rejects_empty_path() {
         let genome_id = GenomeId::new();
         let result = Dna::new(
             uuid::Uuid::new_v4(),
             "   ".to_string(),
             genome_id,
         );
-        assert_eq!(result, Err(DnaError::EmptyContent));
-    }
-
-    #[test]
-    fn dna_can_be_created_with_empty_chromatine_refs() {
-        let genome_id = GenomeId::new();
-        let dna = Dna::new(
-            uuid::Uuid::new_v4(),
-            "Users must authenticate before accessing data".to_string(),
-            genome_id,
-        ).unwrap();
-
-        assert!(dna.chromatine_refs().is_empty());
-    }
-
-    #[test]
-    fn dna_add_chromatine_ref_appends_without_duplicates() {
-        let genome_id = GenomeId::new();
-        let mut dna = Dna::new(
-            uuid::Uuid::new_v4(),
-            "Users must authenticate before accessing data".to_string(),
-            genome_id,
-        ).unwrap();
-
-        dna.add_chromatine_ref("https://docs.example.com/prd.pdf".to_string());
-        dna.add_chromatine_ref("https://docs.example.com/prd.pdf".to_string()); // duplicate ignored
-        dna.add_chromatine_ref("https://stakeholder.interview/notes".to_string());
-
-        assert_eq!(dna.chromatine_refs().len(), 2);
-        assert_eq!(dna.chromatine_refs()[0], "https://docs.example.com/prd.pdf");
-        assert_eq!(dna.chromatine_refs()[1], "https://stakeholder.interview/notes");
-    }
-
-    #[test]
-    fn dna_ignores_empty_chromatine_refs() {
-        let genome_id = GenomeId::new();
-        let mut dna = Dna::new(
-            uuid::Uuid::new_v4(),
-            "Some requirement".to_string(),
-            genome_id,
-        ).unwrap();
-
-        dna.add_chromatine_ref("   ".to_string());
-
-        assert!(dna.chromatine_refs().is_empty());
+        assert!(matches!(result, Err(DnaError::EmptyPath)));
     }
 
     #[test]
@@ -163,7 +107,7 @@ mod tests {
         let id = uuid::Uuid::new_v4();
         let dna = Dna::new(
             id,
-            "Users must be able to reset their password".to_string(),
+            "dna/2024/q1/req-001.dna".to_string(),
             genome_id,
         ).unwrap();
 
@@ -171,6 +115,6 @@ mod tests {
         repo.save(dna);
 
         let found = repo.find_by_id(&id).unwrap();
-        assert_eq!(found.content(), "Users must be able to reset their password");
+        assert_eq!(found.path(), "dna/2024/q1/req-001.dna");
     }
 }

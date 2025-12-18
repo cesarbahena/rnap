@@ -1144,6 +1144,7 @@ dependencies = [
 name = "rnap-genotype"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rnap-genome",
  "serde",
  "serde_json",
@@ -1253,6 +1254,7 @@ dependencies = [
 name = "rnap-storage"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "dotenvy",
  "rnap-chromatine",
  "rnap-chromosome",

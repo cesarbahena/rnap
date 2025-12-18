@@ -70,7 +70,7 @@ pub struct Gene {
     id: uuid::Uuid,
     name: String,
     genome_id: rnap_genome::GenomeId,
-    genotype_id: rnap_genome::GenomeId,
+    genotype_id: rnap_genome::GenotypeId,
     mutations: Vec<Mutation>,
 }
 
@@ -79,7 +79,7 @@ impl Gene {
         id: uuid::Uuid,
         name: String,
         genome_id: rnap_genome::GenomeId,
-        genotype_id: rnap_genome::GenomeId,
+        genotype_id: rnap_genome::GenotypeId,
     ) -> Self {
         Self {
             id,
@@ -102,8 +102,8 @@ impl Gene {
         &self.genome_id
     }
 
-    pub fn genotype_id(&self) -> &rnap_genome::GenomeId {
-        &self.genotype_id
+    pub fn genotype_id(&self) -> rnap_genome::GenotypeId {
+        self.genotype_id
     }
 
     pub fn mutations(&self) -> &[Mutation] {
@@ -117,20 +117,12 @@ impl Gene {
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum GeneError {
-    #[error("mutation gene_id {mutation_gene_id} does not match gene {gene_id}")]
-    MutationGeneIdMismatch {
-        gene_id: uuid::Uuid,
-        mutation_gene_id: uuid::Uuid,
-    },
     #[error("unknown trait key: {0}")]
     UnknownTraitKey(String),
+    #[error("ambiguous trait key: {0} — use the full canonical name")]
+    AmbiguousTraitKey(String),
     #[error("trait is vestigial: {0}")]
     TraitIsVestigial(String),
-    #[error("tenant isolation violation: gene genome {gene_genome} does not match genotype genome {genotype_genome}")]
-    TenantIsolationViolation {
-        gene_genome: String,
-        genotype_genome: String,
-    },
 }
 
 pub struct GeneService;
@@ -138,33 +130,42 @@ pub struct GeneService;
 impl GeneService {
     pub fn validate_and_append(
         gene: &mut Gene,
-        mutation: Mutation,
+        trait_key: String,
+        value: serde_json::Value,
+        by: By,
+        context: String,
         genotype: &rnap_genotype::Genotype,
-    ) -> Result<(), GeneError> {
-        if mutation.gene_id() != gene.id() {
-            return Err(GeneError::MutationGeneIdMismatch {
-                gene_id: *gene.id(),
-                mutation_gene_id: *mutation.gene_id(),
-            });
-        }
-        if gene.genome_id() != genotype.genome_id() {
-            return Err(GeneError::TenantIsolationViolation {
-                gene_genome: gene.genome_id().to_string(),
-                genotype_genome: genotype.genome_id().to_string(),
-            });
-        }
-        if genotype.find_trait(mutation.trait_key()).is_none() {
-            return Err(GeneError::UnknownTraitKey(mutation.trait_key().to_string()));
-        }
-        if let Some(trait_def) = genotype.find_trait(mutation.trait_key()) {
-            if !trait_def.state().is_writable() {
-                return Err(GeneError::TraitIsVestigial(
-                    mutation.trait_key().to_string(),
-                ));
+    ) -> Result<Mutation, GeneError> {
+        let now = chrono::Utc::now();
+
+        // Resolve trait_key via match_trait (supports partial/typo matching)
+        let matched = match rnap_genotype::match_trait(&trait_key, genotype.traits()) {
+            rnap_genotype::TraitMatch::Exact { matched } => matched,
+            rnap_genotype::TraitMatch::Ambiguous { .. } => {
+                return Err(GeneError::AmbiguousTraitKey(trait_key.clone()));
             }
+            rnap_genotype::TraitMatch::NotFound => {
+                return Err(GeneError::UnknownTraitKey(trait_key.clone()));
+            }
+        };
+
+        // Vestigial traits cannot be written
+        if !matched.dominance().is_writable() {
+            return Err(GeneError::TraitIsVestigial(trait_key.clone()));
         }
-        gene.append_mutation(mutation);
-        Ok(())
+
+        let mutation = Mutation::new(
+            uuid::Uuid::new_v4(),
+            *gene.id(),
+            matched.key().to_string(), // canonical key
+            value,
+            by,
+            context,
+            now,
+        );
+
+        gene.append_mutation(mutation.clone());
+        Ok(mutation)
     }
 
     pub fn current_state(gene: &Gene) -> std::collections::HashMap<&str, &Mutation> {
@@ -181,7 +182,7 @@ impl GeneService {
         genotype
             .traits()
             .iter()
-            .filter(|t| t.state().is_required())
+            .filter(|t| t.dominance().is_required())
             .all(|t| state.contains_key(t.key()))
     }
 }
@@ -191,16 +192,23 @@ pub trait GeneRepository {
     fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Gene>;
     fn find_by_name(&self, name: &str) -> Option<&Gene>;
     fn find_by_name_prefix(&self, prefix: &str) -> Option<&Gene>;
+    /// Returns the next sequence number for a given (genome_id, kind).
+    /// Override in Postgres-backed repositories for atomic sequencing.
+    fn next_sequence_for_kind(&mut self, _genome_id: &rnap_genome::GenomeId, _kind: &str) -> Result<u32, String> {
+        Err("in-memory repository does not support sequence generation".to_string())
+    }
 }
 
 pub struct InMemoryGeneRepository {
     genes: std::collections::HashMap<uuid::Uuid, Gene>,
+    sequences: std::collections::HashMap<(rnap_genome::GenomeId, String), u32>,
 }
 
 impl InMemoryGeneRepository {
     pub fn new() -> Self {
         Self {
             genes: std::collections::HashMap::new(),
+            sequences: std::collections::HashMap::new(),
         }
     }
 }
@@ -228,6 +236,13 @@ impl GeneRepository for InMemoryGeneRepository {
         self.genes
             .values()
             .find(|g| g.name().starts_with(prefix))
+    }
+
+    fn next_sequence_for_kind(&mut self, genome_id: &rnap_genome::GenomeId, kind: &str) -> Result<u32, String> {
+        let key = (*genome_id, kind.to_string());
+        let next = self.sequences.get(&key).copied().unwrap_or(0) + 1;
+        self.sequences.insert(key, next);
+        Ok(next)
     }
 }
 
@@ -267,7 +282,7 @@ mod tests {
     fn gene_can_be_created_with_id_name_genome_id_genotype_id() {
         let gene_id = uuid::Uuid::new_v4();
         let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
         let gene = Gene::new(
             gene_id,
             "FEAT-0001-user-auth".to_string(),
@@ -277,50 +292,15 @@ mod tests {
         assert_eq!(gene.id(), &gene_id);
         assert_eq!(gene.name(), "FEAT-0001-user-auth");
         assert_eq!(gene.genome_id(), &genome_id);
-        assert_eq!(gene.genotype_id(), &genotype_id);
+        assert_eq!(gene.genotype_id(), genotype_id);
         assert!(gene.mutations().is_empty());
-    }
-
-    #[test]
-    fn gene_service_rejects_mutation_with_wrong_gene_id() {
-        let gene_id = uuid::Uuid::new_v4();
-        let wrong_gene_id = uuid::Uuid::new_v4();
-        let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
-        let mut gene = Gene::new(
-            gene_id,
-            "FEAT-0001-user-auth".to_string(),
-            genome_id,
-            genotype_id,
-        );
-        let genotype = rnap_genotype::Genotype::new(
-            "FEAT".to_string(),
-            "Feature Request".to_string(),
-            1,
-            genome_id,
-            vec![],
-        )
-        .unwrap();
-
-        let mutation = Mutation::new(
-            uuid::Uuid::new_v4(),
-            wrong_gene_id,
-            "title".to_string(),
-            serde_json::json!("Hello"),
-            By::Human,
-            "initial requirement".to_string(),
-            chrono::Utc::now(),
-        );
-
-        let result = GeneService::validate_and_append(&mut gene, mutation, &genotype);
-        assert!(result.is_err());
     }
 
     #[test]
     fn gene_service_rejects_unknown_trait_key() {
         let gene_id = uuid::Uuid::new_v4();
         let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
         let mut gene = Gene::new(
             gene_id,
             "FEAT-0001-user-auth".to_string(),
@@ -334,33 +314,99 @@ mod tests {
             genome_id,
             vec![rnap_genotype::Trait::new(
                 "title".to_string(),
-                rnap_genotype::TraitState::Dominant,
+                rnap_genotype::Dominance::Dominant,
             )],
         )
         .unwrap();
 
-        let mutation = Mutation::new(
-            uuid::Uuid::new_v4(),
-            gene_id,
+        let result = GeneService::validate_and_append(
+            &mut gene,
             "nonexistent".to_string(),
             serde_json::json!("value"),
             By::Human,
             "unknown trait".to_string(),
-            chrono::Utc::now(),
+            &genotype,
         );
+        assert!(matches!(result, Err(GeneError::UnknownTraitKey(_))));
+    }
 
-        let result = GeneService::validate_and_append(&mut gene, mutation, &genotype);
-        assert_eq!(
-            result,
-            Err(GeneError::UnknownTraitKey("nonexistent".to_string()))
+    #[test]
+    fn gene_service_rejects_ambiguous_trait_key() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
         );
+        let genotype = rnap_genotype::Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![
+                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::Dominance::Dominant),
+                rnap_genotype::Trait::new("timestamp".to_string(), rnap_genotype::Dominance::Recessive),
+            ],
+        )
+        .unwrap();
+
+        // "time" matches both "title" and "timestamp" — ambiguous
+        let result = GeneService::validate_and_append(
+            &mut gene,
+            "time".to_string(),
+            serde_json::json!("value"),
+            By::Human,
+            "ambiguous key".to_string(),
+            &genotype,
+        );
+        assert!(matches!(result, Err(GeneError::AmbiguousTraitKey(_))));
+    }
+
+    #[test]
+    fn gene_service_accepts_partial_trait_key() {
+        let gene_id = uuid::Uuid::new_v4();
+        let genome_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
+        let mut gene = Gene::new(
+            gene_id,
+            "FEAT-0001-user-auth".to_string(),
+            genome_id,
+            genotype_id,
+        );
+        let genotype = rnap_genotype::Genotype::new(
+            "FEAT".to_string(),
+            "Feature Request".to_string(),
+            1,
+            genome_id,
+            vec![rnap_genotype::Trait::new(
+                "title".to_string(),
+                rnap_genotype::Dominance::Dominant,
+            )],
+        )
+        .unwrap();
+
+        // "tit" is a unique prefix match for "title"
+        let result = GeneService::validate_and_append(
+            &mut gene,
+            "tit".to_string(),
+            serde_json::json!("Hello"),
+            By::Human,
+            "partial key".to_string(),
+            &genotype,
+        );
+        assert!(result.is_ok());
+        // Canonical key should be "title", not "tit"
+        assert_eq!(gene.mutations()[0].trait_key(), "title");
     }
 
     #[test]
     fn gene_service_rejects_mutation_targeting_vestigial_trait() {
         let gene_id = uuid::Uuid::new_v4();
         let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
         let mut gene = Gene::new(
             gene_id,
             "FEAT-0001-user-auth".to_string(),
@@ -374,82 +420,35 @@ mod tests {
             genome_id,
             vec![rnap_genotype::Trait::new(
                 "deprecated_field".to_string(),
-                rnap_genotype::TraitState::Vestigial,
+                rnap_genotype::Dominance::Vestigial,
             )],
         )
         .unwrap();
 
-        let mutation = Mutation::new(
-            uuid::Uuid::new_v4(),
-            gene_id,
+        let result = GeneService::validate_and_append(
+            &mut gene,
             "deprecated_field".to_string(),
             serde_json::json!("value"),
             By::Human,
             "trying to write vestigial".to_string(),
-            chrono::Utc::now(),
+            &genotype,
         );
-
-        let result = GeneService::validate_and_append(&mut gene, mutation, &genotype);
-        assert_eq!(
-            result,
-            Err(GeneError::TraitIsVestigial("deprecated_field".to_string()))
-        );
-    }
-
-    #[test]
-    fn gene_service_rejects_cross_tenant_mutation() {
-        let gene_id = uuid::Uuid::new_v4();
-        let gene_genome_id = rnap_genome::GenomeId::new();
-        let genotype_genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
-        let mut gene = Gene::new(
-            gene_id,
-            "FEAT-0001-user-auth".to_string(),
-            gene_genome_id,
-            genotype_id,
-        );
-        let genotype = rnap_genotype::Genotype::new(
-            "FEAT".to_string(),
-            "Feature Request".to_string(),
-            1,
-            genotype_genome_id,
-            vec![rnap_genotype::Trait::new(
-                "title".to_string(),
-                rnap_genotype::TraitState::Dominant,
-            )],
-        )
-        .unwrap();
-
-        let mutation = Mutation::new(
-            uuid::Uuid::new_v4(),
-            gene_id,
-            "title".to_string(),
-            serde_json::json!("Hello"),
-            By::Human,
-            "cross-tenant attempt".to_string(),
-            chrono::Utc::now(),
-        );
-
-        let result = GeneService::validate_and_append(&mut gene, mutation, &genotype);
-        assert!(result.is_err());
+        assert!(matches!(result, Err(GeneError::TraitIsVestigial(_))));
     }
 
     #[test]
     fn gene_service_current_state_returns_last_mutation_per_trait() {
         let gene_id = uuid::Uuid::new_v4();
         let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
         let genotype = rnap_genotype::Genotype::new(
             "FEAT".to_string(),
             "Feature Request".to_string(),
             1,
             genome_id,
             vec![
-                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::TraitState::Dominant),
-                rnap_genotype::Trait::new(
-                    "status".to_string(),
-                    rnap_genotype::TraitState::Recessive,
-                ),
+                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::Dominance::Dominant),
+                rnap_genotype::Trait::new("status".to_string(), rnap_genotype::Dominance::Recessive),
             ],
         )
         .unwrap();
@@ -462,45 +461,30 @@ mod tests {
 
         GeneService::validate_and_append(
             &mut gene,
-            Mutation::new(
-                uuid::Uuid::new_v4(),
-                gene_id,
-                "title".to_string(),
-                serde_json::json!("First title"),
-                By::Human,
-                "first".to_string(),
-                chrono::Utc::now(),
-            ),
+            "title".to_string(),
+            serde_json::json!("First title"),
+            By::Human,
+            "first".to_string(),
             &genotype,
         )
         .unwrap();
 
         GeneService::validate_and_append(
             &mut gene,
-            Mutation::new(
-                uuid::Uuid::new_v4(),
-                gene_id,
-                "status".to_string(),
-                serde_json::json!("draft"),
-                By::Human,
-                "initial status".to_string(),
-                chrono::Utc::now(),
-            ),
+            "status".to_string(),
+            serde_json::json!("draft"),
+            By::Human,
+            "initial status".to_string(),
             &genotype,
         )
         .unwrap();
 
         GeneService::validate_and_append(
             &mut gene,
-            Mutation::new(
-                uuid::Uuid::new_v4(),
-                gene_id,
-                "title".to_string(),
-                serde_json::json!("Updated title"),
-                By::Llm,
-                "refined".to_string(),
-                chrono::Utc::now(),
-            ),
+            "title".to_string(),
+            serde_json::json!("Updated title"),
+            By::Llm,
+            "refined".to_string(),
             &genotype,
         )
         .unwrap();
@@ -521,18 +505,15 @@ mod tests {
     fn gene_service_is_ready_when_all_dominant_traits_have_mutations() {
         let gene_id = uuid::Uuid::new_v4();
         let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
         let genotype = rnap_genotype::Genotype::new(
             "FEAT".to_string(),
             "Feature Request".to_string(),
             1,
             genome_id,
             vec![
-                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::TraitState::Dominant),
-                rnap_genotype::Trait::new(
-                    "status".to_string(),
-                    rnap_genotype::TraitState::Recessive,
-                ),
+                rnap_genotype::Trait::new("title".to_string(), rnap_genotype::Dominance::Dominant),
+                rnap_genotype::Trait::new("status".to_string(), rnap_genotype::Dominance::Recessive),
             ],
         )
         .unwrap();
@@ -545,15 +526,10 @@ mod tests {
 
         GeneService::validate_and_append(
             &mut gene,
-            Mutation::new(
-                uuid::Uuid::new_v4(),
-                gene_id,
-                "title".to_string(),
-                serde_json::json!("Hello"),
-                By::Human,
-                "initial".to_string(),
-                chrono::Utc::now(),
-            ),
+            "title".to_string(),
+            serde_json::json!("Hello"),
+            By::Human,
+            "initial".to_string(),
             &genotype,
         )
         .unwrap();
@@ -573,7 +549,7 @@ mod tests {
     fn in_memory_gene_repo_saves_and_finds_gene() {
         let gene_id = uuid::Uuid::new_v4();
         let genome_id = rnap_genome::GenomeId::new();
-        let genotype_id = rnap_genome::GenomeId::new();
+        let genotype_id = rnap_genome::GenotypeId::new();
         let gene = Gene::new(
             gene_id,
             "FEAT-0001-user-auth".to_string(),

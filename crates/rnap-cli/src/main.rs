@@ -55,26 +55,25 @@ fn main() {
             let result = rt.block_on(async {
                 let genotype = genotype_repo.find_by_kind(&kind).await;
                 match genotype {
-                    Some(_genotype) => {
-                        let genotype_id = GenomeId::from(
-                            uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap()
-                        );
+                    Some(genotype) => {
+                        let genotype_id = genotype.id();
+                        let genome_id = *genotype.genome_id();
                         
                         let gene_repo = PostgresGeneRepository::new(pool.clone());
-                        let next_seq = gene_repo.next_sequence_for_kind(&default_genome_id, &kind).await?;
+                        let next_seq = gene_repo.next_sequence_for_kind(&genome_id, &kind).await?;
                         let slug: String = name.to_lowercase().replace(' ', "-");
                         let gene_name = format!("{}-{:04}-{}", kind, next_seq, slug);
                         let gene_id = uuid::Uuid::new_v4();
                         let gene = Gene::new(
                             gene_id,
                             gene_name.clone(),
-                            default_genome_id,
+                            genome_id,
                             genotype_id,
                         );
 
                         gene_repo.save(&gene).await?;
 
-                        Ok(rnap_cli::CreateGeneResult { gene_id, gene_name })
+                        Ok(rnap_cli::CreateGeneResult { gene_id, gene_name, genotype_id })
                     }
                     None => Err(format!("genotype kind '{}' not found", kind))
                 }
@@ -104,24 +103,21 @@ fn main() {
                     *found.id(),
                     found.name().to_string(),
                     *found.genome_id(),
-                    *found.genotype_id(),
+                    found.genotype_id(),
                 );
 
                 for arg in args {
                     if let Some((key, value)) = arg.split_once('=') {
-                        let mutation = Mutation::new(
-                            uuid::Uuid::new_v4(),
-                            *found.id(),
+                        let mutation = GeneService::validate_and_append(
+                            &mut mutable_gene,
                             key.to_string(),
                             serde_json::json!(value),
                             if by == "llm" { By::Llm } else { By::Human },
                             format!("via CLI: {}", arg),
-                            chrono::Utc::now(),
-                        );
+                            &genotype,
+                        )
+                        .map_err(|e| e.to_string())?;
 
-                        GeneService::validate_and_append(&mut mutable_gene, mutation.clone(), &genotype)
-                            .map_err(|e| e.to_string())?;
-                        
                         gene_repo.save_mutation(&mutation).await?;
                     }
                 }
@@ -158,7 +154,7 @@ fn main() {
                 println!("");
                 println!("Traits:");
                 for t in genotype.traits() {
-                    println!("  - {} ({:?})", t.key(), t.state());
+                    println!("  - {} ({:?})", t.key(), t.dominance());
                 }
                 println!("");
                 println!("State:");
@@ -181,17 +177,17 @@ fn main() {
         Cli::Dna { subcommand } => {
             let result: Result<(), String> = rt.block_on(async {
                 match subcommand {
-                    rnap_cli::DnaSubcommand::Create { content } => {
+                    rnap_cli::DnaSubcommand::Create { path } => {
                         let dna = Dna::new(
                             uuid::Uuid::new_v4(),
-                            content.clone(),
+                            path.clone(),
                             default_genome_id,
                         ).map_err(|e| e.to_string())?;
                         
                         dna_repo.save(&dna).await?;
                         
                         println!("Created DNA: {}", dna.id());
-                        println!("Content: {}", content);
+                        println!("Path: {}", path);
                         Ok(())
                     }
                     rnap_cli::DnaSubcommand::List => {
@@ -202,7 +198,7 @@ fn main() {
                             println!("  (no entries)");
                         } else {
                             for dna in entries {
-                                println!("  - {}: {}", dna.id(), dna.content());
+                                println!("  - {}: {}", dna.id(), dna.path());
                             }
                         }
                         Ok(())

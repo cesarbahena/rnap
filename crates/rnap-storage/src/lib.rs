@@ -26,7 +26,7 @@ impl PostgresGenotypeRepository {
 
     pub async fn find_by_kind(&self, kind: &str) -> Option<Genotype> {
         let row = sqlx::query(
-            "SELECT id, kind, name, generation, genome_id, traits FROM genotypes WHERE kind = $1"
+            "SELECT id, kind, name, generation, genome_id, traits, created_at FROM genotypes WHERE kind = $1"
         )
         .bind(kind)
         .fetch_optional(&self.pool)
@@ -35,21 +35,23 @@ impl PostgresGenotypeRepository {
 
         let row = row?;
 
-        let genotype = Genotype::new(
+        let genotype = Genotype::with_id(
+            rnap_genome::GenotypeId::from(row.get::<uuid::Uuid, _>("id")),
             row.get("kind"),
             row.get("name"),
             row.get::<i32, _>("generation") as u32,
             rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
             serde_json::from_value(row.get("traits")).ok()?,
+            row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
         )
         .ok()?;
 
         Some(genotype)
     }
 
-pub async fn find_by_genome_id(&self, genome_id: rnap_genome::GenomeId) -> Option<Genotype> {
+    pub async fn find_by_genome_id(&self, genome_id: rnap_genome::GenomeId) -> Option<Genotype> {
         let row = sqlx::query(
-            "SELECT id, kind, name, generation, genome_id, traits FROM genotypes WHERE genome_id = $1"
+            "SELECT id, kind, name, generation, genome_id, traits, created_at FROM genotypes WHERE genome_id = $1"
         )
         .bind(genome_id.as_uuid())
         .fetch_optional(&self.pool)
@@ -58,12 +60,14 @@ pub async fn find_by_genome_id(&self, genome_id: rnap_genome::GenomeId) -> Optio
 
         let row = row?;
 
-        let genotype = Genotype::new(
+        let genotype = Genotype::with_id(
+            rnap_genome::GenotypeId::from(row.get::<uuid::Uuid, _>("id")),
             row.get("kind"),
             row.get("name"),
             row.get::<i32, _>("generation") as u32,
             rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
             serde_json::from_value(row.get("traits")).ok()?,
+            row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
         )
         .ok()?;
 
@@ -110,7 +114,7 @@ impl PostgresGeneRepository {
             row.get("id"),
             row.get("name"),
             rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
-            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
+            rnap_genome::GenotypeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
         ))
     }
 
@@ -129,7 +133,7 @@ impl PostgresGeneRepository {
             row.get("id"),
             row.get("name"),
             rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genome_id")),
-            rnap_genome::GenomeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
+            rnap_genome::GenotypeId::from(row.get::<uuid::Uuid, _>("genotype_id")),
         ))
     }
 
@@ -218,14 +222,11 @@ impl PostgresDnaRepository {
     }
 
     pub async fn save(&self, dna: &Dna) -> Result<(), String> {
-        let chromatine_refs: Vec<String> = dna.chromatine_refs().to_vec();
-        
         sqlx::query(
-            "INSERT INTO dna (id, content, chromatine_refs, genome_id, created_at) \n             VALUES ($1, $2, $3, $4, NOW())"
+            "INSERT INTO dna (id, path, genome_id, created_at) \n             VALUES ($1, $2, $3, NOW())"
         )
         .bind(dna.id())
-        .bind(dna.content())
-        .bind(&chromatine_refs)
+        .bind(dna.path())
         .bind(dna.genome_id().as_uuid())
         .execute(&self.pool)
         .await
@@ -236,7 +237,7 @@ impl PostgresDnaRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Dna> {
         let row = sqlx::query(
-            "SELECT id, content, chromatine_refs, genome_id FROM dna WHERE id = $1"
+            "SELECT id, path, genome_id FROM dna WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -245,26 +246,18 @@ impl PostgresDnaRepository {
 
         let row = row?;
 
-        let chromatine_refs: Vec<String> = row.get("chromatine_refs");
         let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
 
-        let mut dna = Dna::new(
+        Dna::new(
             row.get("id"),
-            row.get("content"),
+            row.get("path"),
             genome_id,
-        ).ok()?;
-
-        // Restore chromatine_refs (Dna::new initializes empty)
-        for ref_url in chromatine_refs {
-            dna.add_chromatine_ref(ref_url);
-        }
-
-        Some(dna)
+        ).ok()
     }
 
     pub async fn find_by_genome(&self, genome_id: &GenomeId) -> Vec<Dna> {
         let rows = sqlx::query(
-            "SELECT id, content, chromatine_refs, genome_id FROM dna WHERE genome_id = $1"
+            "SELECT id, path, genome_id FROM dna WHERE genome_id = $1"
         )
         .bind(genome_id.as_uuid())
         .fetch_all(&self.pool)
@@ -273,20 +266,13 @@ impl PostgresDnaRepository {
 
         match rows {
             Some(rows) => rows.iter().filter_map(|row| {
-                let chromatine_refs: Vec<String> = row.get("chromatine_refs");
                 let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
 
-                let mut dna = Dna::new(
+                Dna::new(
                     row.get("id"),
-                    row.get("content"),
+                    row.get("path"),
                     genome_id,
-                ).ok()?;
-
-                for ref_url in chromatine_refs {
-                    dna.add_chromatine_ref(ref_url);
-                }
-
-                Some(dna)
+                ).ok()
             }).collect(),
             None => vec![],
         }
@@ -304,10 +290,10 @@ impl PostgresChromatineRepository {
 
     pub async fn save(&self, chromatine: &Chromatine) -> Result<(), String> {
         sqlx::query(
-            "INSERT INTO chromatine (id, url, genome_id, created_at) VALUES ($1, $2, $3, NOW())"
+            "INSERT INTO chromatine (id, path, genome_id, created_at) VALUES ($1, $2, $3, NOW())"
         )
         .bind(chromatine.id())
-        .bind(chromatine.url())
+        .bind(chromatine.path())
         .bind(chromatine.genome_id().as_uuid())
         .execute(&self.pool)
         .await
@@ -318,7 +304,7 @@ impl PostgresChromatineRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Chromatine> {
         let row = sqlx::query(
-            "SELECT id, url, genome_id FROM chromatine WHERE id = $1"
+            "SELECT id, path, genome_id FROM chromatine WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -331,14 +317,14 @@ impl PostgresChromatineRepository {
 
         Chromatine::new(
             row.get("id"),
-            row.get("url"),
+            row.get("path"),
             genome_id,
         ).ok()
     }
 
     pub async fn find_by_genome(&self, genome_id: &GenomeId) -> Vec<Chromatine> {
         let rows = sqlx::query(
-            "SELECT id, url, genome_id FROM chromatine WHERE genome_id = $1"
+            "SELECT id, path, genome_id FROM chromatine WHERE genome_id = $1"
         )
         .bind(genome_id.as_uuid())
         .fetch_all(&self.pool)
@@ -350,7 +336,7 @@ impl PostgresChromatineRepository {
                 let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
                 Chromatine::new(
                     row.get("id"),
-                    row.get("url"),
+                    row.get("path"),
                     genome_id,
                 ).ok()
             }).collect(),
@@ -1047,15 +1033,18 @@ mod tests {
             .unwrap();
 
         let traits = serde_json::json!([
-            {"key": "title", "state": "Dominant"},
-            {"key": "description", "state": "Recessive"}
+            {"key": "title", "dominance": "Dominant"},
+            {"key": "description", "dominance": "Recessive"}
         ]);
+
+        // Use unique kind to avoid conflicts with existing DB data
+        let kind = format!("FEAT-{}", uuid::Uuid::new_v4()).replace("-", "");
 
         sqlx::query(
             "INSERT INTO genotypes (id, kind, name, generation, genome_id, traits, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
         )
         .bind(uuid::Uuid::new_v4())
-        .bind("FEAT")
+        .bind(&kind)
         .bind("Feature Request")
         .bind(1i32)
         .bind(genome_id.as_uuid())
@@ -1065,9 +1054,9 @@ mod tests {
         .unwrap();
 
         let repo = PostgresGenotypeRepository::new(pool);
-        let found = repo.find_by_kind("FEAT").await.unwrap();
+        let found = repo.find_by_kind(&kind).await.unwrap();
 
-        assert_eq!(found.kind(), "FEAT");
+        assert_eq!(found.kind(), kind);
         assert_eq!(found.traits().len(), 2);
     }
 
@@ -1088,25 +1077,22 @@ mod tests {
             .unwrap();
 
         let dna_id = uuid::Uuid::new_v4();
-        let content = "Users must be able to reset their password";
+        let path = "dna/2024/q1/req-001.dna";
 
-        // Create DNA with chromatine refs
-        let mut dna = Dna::new(
+        // Create DNA with path
+        let dna = Dna::new(
             dna_id,
-            content.to_string(),
+            path.to_string(),
             genome_id,
         ).unwrap();
-        dna.add_chromatine_ref("https://docs.example.com/prd.pdf".to_string());
 
         let repo = PostgresDnaRepository::new(pool.clone());
         repo.save(&dna).await.unwrap();
 
         // Find it back
         let found = repo.find_by_id(&dna_id).await.unwrap();
-        assert_eq!(found.content(), content);
+        assert_eq!(found.path(), path);
         assert_eq!(found.genome_id(), &genome_id);
-        assert_eq!(found.chromatine_refs().len(), 1);
-        assert_eq!(found.chromatine_refs()[0], "https://docs.example.com/prd.pdf");
     }
 
     #[tokio::test]
@@ -1126,7 +1112,7 @@ mod tests {
 
         let chromatine = Chromatine::new(
             uuid::Uuid::new_v4(),
-            "https://docs.example.com/prd.pdf".to_string(),
+            "docs/research/prd.pdf".to_string(),
             genome_id,
         ).unwrap();
 
@@ -1134,6 +1120,6 @@ mod tests {
         repo.save(&chromatine).await.unwrap();
 
         let found = repo.find_by_id(chromatine.id()).await.unwrap();
-        assert_eq!(found.url(), "https://docs.example.com/prd.pdf");
+        assert_eq!(found.path(), "docs/research/prd.pdf");
     }
 }
