@@ -1229,6 +1229,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-renderer"
+version = "0.1.0"
+dependencies = [
+ "rnap-chromosome",
+ "rnap-genome",
+ "rnap-organism",
+ "serde",
+ "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-ribosome"
 version = "0.1.0"
 dependencies = [
