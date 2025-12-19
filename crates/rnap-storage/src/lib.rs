@@ -4,14 +4,16 @@ use rnap_dna::Dna;
 use rnap_chromatine::Chromatine;
 use rnap_chromosome::Chromosome;
 use rnap_organism::{Organism, OrganismKind};
-use rnap_quiasma::{Quiasma, RelationshipType, SourceType, TargetType};
+use rnap_channel::{Channel, RelationshipType, SourceType, TargetType};
+use rnap_chiasma::{Chiasma, ViolationType};
 use rnap_histone::Histone;
 use rnap_mrna::Mrna;
 use rnap_trna::Trna;
 use rnap_srna::Srna;
 use rnap_phenome::Phenome;
 use rnap_ribosome::{Ribosome, Rrna};
-use rnap_phenotype::{Phenotype, Protein, ProteinResult};
+use rnap_phenotype::{Protein, ProteinResult};
+use rnap_fold::Fold;
 use rnap_genome::GenomeId;
 use sqlx::Row;
 
@@ -420,21 +422,21 @@ impl PostgresOrganismRepository {
         Self { pool }
     }
 
-    pub async fn save(&self, organism: &Organism) -> Result<(), String> {
-        let kind_str = match organism.kind() {
+    pub async fn save(&self, ligand: &Organism) -> Result<(), String> {
+        let kind_str = match ligand.kind() {
             OrganismKind::Human => "Human",
             OrganismKind::Team => "Team",
             OrganismKind::Service => "Service",
         };
         
         sqlx::query(
-            "INSERT INTO organisms (id, name, kind, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+            "INSERT INTO ligands (id, name, kind, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
         )
-        .bind(organism.id())
-        .bind(organism.name())
+        .bind(ligand.id())
+        .bind(ligand.name())
         .bind(kind_str)
-        .bind(organism.description())
-        .bind(organism.genome_id().as_uuid())
+        .bind(ligand.description())
+        .bind(ligand.genome_id().as_uuid())
         .execute(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -443,7 +445,7 @@ impl PostgresOrganismRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Organism> {
         let row = sqlx::query(
-            "SELECT id, name, kind, description, genome_id FROM organisms WHERE id = $1"
+            "SELECT id, name, kind, description, genome_id FROM ligands WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -470,25 +472,25 @@ impl PostgresOrganismRepository {
     }
 }
 
-pub struct PostgresQuiasmaRepository {
+pub struct PostgresChannelRepository {
     pool: sqlx::PgPool,
 }
 
-impl PostgresQuiasmaRepository {
+impl PostgresChannelRepository {
     pub fn new(pool: sqlx::PgPool) -> Self {
         Self { pool }
     }
 
-    pub async fn save(&self, quiasma: &Quiasma) -> Result<(), String> {
-        let source_type_str = match quiasma.source_type() {
+    pub async fn save(&self, receptor: &Channel) -> Result<(), String> {
+        let source_type_str = match receptor.source_type() {
             SourceType::Chromosome => "Chromosome",
             SourceType::Organism => "Organism",
         };
-        let target_type_str = match quiasma.target_type() {
+        let target_type_str = match receptor.target_type() {
             TargetType::Chromosome => "Chromosome",
             TargetType::Organism => "Organism",
         };
-        let rel_type_str = match quiasma.relationship_type() {
+        let rel_type_str = match receptor.relationship_type() {
             RelationshipType::DeliversTo => "DeliversTo",
             RelationshipType::Uses => "Uses",
             RelationshipType::DependsOn => "DependsOn",
@@ -498,25 +500,25 @@ impl PostgresQuiasmaRepository {
         };
         
         sqlx::query(
-            "INSERT INTO quiasmas (id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())"
+            "INSERT INTO receptors (id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())"
         )
-        .bind(quiasma.id())
-        .bind(quiasma.source_id())
+        .bind(receptor.id())
+        .bind(receptor.source_id())
         .bind(source_type_str)
-        .bind(quiasma.target_id())
+        .bind(receptor.target_id())
         .bind(target_type_str)
         .bind(rel_type_str)
-        .bind(quiasma.description())
-        .bind(quiasma.genome_id().as_uuid())
+        .bind(receptor.description())
+        .bind(receptor.genome_id().as_uuid())
         .execute(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Quiasma> {
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Channel> {
         let row = sqlx::query(
-            "SELECT id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id FROM quiasmas WHERE id = $1"
+            "SELECT id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id FROM receptors WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -549,7 +551,7 @@ impl PostgresQuiasmaRepository {
             _ => return None,
         };
 
-        Quiasma::new(
+        Channel::new(
             row.get("id"),
             row.get("source_id"),
             source_type,
@@ -903,34 +905,34 @@ impl PostgresRrnaRepository {
     }
 }
 
-pub struct PostgresPhenotypeRepository {
+pub struct PostgresFoldRepository {
     pool: sqlx::PgPool,
 }
 
-impl PostgresPhenotypeRepository {
+impl PostgresFoldRepository {
     pub fn new(pool: sqlx::PgPool) -> Self {
         Self { pool }
     }
 
-    pub async fn save(&self, phenotype: &Phenotype) -> Result<(), String> {
+    pub async fn save(&self, fold: &Fold) -> Result<(), String> {
         sqlx::query(
-            "INSERT INTO phenotypes (id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
+            "INSERT INTO folds (id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
         )
-        .bind(phenotype.id())
-        .bind(phenotype.mrna_id())
-        .bind(phenotype.commit_sha())
-        .bind(phenotype.root_git_directory())
-        .bind(phenotype.branch())
-        .bind(phenotype.remote())
+        .bind(fold.id())
+        .bind(fold.mrna_id())
+        .bind(fold.commit_sha())
+        .bind(fold.root_git_directory())
+        .bind(fold.branch())
+        .bind(fold.remote())
         .execute(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Phenotype> {
+    pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Fold> {
         let row = sqlx::query(
-            "SELECT id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at FROM phenotypes WHERE id = $1"
+            "SELECT id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at FROM folds WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -939,7 +941,7 @@ impl PostgresPhenotypeRepository {
 
         let row = row?;
 
-        Phenotype::new(
+        Fold::new(
             row.get("id"),
             row.get("mrna_id"),
             row.get("commit_sha"),
@@ -968,7 +970,7 @@ impl PostgresProteinRepository {
         };
         
         sqlx::query(
-            "INSERT INTO proteins (id, phenotype_id, phenome_id, gene_id, result, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
+            "INSERT INTO proteins (id, fold_id, phenome_id, gene_id, result, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
         )
         .bind(protein.id())
         .bind(protein.phenotype_id())
@@ -984,7 +986,7 @@ impl PostgresProteinRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Protein> {
         let row = sqlx::query(
-            "SELECT id, phenotype_id, phenome_id, gene_id, result, genome_id, created_at FROM proteins WHERE id = $1"
+            "SELECT id, fold_id, phenome_id, gene_id, result, genome_id, created_at FROM proteins WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -1002,7 +1004,7 @@ impl PostgresProteinRepository {
 
         Some(Protein::new(
             row.get("id"),
-            row.get("phenotype_id"),
+            row.get("fold_id"),
             row.get("phenome_id"),
             row.get("gene_id"),
             result,

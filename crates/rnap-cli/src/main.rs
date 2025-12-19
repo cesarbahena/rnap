@@ -2,13 +2,13 @@ use clap::Parser;
 use rnap_cli::Cli;
 use rnap_dna::Dna;
 use rnap_chromosome::Chromosome;
-use rnap_quiasma::{Quiasma, RelationshipType, SourceType, TargetType};
+use rnap_channel::{Channel, RelationshipType, SourceType, TargetType};
 use rnap_gene::{By, Gene, GeneService, Mutation};
 use rnap_genome::GenomeId;
 use rnap_storage::{
     PostgresDnaRepository,
     PostgresChromosomeRepository,
-    PostgresQuiasmaRepository,
+    PostgresChannelRepository,
     PostgresGenotypeRepository,
     PostgresGeneRepository,
 };
@@ -30,7 +30,7 @@ fn main() {
     let gene_repo = PostgresGeneRepository::new(pool.clone());
     let dna_repo = PostgresDnaRepository::new(pool.clone());
     let chromosome_repo = PostgresChromosomeRepository::new(pool.clone());
-    let quiasma_repo = PostgresQuiasmaRepository::new(pool.clone());
+    let chiasma_repo = PostgresChannelRepository::new(pool.clone());
 
     // Default genome ID (seeded in DB)
     let default_genome_id = GenomeId::from(
@@ -256,11 +256,11 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Cli::Quiasma { subcommand } => {
+        Cli::Channel { subcommand } => {
             let result: Result<(), String> = rt.block_on(async {
                 match subcommand {
-                    rnap_cli::QuiasmaSubcommand::Create { source, target, rel_type, description } => {
-                        // For demo, we'll create quiasma with placeholder IDs
+                    rnap_cli::ChannelSubcommand::Create { source, target, rel_type, description } => {
+                        // For demo, we'll create chiasma with placeholder IDs
                         // In a real app, we'd look up chromosome IDs by name
                         let source_id = uuid::Uuid::new_v4();
                         let target_id = uuid::Uuid::new_v4();
@@ -275,7 +275,7 @@ fn main() {
                             _ => return Err(format!("Unknown relationship type: {}", rel_type)),
                         };
                         
-                        let quiasma = Quiasma::new(
+                        let chiasma = Channel::new(
                             uuid::Uuid::new_v4(),
                             source_id,
                             SourceType::Chromosome,
@@ -286,17 +286,17 @@ fn main() {
                             default_genome_id,
                         ).map_err(|e| e.to_string())?;
                         
-                        quiasma_repo.save(&quiasma).await?;
+                        chiasma_repo.save(&chiasma).await?;
                         
-                        println!("Created Quiasma (Relationship): {}", quiasma.id());
+                        println!("Created Channel (Relationship): {}", chiasma.id());
                         println!("Type: {} -> {}", source, target);
                         println!("Relationship: {}", rel_type);
                         Ok(())
                     }
-                    rnap_cli::QuiasmaSubcommand::List => {
+                    rnap_cli::ChannelSubcommand::List => {
                         // For now, just show a message - would need find_all method
                         println!("Relationships:");
-                        println!("  (use quiasma create to add relationships)");
+                        println!("  (use chiasma create to add relationships)");
                         Ok(())
                     }
                 }

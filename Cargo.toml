@@ -9,7 +9,8 @@ members = [
     "crates/rnap-dna",
     "crates/rnap-histone",
     "crates/rnap-organism",
-    "crates/rnap-quiasma",
+    "crates/rnap-channel",
+    "crates/rnap-chiasma",
     "crates/rnap-storage",
     "crates/rnap-cli",
     "crates/rnap-locus",
@@ -19,5 +20,6 @@ members = [
     "crates/rnap-ribosome",
     "crates/rnap-phenome",
     "crates/rnap-renderer",
+    "crates/rnap-fold",
 ]
 resolver = "2"

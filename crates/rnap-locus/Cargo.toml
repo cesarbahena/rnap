@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 rnap-genome = { path = "../rnap-genome" }
 rnap-chromosome = { path = "../rnap-chromosome" }
-rnap-quiasma = { path = "../rnap-quiasma" }
+rnap-chiasma = { path = "../rnap-chiasma" }
 rnap-organism = { path = "../rnap-organism" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"

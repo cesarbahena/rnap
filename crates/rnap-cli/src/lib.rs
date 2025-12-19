@@ -40,10 +40,10 @@ pub enum Cli {
         #[command(subcommand)]
         subcommand: ChromosomeSubcommand,
     },
-    /// Manage relationships between domain nodes (Quiasmas)
-    Quiasma {
+    /// Manage relationships between domain nodes (Channels)
+    Channel {
         #[command(subcommand)]
-        subcommand: QuiasmaSubcommand,
+        subcommand: ChannelSubcommand,
     },
 }
 
@@ -72,7 +72,7 @@ pub enum ChromosomeSubcommand {
 }
 
 #[derive(clap::Subcommand)]
-pub enum QuiasmaSubcommand {
+pub enum ChannelSubcommand {
     /// Create a new relationship
     Create {
         #[arg(help = "Source chromosome name")]

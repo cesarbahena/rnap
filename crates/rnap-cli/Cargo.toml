@@ -23,4 +23,5 @@ rnap-chromosome = { path = "../rnap-chromosome" }
 rnap-phenotype = { path = "../rnap-phenotype" }
 rnap-storage = { path = "../rnap-storage" }
 rnap-dna = { path = "../rnap-dna" }
-rnap-quiasma = { path = "../rnap-quiasma" }
+rnap-chiasma = { path = "../rnap-chiasma" }
+rnap-channel = { path = "../rnap-channel" }

@@ -1,13 +1,9 @@
 [package]
-name = "rnap-renderer"
+name = "rnap-fold"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rnap-genome = { path = "../rnap-genome" }
-rnap-organism = { path = "../rnap-organism" }
-rnap-chromosome = { path = "../rnap-chromosome" }
-rnap-channel = { path = "../rnap-channel" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 uuid = { version = "1", features = ["v4", "serde"] }

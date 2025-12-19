@@ -27,13 +27,13 @@ impl ViewType {
 
 /// The scope of a Locus — which entities are included in the view.
 ///
-/// Each field is a set of UUIDs referencing Chromosomes, Organisms,
-/// and Quiasmas respectively. Duplicates are silently ignored.
+/// Each field is a set of UUIDs referencing Chromosomes, Ligands,
+/// and Channels respectively. Duplicates are silently ignored.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Scope {
     chromosome_ids: Vec<uuid::Uuid>,
-    organism_ids: Vec<uuid::Uuid>,
-    quiasma_ids: Vec<uuid::Uuid>,
+    ligand_ids: Vec<uuid::Uuid>,
+    chiasma_ids: Vec<uuid::Uuid>,
 }
 
 impl Scope {
@@ -49,17 +49,17 @@ impl Scope {
         }
     }
 
-    /// Adds an organism ID to the scope. Ignores duplicates.
-    pub fn add_organism(&mut self, id: uuid::Uuid) {
-        if !self.organism_ids.contains(&id) {
-            self.organism_ids.push(id);
+    /// Adds a ligand ID to the scope. Ignores duplicates.
+    pub fn add_ligand(&mut self, id: uuid::Uuid) {
+        if !self.ligand_ids.contains(&id) {
+            self.ligand_ids.push(id);
         }
     }
 
-    /// Adds a quiasma ID to the scope. Ignores duplicates.
-    pub fn add_quiasma(&mut self, id: uuid::Uuid) {
-        if !self.quiasma_ids.contains(&id) {
-            self.quiasma_ids.push(id);
+    /// Adds a chiasma ID to the scope. Ignores duplicates.
+    pub fn add_chiasma(&mut self, id: uuid::Uuid) {
+        if !self.chiasma_ids.contains(&id) {
+            self.chiasma_ids.push(id);
         }
     }
 
@@ -68,20 +68,20 @@ impl Scope {
         &self.chromosome_ids
     }
 
-    /// Returns the organism IDs in this scope.
-    pub fn organism_ids(&self) -> &[uuid::Uuid] {
-        &self.organism_ids
+    /// Returns the ligand IDs in this scope.
+    pub fn ligand_ids(&self) -> &[uuid::Uuid] {
+        &self.ligand_ids
     }
 
-    /// Returns the quiasma IDs in this scope.
-    pub fn quiasma_ids(&self) -> &[uuid::Uuid] {
-        &self.quiasma_ids
+    /// Returns the chiasma IDs in this scope.
+    pub fn chiasma_ids(&self) -> &[uuid::Uuid] {
+        &self.chiasma_ids
     }
 }
 
 /// A declarative view of the domain graph.
 ///
-/// A Locus selects a subset of Chromosomes, Organisms, and Quiasmas
+/// A Locus selects a subset of Chromosomes, Ligands, and Channels
 /// from a specific perspective, renderable as C4-style views and
 /// exportable to Structurizr DSL.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -139,14 +139,14 @@ impl Locus {
         self.scope.add_chromosome(id);
     }
 
-    /// Adds an organism to the scope. Returns &mut self for chaining.
-    pub fn add_organism_to_scope(&mut self, id: uuid::Uuid) {
-        self.scope.add_organism(id);
+    /// Adds a ligand to the scope. Returns &mut self for chaining.
+    pub fn add_ligand_to_scope(&mut self, id: uuid::Uuid) {
+        self.scope.add_ligand(id);
     }
 
-    /// Adds a quiasma to the scope. Returns &mut self for chaining.
-    pub fn add_quiasma_to_scope(&mut self, id: uuid::Uuid) {
-        self.scope.add_quiasma(id);
+    /// Adds a chiasma to the scope. Returns &mut self for chaining.
+    pub fn add_chiasma_to_scope(&mut self, id: uuid::Uuid) {
+        self.scope.add_chiasma(id);
     }
 
     pub fn genome_id(&self) -> &GenomeId {
@@ -239,21 +239,21 @@ mod tests {
 
         // Scope starts empty
         assert!(locus.scope().chromosome_ids().is_empty());
-        assert!(locus.scope().organism_ids().is_empty());
-        assert!(locus.scope().quiasma_ids().is_empty());
+        assert!(locus.scope().ligand_ids().is_empty());
+        assert!(locus.scope().chiasma_ids().is_empty());
 
         // Add entities
         let chrom_id = uuid::Uuid::new_v4();
         let org_id = uuid::Uuid::new_v4();
-        let quiasma_id = uuid::Uuid::new_v4();
+        let chiasma_id = uuid::Uuid::new_v4();
 
         locus.add_chromosome_to_scope(chrom_id);
-        locus.add_organism_to_scope(org_id);
-        locus.add_quiasma_to_scope(quiasma_id);
+        locus.add_ligand_to_scope(org_id);
+        locus.add_chiasma_to_scope(chiasma_id);
 
         assert_eq!(locus.scope().chromosome_ids(), &[chrom_id]);
-        assert_eq!(locus.scope().organism_ids(), &[org_id]);
-        assert_eq!(locus.scope().quiasma_ids(), &[quiasma_id]);
+        assert_eq!(locus.scope().ligand_ids(), &[org_id]);
+        assert_eq!(locus.scope().chiasma_ids(), &[chiasma_id]);
     }
 
     #[test]

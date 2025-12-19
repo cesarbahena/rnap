@@ -1067,6 +1067,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-channel"
+version = "0.1.0"
+dependencies = [
+ "rnap-genome",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
+name = "rnap-chiasma"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rnap-genome",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-chromatine"
 version = "0.1.0"
 dependencies = [
@@ -1093,13 +1114,14 @@ dependencies = [
  "chrono",
  "clap",
  "dotenvy",
+ "rnap-channel",
+ "rnap-chiasma",
  "rnap-chromosome",
  "rnap-dna",
  "rnap-gene",
  "rnap-genome",
  "rnap-genotype",
  "rnap-phenotype",
- "rnap-quiasma",
  "rnap-storage",
  "serde",
  "serde_json",
@@ -1115,6 +1137,16 @@ dependencies = [
  "rnap-genome",
  "serde",
  "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
+name = "rnap-fold"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "thiserror 1.0.69",
  "uuid",
 ]
 
@@ -1167,10 +1199,10 @@ dependencies = [
 name = "rnap-locus"
 version = "0.1.0"
 dependencies = [
+ "rnap-chiasma",
  "rnap-chromosome",
  "rnap-genome",
  "rnap-organism",
- "rnap-quiasma",
  "serde",
  "thiserror 2.0.18",
  "uuid",
@@ -1193,7 +1225,7 @@ version = "0.1.0"
 dependencies = [
  "rnap-genome",
  "serde",
- "thiserror 2.0.18",
+ "thiserror 1.0.69",
  "uuid",
 ]
 
@@ -1214,16 +1246,6 @@ dependencies = [
  "chrono",
  "rnap-genome",
  "serde",
- "thiserror 2.0.18",
- "uuid",
-]
-
-[[package]]
-name = "rnap-quiasma"
-version = "0.1.0"
-dependencies = [
- "rnap-genome",
- "serde",
  "thiserror 1.0.69",
  "uuid",
 ]
@@ -1232,11 +1254,13 @@ dependencies = [
 name = "rnap-renderer"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "rnap-channel",
  "rnap-chromosome",
  "rnap-genome",
  "rnap-organism",
  "serde",
- "thiserror 2.0.18",
+ "thiserror 1.0.69",
  "uuid",
 ]
 
@@ -1268,9 +1292,12 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "dotenvy",
+ "rnap-channel",
+ "rnap-chiasma",
  "rnap-chromatine",
  "rnap-chromosome",
  "rnap-dna",
+ "rnap-fold",
  "rnap-gene",
  "rnap-genome",
  "rnap-genotype",
@@ -1279,7 +1306,6 @@ dependencies = [
  "rnap-organism",
  "rnap-phenome",
  "rnap-phenotype",
- "rnap-quiasma",
  "rnap-ribosome",
  "rnap-srna",
  "rnap-trna",

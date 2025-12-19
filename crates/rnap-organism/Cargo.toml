@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 rnap-genome = { path = "../rnap-genome" }
-uuid = { version = "1", features = ["v4", "serde"] }
 serde = { version = "1", features = ["derive"] }
-thiserror = "2"
+thiserror = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
