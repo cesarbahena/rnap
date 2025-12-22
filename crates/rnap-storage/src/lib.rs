@@ -500,7 +500,7 @@ impl PostgresChannelRepository {
         };
         
         sqlx::query(
-            "INSERT INTO receptors (id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())"
+            "INSERT INTO quiasmas (id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())"
         )
         .bind(receptor.id())
         .bind(receptor.source_id())
@@ -518,7 +518,7 @@ impl PostgresChannelRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Channel> {
         let row = sqlx::query(
-            "SELECT id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id FROM receptors WHERE id = $1"
+            "SELECT id, source_id, source_type, target_id, target_type, relationship_type, description, genome_id FROM quiasmas WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
