@@ -66,6 +66,8 @@ pub enum ChromosomeSubcommand {
         name: String,
         #[arg(help = "Description (optional)")]
         description: Option<String>,
+        #[arg(long, help = "The organelle ID this chromosome belongs to")]
+        organelle_id: Option<uuid::Uuid>,
     },
     /// List all chromosomes
     List,

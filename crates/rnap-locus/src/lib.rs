@@ -27,12 +27,14 @@ impl ViewType {
 
 /// The scope of a Locus — which entities are included in the view.
 ///
-/// Each field is a set of UUIDs referencing Chromosomes, Ligands,
-/// and Channels respectively. Duplicates are silently ignored.
+/// Each field is a set of UUIDs referencing Cells, Organelles, Chromosomes,
+/// Organisms, and Chiasmas respectively. Duplicates are silently ignored.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Scope {
+    cell_ids: Vec<uuid::Uuid>,
+    organelle_ids: Vec<uuid::Uuid>,
     chromosome_ids: Vec<uuid::Uuid>,
-    ligand_ids: Vec<uuid::Uuid>,
+    organism_ids: Vec<uuid::Uuid>,
     chiasma_ids: Vec<uuid::Uuid>,
 }
 
@@ -42,6 +44,20 @@ impl Scope {
         Self::default()
     }
 
+    /// Adds a cell ID to the scope. Ignores duplicates.
+    pub fn add_cell(&mut self, id: uuid::Uuid) {
+        if !self.cell_ids.contains(&id) {
+            self.cell_ids.push(id);
+        }
+    }
+
+    /// Adds an organelle ID to the scope. Ignores duplicates.
+    pub fn add_organelle(&mut self, id: uuid::Uuid) {
+        if !self.organelle_ids.contains(&id) {
+            self.organelle_ids.push(id);
+        }
+    }
+
     /// Adds a chromosome ID to the scope. Ignores duplicates.
     pub fn add_chromosome(&mut self, id: uuid::Uuid) {
         if !self.chromosome_ids.contains(&id) {
@@ -49,10 +65,10 @@ impl Scope {
         }
     }
 
-    /// Adds a ligand ID to the scope. Ignores duplicates.
-    pub fn add_ligand(&mut self, id: uuid::Uuid) {
-        if !self.ligand_ids.contains(&id) {
-            self.ligand_ids.push(id);
+    /// Adds an organism ID to the scope. Ignores duplicates.
+    pub fn add_organism(&mut self, id: uuid::Uuid) {
+        if !self.organism_ids.contains(&id) {
+            self.organism_ids.push(id);
         }
     }
 
@@ -63,14 +79,24 @@ impl Scope {
         }
     }
 
+    /// Returns the cell IDs in this scope.
+    pub fn cell_ids(&self) -> &[uuid::Uuid] {
+        &self.cell_ids
+    }
+
+    /// Returns the organelle IDs in this scope.
+    pub fn organelle_ids(&self) -> &[uuid::Uuid] {
+        &self.organelle_ids
+    }
+
     /// Returns the chromosome IDs in this scope.
     pub fn chromosome_ids(&self) -> &[uuid::Uuid] {
         &self.chromosome_ids
     }
 
-    /// Returns the ligand IDs in this scope.
-    pub fn ligand_ids(&self) -> &[uuid::Uuid] {
-        &self.ligand_ids
+    /// Returns the organism IDs in this scope.
+    pub fn organism_ids(&self) -> &[uuid::Uuid] {
+        &self.organism_ids
     }
 
     /// Returns the chiasma IDs in this scope.
@@ -134,14 +160,24 @@ impl Locus {
         &self.scope
     }
 
+    /// Adds a cell to the scope. Returns &mut self for chaining.
+    pub fn add_cell_to_scope(&mut self, id: uuid::Uuid) {
+        self.scope.add_cell(id);
+    }
+
+    /// Adds an organelle to the scope. Returns &mut self for chaining.
+    pub fn add_organelle_to_scope(&mut self, id: uuid::Uuid) {
+        self.scope.add_organelle(id);
+    }
+
     /// Adds a chromosome to the scope. Returns &mut self for chaining.
     pub fn add_chromosome_to_scope(&mut self, id: uuid::Uuid) {
         self.scope.add_chromosome(id);
     }
 
-    /// Adds a ligand to the scope. Returns &mut self for chaining.
-    pub fn add_ligand_to_scope(&mut self, id: uuid::Uuid) {
-        self.scope.add_ligand(id);
+    /// Adds an organism to the scope. Returns &mut self for chaining.
+    pub fn add_organism_to_scope(&mut self, id: uuid::Uuid) {
+        self.scope.add_organism(id);
     }
 
     /// Adds a chiasma to the scope. Returns &mut self for chaining.
@@ -238,21 +274,29 @@ mod tests {
         ).unwrap();
 
         // Scope starts empty
+        assert!(locus.scope().cell_ids().is_empty());
+        assert!(locus.scope().organelle_ids().is_empty());
         assert!(locus.scope().chromosome_ids().is_empty());
-        assert!(locus.scope().ligand_ids().is_empty());
+        assert!(locus.scope().organism_ids().is_empty());
         assert!(locus.scope().chiasma_ids().is_empty());
 
         // Add entities
+        let cell_id = uuid::Uuid::new_v4();
+        let organelle_id = uuid::Uuid::new_v4();
         let chrom_id = uuid::Uuid::new_v4();
         let org_id = uuid::Uuid::new_v4();
         let chiasma_id = uuid::Uuid::new_v4();
 
+        locus.add_cell_to_scope(cell_id);
+        locus.add_organelle_to_scope(organelle_id);
         locus.add_chromosome_to_scope(chrom_id);
-        locus.add_ligand_to_scope(org_id);
+        locus.add_organism_to_scope(org_id);
         locus.add_chiasma_to_scope(chiasma_id);
 
+        assert_eq!(locus.scope().cell_ids(), &[cell_id]);
+        assert_eq!(locus.scope().organelle_ids(), &[organelle_id]);
         assert_eq!(locus.scope().chromosome_ids(), &[chrom_id]);
-        assert_eq!(locus.scope().ligand_ids(), &[org_id]);
+        assert_eq!(locus.scope().organism_ids(), &[org_id]);
         assert_eq!(locus.scope().chiasma_ids(), &[chiasma_id]);
     }
 
@@ -266,11 +310,11 @@ mod tests {
             genome_id,
         ).unwrap();
 
-        let chrom_id = uuid::Uuid::new_v4();
-        locus.add_chromosome_to_scope(chrom_id);
-        locus.add_chromosome_to_scope(chrom_id); // duplicate
+        let cell_id = uuid::Uuid::new_v4();
+        locus.add_cell_to_scope(cell_id);
+        locus.add_cell_to_scope(cell_id); // duplicate
 
-        assert_eq!(locus.scope().chromosome_ids().len(), 1);
+        assert_eq!(locus.scope().cell_ids().len(), 1);
     }
 
     #[test]
@@ -284,14 +328,17 @@ mod tests {
             genome_id,
         ).unwrap();
 
-        let chrom_id = uuid::Uuid::new_v4();
-        locus.add_chromosome_to_scope(chrom_id);
+        let cell_id = uuid::Uuid::new_v4();
+        let organelle_id = uuid::Uuid::new_v4();
+        locus.add_cell_to_scope(cell_id);
+        locus.add_organelle_to_scope(organelle_id);
 
         let mut repo = InMemoryLocusRepository::new();
         repo.save(locus);
 
         let found = repo.find_by_id(&id).unwrap();
         assert_eq!(found.name(), "Context View");
-        assert_eq!(found.scope().chromosome_ids(), &[chrom_id]);
+        assert_eq!(found.scope().cell_ids(), &[cell_id]);
+        assert_eq!(found.scope().organelle_ids(), &[organelle_id]);
     }
 }

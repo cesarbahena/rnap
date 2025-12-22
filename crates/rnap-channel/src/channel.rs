@@ -1,17 +1,27 @@
 use rnap_genome::GenomeId;
 
 /// The type of node at the source end of a channel edge.
+///
+/// Maps to C4 model levels:
+/// - Organism = Person (external actors)
+/// - Cell = Software System (top-level owned systems)
+/// - Organelle = Container (runtime units inside a Cell)
+/// - Chromosome = Component (internal modules inside an Organelle)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SourceType {
-    Chromosome,
     Organism,
+    Cell,
+    Organelle,
+    Chromosome,
 }
 
 /// The type of node at the target end of a channel edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TargetType {
-    Chromosome,
     Organism,
+    Cell,
+    Organelle,
+    Chromosome,
 }
 
 /// The kind of relationship between two domain nodes.
@@ -110,13 +120,55 @@ impl ChannelRepository for InMemoryChannelRepository {
     
     #[test] fn channel_can_be_created() {
         let gid = genome_id();
-        let q = Channel::new(uuid::Uuid::new_v4(), uuid::Uuid::new_v4(), SourceType::Chromosome, uuid::Uuid::new_v4(), TargetType::Organism, RelationshipType::Uses, "uses".to_string(), gid).unwrap();
-        assert_eq!(q.target_type(), &TargetType::Organism);
+        let ch = Channel::new(
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            SourceType::Organism,
+            uuid::Uuid::new_v4(),
+            TargetType::Cell,
+            RelationshipType::Uses,
+            "uses".to_string(),
+            gid
+        ).unwrap();
+        assert_eq!(ch.target_type(), &TargetType::Cell);
     }
+    
+    #[test] fn channel_organelle_to_organelle() {
+        let gid = genome_id();
+        let ch = Channel::new(
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            SourceType::Organelle,
+            uuid::Uuid::new_v4(),
+            TargetType::Organelle,
+            RelationshipType::Calls,
+            "API calls database".to_string(),
+            gid
+        ).unwrap();
+        assert_eq!(ch.source_type(), &SourceType::Organelle);
+        assert_eq!(ch.target_type(), &TargetType::Organelle);
+    }
+    
+    #[test] fn channel_cell_to_cell() {
+        let gid = genome_id();
+        let ch = Channel::new(
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            SourceType::Cell,
+            uuid::Uuid::new_v4(),
+            TargetType::Cell,
+            RelationshipType::DependsOn,
+            "auth depends on payment".to_string(),
+            gid
+        ).unwrap();
+        assert_eq!(ch.source_type(), &SourceType::Cell);
+        assert_eq!(ch.target_type(), &TargetType::Cell);
+    }
+    
     #[test] fn channel_rejects_self_loop() {
         let gid = genome_id();
         let id = uuid::Uuid::new_v4();
-        let result = Channel::new(id, id, SourceType::Chromosome, id, TargetType::Chromosome, RelationshipType::DependsOn, "self".to_string(), gid);
+        let result = Channel::new(id, id, SourceType::Cell, id, TargetType::Cell, RelationshipType::DependsOn, "self".to_string(), gid);
         assert_eq!(result, Err(ChannelError::SameSourceAndTarget));
     }
 }

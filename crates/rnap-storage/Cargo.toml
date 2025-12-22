@@ -13,6 +13,8 @@ rnap-dna = { path = "../rnap-dna" }
 rnap-chromatine = { path = "../rnap-chromatine" }
 rnap-organism = { path = "../rnap-organism" }
 rnap-channel = { path = "../rnap-channel" }
+rnap-cell = { path = "../rnap-cell" }
+rnap-organelle = { path = "../rnap-organelle" }
 rnap-chiasma = { path = "../rnap-chiasma" }
 rnap-histone = { path = "../rnap-histone" }
 rnap-mrna = { path = "../rnap-mrna" }

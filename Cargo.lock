@@ -1067,6 +1067,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-cell"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rnap-genome",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-channel"
 version = "0.1.0"
 dependencies = [
@@ -1220,6 +1231,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-organelle"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rnap-genome",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-organism"
 version = "0.1.0"
 dependencies = [
@@ -1292,6 +1314,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "dotenvy",
+ "rnap-cell",
  "rnap-channel",
  "rnap-chiasma",
  "rnap-chromatine",
@@ -1303,6 +1326,7 @@ dependencies = [
  "rnap-genotype",
  "rnap-histone",
  "rnap-mrna",
+ "rnap-organelle",
  "rnap-organism",
  "rnap-phenome",
  "rnap-phenotype",

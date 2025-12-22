@@ -214,12 +214,14 @@ fn main() {
         Cli::Chromosome { subcommand } => {
             let result: Result<(), String> = rt.block_on(async {
                 match subcommand {
-                    rnap_cli::ChromosomeSubcommand::Create { name, description } => {
+                    rnap_cli::ChromosomeSubcommand::Create { name, description, organelle_id } => {
+                        let organelle_uuid = organelle_id.ok_or("organelle_id is required")?;
                         let desc = description.unwrap_or_default();
                         let chromosome = Chromosome::new(
                             uuid::Uuid::new_v4(),
                             name.clone(),
                             desc.clone(),
+                            organelle_uuid,
                             default_genome_id,
                         ).map_err(|e| e.to_string())?;
                         
@@ -227,6 +229,7 @@ fn main() {
                         
                         println!("Created Chromosome: {}", chromosome.id());
                         println!("Name: {}", name);
+                        println!("Organelle: {}", organelle_uuid);
                         if !desc.is_empty() {
                             println!("Description: {}", desc);
                         }

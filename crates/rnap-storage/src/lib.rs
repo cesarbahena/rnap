@@ -5,6 +5,8 @@ use rnap_chromatine::Chromatine;
 use rnap_chromosome::Chromosome;
 use rnap_organism::{Organism, OrganismKind};
 use rnap_channel::{Channel, RelationshipType, SourceType, TargetType};
+use rnap_cell::Cell;
+use rnap_organelle::Organelle;
 use rnap_chiasma::{Chiasma, ViolationType};
 use rnap_histone::Histone;
 use rnap_mrna::Mrna;
@@ -358,11 +360,12 @@ impl PostgresChromosomeRepository {
 
     pub async fn save(&self, chromosome: &Chromosome) -> Result<(), String> {
         sqlx::query(
-            "INSERT INTO chromosomes (id, name, description, genome_id, created_at) VALUES ($1, $2, $3, $4, NOW())"
+            "INSERT INTO chromosomes (id, name, description, organelle_id, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
         )
         .bind(chromosome.id())
         .bind(chromosome.name())
         .bind(chromosome.description())
+        .bind(chromosome.organelle_id())
         .bind(chromosome.genome_id().as_uuid())
         .execute(&self.pool)
         .await
@@ -372,7 +375,7 @@ impl PostgresChromosomeRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Chromosome> {
         let row = sqlx::query(
-            "SELECT id, name, description, genome_id FROM chromosomes WHERE id = $1"
+            "SELECT id, name, description, organelle_id, genome_id FROM chromosomes WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -386,13 +389,14 @@ impl PostgresChromosomeRepository {
             row.get("id"),
             row.get("name"),
             row.get("description"),
+            row.get("organelle_id"),
             genome_id,
         ).ok()
     }
 
     pub async fn find_by_genome(&self, genome_id: &GenomeId) -> Vec<Chromosome> {
         let rows = match sqlx::query(
-            "SELECT id, name, description, genome_id FROM chromosomes WHERE genome_id = $1"
+            "SELECT id, name, description, organelle_id, genome_id FROM chromosomes WHERE genome_id = $1"
         )
         .bind(genome_id.as_uuid())
         .fetch_all(&self.pool)
@@ -407,6 +411,7 @@ impl PostgresChromosomeRepository {
                 row.get("id"),
                 row.get("name"),
                 row.get("description"),
+                row.get("organelle_id"),
                 genome_id,
             ).ok()
         }).collect()
@@ -485,10 +490,14 @@ impl PostgresChannelRepository {
         let source_type_str = match receptor.source_type() {
             SourceType::Chromosome => "Chromosome",
             SourceType::Organism => "Organism",
+            SourceType::Cell => "Cell",
+            SourceType::Organelle => "Organelle",
         };
         let target_type_str = match receptor.target_type() {
             TargetType::Chromosome => "Chromosome",
             TargetType::Organism => "Organism",
+            TargetType::Cell => "Cell",
+            TargetType::Organelle => "Organelle",
         };
         let rel_type_str = match receptor.relationship_type() {
             RelationshipType::DeliversTo => "DeliversTo",
@@ -534,11 +543,15 @@ impl PostgresChannelRepository {
         let source_type = match source_type_str.as_str() {
             "Chromosome" => SourceType::Chromosome,
             "Organism" => SourceType::Organism,
+            "Cell" => SourceType::Cell,
+            "Organelle" => SourceType::Organelle,
             _ => return None,
         };
         let target_type = match target_type_str.as_str() {
             "Chromosome" => TargetType::Chromosome,
             "Organism" => TargetType::Organism,
+            "Cell" => TargetType::Cell,
+            "Organelle" => TargetType::Organelle,
             _ => return None,
         };
         let relationship_type = match rel_type_str.as_str() {
