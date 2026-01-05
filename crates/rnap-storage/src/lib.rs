@@ -384,12 +384,15 @@ impl PostgresChromosomeRepository {
 
         let row = row?;
         let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+        
+        // Handle nullable organelle_id
+        let organelle_id: uuid::Uuid = row.try_get("organelle_id").ok()?;
 
         Chromosome::new(
             row.get("id"),
             row.get("name"),
             row.get("description"),
-            row.get("organelle_id"),
+            organelle_id,
             genome_id,
         ).ok()
     }
@@ -407,11 +410,16 @@ impl PostgresChromosomeRepository {
 
         rows.iter().filter_map(|row| {
             let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
+            // Handle nullable organelle_id - skip rows with NULL
+            let organelle_id: uuid::Uuid = match row.try_get("organelle_id") {
+                Ok(id) => id,
+                Err(_) => return None,
+            };
             Chromosome::new(
                 row.get("id"),
                 row.get("name"),
                 row.get("description"),
-                row.get("organelle_id"),
+                organelle_id,
                 genome_id,
             ).ok()
         }).collect()
