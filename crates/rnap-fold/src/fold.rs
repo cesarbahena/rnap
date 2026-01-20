@@ -1,48 +1,33 @@
 use chrono::{DateTime, Utc};
 
-/// An implementation snapshot — captures WHAT was built at a point in time.
-///
-/// Links what was implemented (git state) to what was intended (mRNA).
-/// 
-/// Note: This was previously called "Phenotype" but was renamed to "Fold"
-/// to make room for the rename: Phenome → Phenotype.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Fold {
     id: uuid::Uuid,
-    mrna_id: uuid::Uuid,
-    commit_sha: String,
-    root_git_directory: String,
-    branch: String,
-    remote: String,
+    trna_id: uuid::Uuid,
+    commit: String,
     created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum FoldError {
-    #[error("commit SHA must not be empty")]
-    EmptyCommitSha,
+    #[error("commit must not be empty")]
+    EmptyCommit,
 }
 
 impl Fold {
     pub fn new(
         id: uuid::Uuid,
-        mrna_id: uuid::Uuid,
-        commit_sha: String,
-        root_git_directory: String,
-        branch: String,
-        remote: String,
+        trna_id: uuid::Uuid,
+        commit: String,
         created_at: DateTime<Utc>,
     ) -> Result<Self, FoldError> {
-        if commit_sha.trim().is_empty() {
-            return Err(FoldError::EmptyCommitSha);
+        if commit.trim().is_empty() {
+            return Err(FoldError::EmptyCommit);
         }
         Ok(Self {
             id,
-            mrna_id,
-            commit_sha,
-            root_git_directory,
-            branch,
-            remote,
+            trna_id,
+            commit,
             created_at,
         })
     }
@@ -51,24 +36,12 @@ impl Fold {
         &self.id
     }
 
-    pub fn mrna_id(&self) -> &uuid::Uuid {
-        &self.mrna_id
+    pub fn trna_id(&self) -> &uuid::Uuid {
+        &self.trna_id
     }
 
-    pub fn commit_sha(&self) -> &str {
-        &self.commit_sha
-    }
-
-    pub fn root_git_directory(&self) -> &str {
-        &self.root_git_directory
-    }
-
-    pub fn branch(&self) -> &str {
-        &self.branch
-    }
-
-    pub fn remote(&self) -> &str {
-        &self.remote
+    pub fn commit(&self) -> &str {
+        &self.commit
     }
 
     pub fn created_at(&self) -> &DateTime<Utc> {
@@ -79,6 +52,7 @@ impl Fold {
 pub trait FoldRepository {
     fn save(&mut self, fold: Fold);
     fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Fold>;
+    fn find_by_trna_id(&self, trna_id: &uuid::Uuid) -> Vec<&Fold>;
 }
 
 pub struct InMemoryFoldRepository {
@@ -107,6 +81,13 @@ impl FoldRepository for InMemoryFoldRepository {
     fn find_by_id(&self, id: &uuid::Uuid) -> Option<&Fold> {
         self.entries.get(id)
     }
+
+    fn find_by_trna_id(&self, trna_id: &uuid::Uuid) -> Vec<&Fold> {
+        self.entries
+            .values()
+            .filter(|fold| fold.trna_id() == trna_id)
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -114,39 +95,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fold_can_be_created_with_commit_sha() {
+    fn fold_can_be_created() {
         let id = uuid::Uuid::new_v4();
-        let mrna_id = uuid::Uuid::new_v4();
+        let trna_id = uuid::Uuid::new_v4();
         let now = Utc::now();
 
-        let fold = Fold::new(
-            id,
-            mrna_id,
-            "abc123def".to_string(),
-            "/home/user/project".to_string(),
-            "main".to_string(),
-            "origin".to_string(),
-            now,
-        )
-        .unwrap();
+        let fold = Fold::new(id, trna_id, "abc123def".to_string(), now).unwrap();
 
-        assert_eq!(fold.commit_sha(), "abc123def");
-        assert_eq!(fold.mrna_id(), &mrna_id);
-        assert_eq!(fold.branch(), "main");
+        assert_eq!(fold.commit(), "abc123def");
+        assert_eq!(fold.trna_id(), &trna_id);
     }
 
     #[test]
-    fn fold_rejects_empty_commit_sha() {
+    fn fold_rejects_empty_commit() {
         let result = Fold::new(
             uuid::Uuid::new_v4(),
             uuid::Uuid::new_v4(),
             "   ".to_string(),
-            "/home/user/project".to_string(),
-            "main".to_string(),
-            "origin".to_string(),
             Utc::now(),
         );
-        assert_eq!(result, Err(FoldError::EmptyCommitSha));
+        assert_eq!(result, Err(FoldError::EmptyCommit));
     }
 
     #[test]
@@ -156,9 +124,6 @@ mod tests {
             id,
             uuid::Uuid::new_v4(),
             "def456".to_string(),
-            "/home/user/project".to_string(),
-            "feature".to_string(),
-            "origin".to_string(),
             Utc::now(),
         )
         .unwrap();
@@ -167,6 +132,23 @@ mod tests {
         repo.save(fold);
 
         let found = repo.find_by_id(&id).unwrap();
-        assert_eq!(found.commit_sha(), "def456");
+        assert_eq!(found.commit(), "def456");
+    }
+
+    #[test]
+    fn in_memory_fold_repo_finds_by_trna_id() {
+        let trna_id = uuid::Uuid::new_v4();
+        let fold1 = Fold::new(uuid::Uuid::new_v4(), trna_id, "abc".to_string(), Utc::now()).unwrap();
+        let fold2 = Fold::new(uuid::Uuid::new_v4(), trna_id, "def".to_string(), Utc::now()).unwrap();
+        let other_trna = uuid::Uuid::new_v4();
+        let fold3 = Fold::new(uuid::Uuid::new_v4(), other_trna, "ghi".to_string(), Utc::now()).unwrap();
+
+        let mut repo = InMemoryFoldRepository::new();
+        repo.save(fold1);
+        repo.save(fold2);
+        repo.save(fold3);
+
+        let found = repo.find_by_trna_id(&trna_id);
+        assert_eq!(found.len(), 2);
     }
 }

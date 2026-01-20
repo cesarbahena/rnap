@@ -1,70 +1,34 @@
 use chrono::{DateTime, Utc};
 use rnap_genome::GenomeId;
 
-/// The status of a task in a tRNA tasklist.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum TaskStatus {
-    Todo,
-    InProgress,
-    Done,
-    Blocked,
-}
-
-/// A single task within a tRNA tasklist.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct Task {
-    description: String,
-    status: TaskStatus,
-}
-
-impl Task {
-    pub fn new(description: String, status: TaskStatus) -> Result<Self, TrnaError> {
-        if description.trim().is_empty() {
-            return Err(TrnaError::EmptyTaskDescription);
-        }
-        Ok(Self { description, status })
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
-    }
-
-    pub fn status(&self) -> &TaskStatus {
-        &self.status
-    }
-}
-
-/// A mutable tasklist for an mRNA implementation context.
+/// A tasklist generated from an mRNA.
 ///
-/// Must be generated before starting coding and must be updated
-/// when tasks are completed or blocked.
+/// tRNA lanes contain anticodons (tasks) that contribute to implementing
+/// the parent mRNA. Multiple tRNAs can exist per mRNA for parallel work.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Trna {
     id: uuid::Uuid,
     mrna_id: uuid::Uuid,
-    tasks: Vec<Task>,
+    anticodons: Vec<String>,
+    worktree: String,
     genome_id: GenomeId,
     created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, thiserror::Error, PartialEq)]
-pub enum TrnaError {
-    #[error("task description must not be empty")]
-    EmptyTaskDescription,
 }
 
 impl Trna {
     pub fn new(
         id: uuid::Uuid,
         mrna_id: uuid::Uuid,
-        tasks: Vec<Task>,
+        anticodons: Vec<String>,
+        worktree: String,
         genome_id: GenomeId,
         created_at: DateTime<Utc>,
     ) -> Self {
         Self {
             id,
             mrna_id,
-            tasks,
+            anticodons,
+            worktree,
             genome_id,
             created_at,
         }
@@ -78,8 +42,12 @@ impl Trna {
         &self.mrna_id
     }
 
-    pub fn tasks(&self) -> &[Task] {
-        &self.tasks
+    pub fn anticodons(&self) -> &[String] {
+        &self.anticodons
+    }
+
+    pub fn worktree(&self) -> &str {
+        &self.worktree
     }
 
     pub fn genome_id(&self) -> &GenomeId {
@@ -133,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn trna_can_be_created_with_tasks() {
+    fn trna_can_be_created_with_anticodons() {
         let mrna_id = uuid::Uuid::new_v4();
         let gid = genome_id();
         let now = Utc::now();
@@ -142,23 +110,18 @@ mod tests {
             uuid::Uuid::new_v4(),
             mrna_id,
             vec![
-                Task::new("Set up database schema".to_string(), TaskStatus::Todo).unwrap(),
-                Task::new("Write API endpoint".to_string(), TaskStatus::Todo).unwrap(),
+                "Set up database schema".to_string(),
+                "Write API endpoint".to_string(),
             ],
+            "/worktrees/feature".to_string(),
             gid,
             now,
         );
 
         assert_eq!(trna.mrna_id(), &mrna_id);
-        assert_eq!(trna.tasks().len(), 2);
-        assert_eq!(trna.tasks()[0].description(), "Set up database schema");
-        assert_eq!(trna.tasks()[0].status(), &TaskStatus::Todo);
-    }
-
-    #[test]
-    fn task_rejects_empty_description() {
-        let result = Task::new("   ".to_string(), TaskStatus::Todo);
-        assert_eq!(result, Err(TrnaError::EmptyTaskDescription));
+        assert_eq!(trna.anticodons().len(), 2);
+        assert_eq!(trna.anticodons()[0], "Set up database schema");
+        assert_eq!(trna.worktree(), "/worktrees/feature");
     }
 
     #[test]
@@ -167,7 +130,8 @@ mod tests {
         let trna = Trna::new(
             id,
             uuid::Uuid::new_v4(),
-            vec![Task::new("Implement feature".to_string(), TaskStatus::InProgress).unwrap()],
+            vec!["Implement feature".to_string()],
+            "/worktrees/feature".to_string(),
             genome_id(),
             Utc::now(),
         );
@@ -176,7 +140,6 @@ mod tests {
         repo.save(trna);
 
         let found = repo.find_by_id(&id).unwrap();
-        assert_eq!(found.tasks().len(), 1);
-        assert_eq!(found.tasks()[0].status(), &TaskStatus::InProgress);
+        assert_eq!(found.anticodons().len(), 1);
     }
 }

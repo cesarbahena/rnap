@@ -21,6 +21,7 @@ members = [
     "crates/rnap-phenome",
     "crates/rnap-renderer",
     "crates/rnap-fold",
+    "crates/rnap-chaperone",
     "crates/rnap-cell",
     "crates/rnap-organelle",
 ]

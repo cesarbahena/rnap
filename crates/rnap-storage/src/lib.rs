@@ -648,15 +648,14 @@ impl PostgresMrnaRepository {
     }
 
     pub async fn save(&self, mrna: &Mrna) -> Result<(), String> {
-        let mutation_ids_json = serde_json::to_value(mrna.mutation_ids()).map_err(|e| e.to_string())?;
+        let codons_json = serde_json::to_value(mrna.codons()).map_err(|e| e.to_string())?;
         
         sqlx::query(
-            "INSERT INTO mrna (id, gene_id, version, mutation_ids, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
+            "INSERT INTO mrna (id, gene_id, codons, genome_id, created_at) VALUES ($1, $2, $3, $4, NOW())"
         )
         .bind(mrna.id())
         .bind(mrna.gene_id())
-        .bind(mrna.version() as i32)
-        .bind(mutation_ids_json)
+        .bind(codons_json)
         .bind(mrna.genome_id().as_uuid())
         .execute(&self.pool)
         .await
@@ -666,7 +665,7 @@ impl PostgresMrnaRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Mrna> {
         let row = sqlx::query(
-            "SELECT id, gene_id, version, mutation_ids, genome_id, created_at FROM mrna WHERE id = $1"
+            "SELECT id, gene_id, codons, genome_id, created_at FROM mrna WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -675,13 +674,12 @@ impl PostgresMrnaRepository {
 
         let row = row?;
         let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
-        let mutation_ids: Vec<uuid::Uuid> = serde_json::from_value(row.get("mutation_ids")).ok()?;
+        let codons: Vec<uuid::Uuid> = serde_json::from_value(row.get("codons")).ok()?;
 
         Mrna::new(
             row.get("id"),
             row.get("gene_id"),
-            row.get::<i32, _>("version") as u32,
-            mutation_ids,
+            codons,
             genome_id,
             row.get("created_at"),
         ).ok()
@@ -698,14 +696,15 @@ impl PostgresTrnaRepository {
     }
 
     pub async fn save(&self, trna: &Trna) -> Result<(), String> {
-        let tasks_json = serde_json::to_value(trna.tasks()).map_err(|e| e.to_string())?;
+        let anticodons_json = serde_json::to_value(trna.anticodons()).map_err(|e| e.to_string())?;
         
         sqlx::query(
-            "INSERT INTO trna (id, mrna_id, tasks, genome_id, created_at) VALUES ($1, $2, $3, $4, NOW())"
+            "INSERT INTO trna (id, mrna_id, anticodons, worktree, genome_id, created_at) VALUES ($1, $2, $3, $4, $5, NOW())"
         )
         .bind(trna.id())
         .bind(trna.mrna_id())
-        .bind(tasks_json)
+        .bind(anticodons_json)
+        .bind(trna.worktree())
         .bind(trna.genome_id().as_uuid())
         .execute(&self.pool)
         .await
@@ -715,7 +714,7 @@ impl PostgresTrnaRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Trna> {
         let row = sqlx::query(
-            "SELECT id, mrna_id, tasks, genome_id, created_at FROM trna WHERE id = $1"
+            "SELECT id, mrna_id, anticodons, worktree, genome_id, created_at FROM trna WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -725,14 +724,13 @@ impl PostgresTrnaRepository {
         let row = row?;
         let genome_id = GenomeId::from(row.get::<uuid::Uuid, _>("genome_id"));
         
-        // Parse tasks from JSON - simplified, just use the raw JSON
-        // Full deserialization would require custom JSON parsing
-        let _tasks_json: serde_json::Value = row.get("tasks");
+        let anticodons: Vec<String> = row.get("anticodons");
 
         Some(Trna::new(
             row.get("id"),
             row.get("mrna_id"),
-            vec![], // Simplified: would need proper JSON parsing for full implementation
+            anticodons,
+            row.get("worktree"),
             genome_id,
             row.get("created_at"),
         ))
@@ -937,14 +935,11 @@ impl PostgresFoldRepository {
 
     pub async fn save(&self, fold: &Fold) -> Result<(), String> {
         sqlx::query(
-            "INSERT INTO folds (id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())"
+            "INSERT INTO folds (id, trna_id, commit, created_at) VALUES ($1, $2, $3, NOW())"
         )
         .bind(fold.id())
-        .bind(fold.mrna_id())
-        .bind(fold.commit_sha())
-        .bind(fold.root_git_directory())
-        .bind(fold.branch())
-        .bind(fold.remote())
+        .bind(fold.trna_id())
+        .bind(fold.commit())
         .execute(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -953,7 +948,7 @@ impl PostgresFoldRepository {
 
     pub async fn find_by_id(&self, id: &uuid::Uuid) -> Option<Fold> {
         let row = sqlx::query(
-            "SELECT id, mrna_id, commit_sha, root_git_directory, branch, remote, created_at FROM folds WHERE id = $1"
+            "SELECT id, trna_id, commit, created_at FROM folds WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -964,11 +959,8 @@ impl PostgresFoldRepository {
 
         Fold::new(
             row.get("id"),
-            row.get("mrna_id"),
-            row.get("commit_sha"),
-            row.get("root_git_directory"),
-            row.get("branch"),
-            row.get("remote"),
+            row.get("trna_id"),
+            row.get("commit"),
             row.get("created_at"),
         ).ok()
     }

@@ -1,45 +1,41 @@
 use chrono::{DateTime, Utc};
 use rnap_genome::GenomeId;
 
-/// A frozen snapshot of pending mutation IDs for a gene.
+/// A frozen snapshot of pending mutations for a gene.
 ///
 /// mRNA captures what an agent sees at implementation time.
-/// Since mutations are immutable, only IDs are needed (not deep copies).
-/// Version number is incremented on each freeze.
-/// Scoped to a genome for tenant isolation.
+/// Contains codons (mutation IDs) frozen at creation.
+/// mrna_id links to gene for context.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Mrna {
     id: uuid::Uuid,
     gene_id: uuid::Uuid,
-    version: u32,
-    mutation_ids: Vec<uuid::Uuid>,
+    codons: Vec<uuid::Uuid>,
     genome_id: GenomeId,
     created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum MrnaError {
-    #[error("mRNA must have at least one mutation")]
-    EmptyMutations,
+    #[error("mRNA must have at least one codon")]
+    EmptyCodons,
 }
 
 impl Mrna {
     pub fn new(
         id: uuid::Uuid,
         gene_id: uuid::Uuid,
-        version: u32,
-        mutation_ids: Vec<uuid::Uuid>,
+        codons: Vec<uuid::Uuid>,
         genome_id: GenomeId,
         created_at: DateTime<Utc>,
     ) -> Result<Self, MrnaError> {
-        if mutation_ids.is_empty() {
-            return Err(MrnaError::EmptyMutations);
+        if codons.is_empty() {
+            return Err(MrnaError::EmptyCodons);
         }
         Ok(Self {
             id,
             gene_id,
-            version,
-            mutation_ids,
+            codons,
             genome_id,
             created_at,
         })
@@ -53,12 +49,8 @@ impl Mrna {
         &self.gene_id
     }
 
-    pub fn version(&self) -> u32 {
-        self.version
-    }
-
-    pub fn mutation_ids(&self) -> &[uuid::Uuid] {
-        &self.mutation_ids
+    pub fn codons(&self) -> &[uuid::Uuid] {
+        &self.codons
     }
 
     pub fn genome_id(&self) -> &GenomeId {
@@ -112,51 +104,47 @@ mod tests {
     }
 
     #[test]
-    fn mrna_can_be_created_with_mutations() {
+    fn mrna_can_be_created_with_codons() {
         let gene_id = uuid::Uuid::new_v4();
-        let mutation_id = uuid::Uuid::new_v4();
+        let codon_id = uuid::Uuid::new_v4();
         let now = Utc::now();
         let gid = genome_id();
 
         let mrna = Mrna::new(
             uuid::Uuid::new_v4(),
             gene_id,
-            1,
-            vec![mutation_id],
+            vec![codon_id],
             gid,
             now,
         )
         .unwrap();
 
         assert_eq!(mrna.gene_id(), &gene_id);
-        assert_eq!(mrna.version(), 1);
-        assert_eq!(mrna.mutation_ids(), &[mutation_id]);
+        assert_eq!(mrna.codons(), &[codon_id]);
         assert_eq!(mrna.genome_id(), &gid);
     }
 
     #[test]
-    fn mrna_rejects_empty_mutations() {
+    fn mrna_rejects_empty_codons() {
         let result = Mrna::new(
             uuid::Uuid::new_v4(),
             uuid::Uuid::new_v4(),
-            1,
             vec![],
             genome_id(),
             Utc::now(),
         );
-        assert_eq!(result, Err(MrnaError::EmptyMutations));
+        assert_eq!(result, Err(MrnaError::EmptyCodons));
     }
 
     #[test]
     fn in_memory_mrna_repo_saves_and_finds() {
         let gid = genome_id();
         let id = uuid::Uuid::new_v4();
-        let mutation_id = uuid::Uuid::new_v4();
+        let codon_id = uuid::Uuid::new_v4();
         let mrna = Mrna::new(
             id,
             uuid::Uuid::new_v4(),
-            1,
-            vec![mutation_id],
+            vec![codon_id],
             gid,
             Utc::now(),
         )
@@ -166,7 +154,6 @@ mod tests {
         repo.save(mrna);
 
         let found = repo.find_by_id(&id).unwrap();
-        assert_eq!(found.version(), 1);
-        assert_eq!(found.mutation_ids(), &[mutation_id]);
+        assert_eq!(found.codons(), &[codon_id]);
     }
 }

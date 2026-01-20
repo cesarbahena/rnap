@@ -1088,6 +1088,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnap-chaperone"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
 name = "rnap-chiasma"
 version = "0.1.0"
 dependencies = [
