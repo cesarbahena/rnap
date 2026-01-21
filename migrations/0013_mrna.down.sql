@@ -1,3 +1,0 @@
-DROP INDEX IF EXISTS idx_mrna_genome;
-DROP INDEX IF EXISTS idx_mrna_gene;
-DROP TABLE IF EXISTS mrna;

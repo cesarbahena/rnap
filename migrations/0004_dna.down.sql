@@ -1,2 +1,0 @@
-DROP INDEX IF EXISTS idx_dna_genome;
-DROP TABLE IF EXISTS dna;
