@@ -84,7 +84,7 @@ struct Allele {
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether `Mutation` keeps a `context`/rationale field from the old implementation, or whether workflow context waits for slice 007 artifacts.
 - Whether author identity is always `TfId`; recovered/old context had simpler author categories such as human/LLM that may need mapping into TFs later.

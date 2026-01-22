@@ -76,7 +76,7 @@ enum FoldState {
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether `Protein` represents implementation output for an `Allele`, for a committed `Gene`, or both.
 - Whether `Fold` needs more than `commit_sha`, such as repository, branch, PR, workflow run, artifact URI, environment, and evaluator provenance.

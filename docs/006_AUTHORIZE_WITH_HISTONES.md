@@ -106,7 +106,7 @@ Resolution:
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether `TF` stores direct relationship lists for `tf_classes`, active `histones`, `pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity`, or whether those are derived/query-side relationships.
 - Whether `TfClassScope` should be explicit as an enum or represented by `insulator_id` plus optional `genome_id`.

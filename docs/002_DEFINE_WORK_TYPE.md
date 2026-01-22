@@ -111,7 +111,7 @@ enum EncodingType {
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether `GeneFamily` stores direct `insulator_id`/`genome_id` references, object references like the recovered spec's `insulator: Insulator`, or only IDs for the implementation boundary.
 - Whether `GeneFamilyGeneration.id` should be `GeneFamilyGenerationId` or the recovered `GenotypeId`.

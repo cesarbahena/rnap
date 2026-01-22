@@ -118,7 +118,7 @@ struct TF {
 - Full authorization for TF access across multiple Genomes; revisit in slice 006.
 - Default region selection and detailed storage topology/provisioning automation beyond the minimal InsulatorPlacement contract.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether `Cell` remains deferred or returns as the software-system boundary; recovered spec included `Cell`, while the current vertical build removed it for now.
 - Whether bootstrap should include collection references on `Insulator` and `Genome` such as `gene_families`, `histones`, and `tf_classes`, or keep slice 001 to identity and ownership only.

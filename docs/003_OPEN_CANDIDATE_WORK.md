@@ -95,7 +95,7 @@ enum AlleleState {
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether `Locus` should include `genome_id`; recovered spec anchored Locus to family and Insulator, while Gene later binds to Genome.
 - Whether `Locus` should store `insulator_id` or an object reference like the recovered spec's `insulator: Insulator`.

@@ -67,6 +67,7 @@ Every slice includes:
 - approved decisions for this slice,
 - rejected alternatives for this slice,
 - deferred decisions,
+- deferred domain ledger,
 - implementation contract,
 - old-vs-new context,
 - possible loss,
@@ -86,6 +87,19 @@ For each slice:
 7. Move to the next slice after implementation and verification are coherent.
 
 Cross-cutting design can be noted ahead of time, but it should not block a slice unless the current slice cannot be implemented coherently without it.
+
+## Deferred Domain Ledger
+
+The Deferred Domain Ledger keeps recovered or earlier domain concepts from being lost when a slice intentionally stays small.
+
+Ledger entries are not approved implementation. Each entry is a domain obligation that must later be resolved as one of:
+
+- implemented as-is,
+- implemented differently,
+- rejected with a reason,
+- deferred again to a named slice or decision point.
+
+When a later slice owns a ledger concept, that slice must close the inherited entry in its approved decisions, rejected alternatives, deferred decisions, or implementation contract before implementation.
 
 ## Non-Goals
 

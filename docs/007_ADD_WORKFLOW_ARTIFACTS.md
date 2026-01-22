@@ -91,7 +91,7 @@ struct GRna {
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether agents are modeled as `TF` records, `TfClass` membership, or a separate actor type.
 - Whether recovered pending concepts map directly: `Activator`, `Cofactor`, `Mediator`, `PreInitiationComplex`, `siRNA`, `tmRNA`, and `BindingAffinity`.

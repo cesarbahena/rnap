@@ -63,7 +63,7 @@ struct Gene {
 
 - None yet.
 
-## Recovered Spec Gaps To Decide
+## Deferred Domain Ledger
 
 - Whether committed `Gene` stores `insulator_id` or an object reference like the recovered spec's `insulator: Insulator`.
 - Whether `Gene.generation` increments per `Locus`, per `GeneFamily`, or per `(Genome, Locus)`.
