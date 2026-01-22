@@ -12,7 +12,7 @@ A TF can perform or be denied actions based on HistoneMarks inherited from class
 
 Tenant data still uses enterprise-native keys and values.
 
-## Names Requiring Approval
+## Names Requiring Approval Or Confirmation
 
 - `TfClass`
 - `Histone`
@@ -94,6 +94,38 @@ Resolution:
 - More specific marks override broader marks unless broader state is `ConstitutiveHeterochromatin`.
 - Auditable records are degraded, not hard-deleted.
 
+## Approved For This Slice
+
+- None yet.
+
+## Rejected For This Slice
+
+- None yet.
+
+## Deferred
+
+- None yet.
+
+## Recovered Spec Gaps To Decide
+
+- Whether `TF` stores direct relationship lists for `tf_classes`, active `histones`, `pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity`, or whether those are derived/query-side relationships.
+- Whether `TfClassScope` should be explicit as an enum or represented by `insulator_id` plus optional `genome_id`.
+- Whether `HistoneTarget` includes `Exon` now; no earlier slice currently defines `Exon`.
+- Whether `HistoneValueType` and `HistoneValue` include only String/Int/Bool vectors as recovered, or need Float/Gene references like SequenceValue.
+- Whether `ChromatinState` itself encodes allow/deny, or whether allow/deny is represented by a Histone key/value interpreted through the resolver.
+- Whether `valid_from`/`valid_until` are required in the first authorization slice or can be deferred until time-bound access matters.
+- Whether `ConstitutiveHeterochromatin` invariants are implemented immediately: non-overridable, `valid_until = None`, and rationale required.
+- Whether `Heterochromatin` also requires rationale in the first implementation.
+- Whether only one active `HistoneMark` per `(target, histone)` is enforced globally, per Insulator, or by target scope.
+- Whether degraded auditable records apply to all records from slice 001 onward or only authorization records in this slice.
+
+## Implementation Contract
+
+- Names: pending approval.
+- Structs: pending approval.
+- Invariants: pending approval.
+- Approved tests: none yet.
+
 ## Old Vs New
 
 Current code has no real authorization model, only `Human` and `Llm` mutation authors.
@@ -110,12 +142,6 @@ Previous LLD made Histones the authorization and context system. New direction k
 
 Do not implement until Histone naming and allow/deny value semantics are approved.
 
-## First Tests
+## Test Gate
 
-- Default deny.
-- TF class mark can allow an action.
-- TF-specific mark can override class mark.
-- Resource deny constrains access.
-- Constitutive deny cannot be overridden.
-- Cannot create second active mark for same target/histone.
-
+No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.

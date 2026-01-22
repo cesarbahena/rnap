@@ -18,7 +18,7 @@ Open PRD "Awesome To Do App"
 
 The system creates stable identity plus a mutable candidate.
 
-## Names Requiring Approval
+## Names Requiring Approval Or Confirmation
 
 - `Locus`
 - `Allele`
@@ -83,6 +83,35 @@ enum AlleleState {
 - Decide whether multiple active Alleles can exist for one Locus.
 - Decide whether `Transposon` is needed now or can be deferred.
 
+## Approved For This Slice
+
+- None yet.
+
+## Rejected For This Slice
+
+- None yet.
+
+## Deferred
+
+- None yet.
+
+## Recovered Spec Gaps To Decide
+
+- Whether `Locus` should include `genome_id`; recovered spec anchored Locus to family and Insulator, while Gene later binds to Genome.
+- Whether `Locus` should store `insulator_id` or an object reference like the recovered spec's `insulator: Insulator`.
+- Whether opening a candidate requires a display identifier derived from GeneFamily abbreviation, name sequence, and counter, or whether identity remains opaque until commit.
+- Whether `Transposon` is the right origin record for a brand-new item, or whether an `Allele` with no base is enough for the first implementation.
+- Whether multiple active `Allele` records per `Locus` are allowed for parallel work, branch-like review, or agent exploration.
+- Whether `Allele` should carry initial sequence values when opened, or whether all content must arrive through slice 004 `Mutation` records.
+- Whether degraded candidate behavior is enough before authorization, or whether audit/degrade rules should wait for slice 006.
+
+## Implementation Contract
+
+- Names: pending approval.
+- Structs: pending approval.
+- Invariants: pending approval.
+- Approved tests: none yet.
+
 ## Old Vs New
 
 Old current code created a mutable `Gene` directly.
@@ -103,11 +132,6 @@ New direction creates:
 
 Do not implement until `Locus`, `Allele`, and `Transposon` are approved or replaced.
 
-## First Tests
+## Test Gate
 
-- Cannot open candidate for GeneFamily outside the Insulator.
-- Cannot open candidate in Genome outside the Insulator.
-- Cannot open candidate by TF outside the Insulator.
-- New candidate starts in `Mutating`.
-- New candidate records creator.
-
+No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.

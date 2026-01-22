@@ -61,24 +61,29 @@ Every slice includes:
 
 - capability,
 - user-visible result,
-- names requiring approval,
+- names requiring approval or confirmation,
 - structs touched,
 - invariants to decide,
+- approved decisions for this slice,
+- rejected alternatives for this slice,
+- deferred decisions,
+- implementation contract,
 - old-vs-new context,
 - possible loss,
 - implementation gate,
-- first tests.
+- test gate.
 
 ## How We Work
 
 For each slice:
 
 1. Read the slice document.
-2. Decide only the names and invariants needed for that slice.
-3. Update the document with the decision.
-4. Implement the slice.
-5. Test the invariants.
-6. Move to the next slice.
+2. Decide only the names, invariants, implementation contract, and tests needed for that slice.
+3. Ask one high-value blocking question at a time.
+4. Update the document only with approved decisions.
+5. Implement the approved contract.
+6. Run only approved tests/checks.
+7. Move to the next slice after implementation and verification are coherent.
 
 Cross-cutting design can be noted ahead of time, but it should not block a slice unless the current slice cannot be implemented coherently without it.
 
@@ -89,4 +94,4 @@ Cross-cutting design can be noted ahead of time, but it should not block a slice
 - Do not preserve old crate/module boundaries.
 - Do not build a horizontal domain layer before the first vertical capability works.
 - Do not keep old biological names by accident.
-
+- Do not pre-author tests before invariants are approved.

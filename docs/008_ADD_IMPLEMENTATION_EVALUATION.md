@@ -10,7 +10,7 @@ This slice turns DNAp from structured work management into SDLC execution tracki
 
 An Allele can produce implementation output, link to a commit, and record whether evaluation passed, failed, or needs repair.
 
-## Names Requiring Approval
+## Names Requiring Approval Or Confirmation
 
 - `Protein`
 - `Fold`
@@ -64,6 +64,37 @@ enum FoldState {
 - Decide whether Fold needs more than `commit_sha`.
 - Decide whether Ribosome, Rrna, Chaperone, and Chiasma remain.
 
+## Approved For This Slice
+
+- None yet.
+
+## Rejected For This Slice
+
+- None yet.
+
+## Deferred
+
+- None yet.
+
+## Recovered Spec Gaps To Decide
+
+- Whether `Protein` represents implementation output for an `Allele`, for a committed `Gene`, or both.
+- Whether `Fold` needs more than `commit_sha`, such as repository, branch, PR, workflow run, artifact URI, environment, and evaluator provenance.
+- Whether `FoldState` should distinguish execution status from evaluation verdict instead of combining both.
+- Whether `Ribosome` is the evaluator/execution engine, and whether it should be first-class in this slice.
+- Whether `Rrna` is evaluator configuration/policy, model instructions, or something else.
+- Whether `Chaperone` is a repair workflow, an actor class, or a generated patch record.
+- Whether `Chiasma` is a violation/finding record and whether it replaces or complements failed Fold details.
+- Whether old `Phenotype`/`Phenome` concepts are truly removed or deferred as reporting/read-model concepts.
+- Whether passed Fold allows commit selection automatically, or only satisfies one precondition for explicit TF selection.
+
+## Implementation Contract
+
+- Names: pending approval.
+- Structs: pending approval.
+- Invariants: pending approval.
+- Approved tests: none yet.
+
 ## Old Vs New
 
 Current code has thin modules for Protein, Fold, Ribosome, Rrna, Chaperone, Chiasma, Phenotype, and Phenome.
@@ -83,11 +114,6 @@ New direction keeps only the concepts approved in this slice.
 
 Do not implement until implementation/evaluation vocabulary is approved.
 
-## First Tests
+## Test Gate
 
-- Cannot create Protein for Allele outside Genome.
-- Cannot create Fold without commit reference.
-- Passed Fold can mark candidate selectable if required fields are complete.
-- Failed Fold can mark candidate repair-needed.
-- Degraded Fold cannot be reused as active evaluation.
-
+No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.

@@ -27,7 +27,7 @@ abbreviation = "PRD"
 fields = ["title", "problem", "goals"]
 ```
 
-## Names Requiring Approval
+## Names Requiring Approval Or Confirmation
 
 - `GeneFamily`
 - `GeneFamilyGeneration`
@@ -99,6 +99,36 @@ enum EncodingType {
 - Decide whether `required: bool` is enough or whether writable/hidden semantics are needed now.
 - Decide uniqueness scope for `abbreviation`.
 
+## Approved For This Slice
+
+- None yet.
+
+## Rejected For This Slice
+
+- None yet.
+
+## Deferred
+
+- None yet.
+
+## Recovered Spec Gaps To Decide
+
+- Whether `GeneFamily` stores direct `insulator_id`/`genome_id` references, object references like the recovered spec's `insulator: Insulator`, or only IDs for the implementation boundary.
+- Whether `GeneFamilyGeneration.id` should be `GeneFamilyGenerationId` or the recovered `GenotypeId`.
+- Whether `GeneFamily.generation` should exist alongside `current_generation_id`, or whether generation belongs only to immutable `GeneFamilyGeneration` records.
+- Whether `EncodingType` is required for slice 002 or can be deferred until semantic classification matters.
+- Whether `SequenceValue` belongs in this slice as part of field type validation, or waits for slice 004 mutations.
+- Whether `SequenceType::Gene`/`GeneVec` should reference `GeneId` instead of raw UUIDs.
+- Whether `abbreviation` uniqueness is per Insulator, per Genome, or per GeneFamily scope.
+- Whether tenant-configured sequence names need key/display-name separation to keep enterprise-native labels stable while supporting machine-safe keys.
+
+## Implementation Contract
+
+- Names: pending approval.
+- Structs: pending approval.
+- Invariants: pending approval.
+- Approved tests: none yet.
+
 ## Old Vs New
 
 Old current code used:
@@ -125,11 +155,6 @@ New candidate uses:
 
 Do not implement until work type and field names are approved.
 
-## First Tests
+## Test Gate
 
-- Cannot create GeneFamily with empty name.
-- Cannot create GeneFamily with empty abbreviation.
-- Cannot create GeneFamilyGeneration with duplicate SequenceDefinition names.
-- Cannot mutate a GeneFamilyGeneration after creation.
-- Project-scoped GeneFamily must belong to a Genome in the same Insulator.
-
+No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.

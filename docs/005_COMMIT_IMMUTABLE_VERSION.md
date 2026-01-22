@@ -16,7 +16,7 @@ A TF can commit a complete candidate.
 
 The committed version is immutable and can be referenced later.
 
-## Names Requiring Approval
+## Names Requiring Approval Or Confirmation
 
 - `Gene`
 - `GeneId`
@@ -51,6 +51,35 @@ struct Gene {
 - Decide whether selected Allele becomes `Selected`, locked, or degraded.
 - Decide whether committed Gene has a display name or only derived identity.
 
+## Approved For This Slice
+
+- None yet.
+
+## Rejected For This Slice
+
+- None yet.
+
+## Deferred
+
+- None yet.
+
+## Recovered Spec Gaps To Decide
+
+- Whether committed `Gene` stores `insulator_id` or an object reference like the recovered spec's `insulator: Insulator`.
+- Whether `Gene.generation` increments per `Locus`, per `GeneFamily`, or per `(Genome, Locus)`.
+- Whether `selected_from` is the permanent name for the source Allele relationship.
+- Whether the selected Allele becomes `Selected`, locked/read-only, degraded, or remains active after commit.
+- Whether committed Genes need an explicit display name or slug, or whether names are always derived from committed Sequences.
+- Whether committed identity such as `PRD-awesome-to-do-app-0001` is required in this slice or deferred to rendering/search.
+- Whether committing must snapshot all projected sequences, including optional unset fields, or only present values.
+
+## Implementation Contract
+
+- Names: pending approval.
+- Structs: pending approval.
+- Invariants: pending approval.
+- Approved tests: none yet.
+
 ## Old Vs New
 
 Previous LLD had Gene as immutable version but did not always include `sequences` and `selected_from`.
@@ -70,12 +99,6 @@ Current code has Gene as mutable and stores mutations directly. New direction mo
 
 Do not implement until Gene immutability, naming, and selected Allele behavior are approved.
 
-## First Tests
+## Test Gate
 
-- Cannot commit Allele missing required sequences.
-- Committed Gene contains projected sequence snapshot.
-- Committed Gene cannot be mutated.
-- First Gene for a Locus has generation 1.
-- Next committed Gene for same Locus increments generation.
-- Gene records `selected_from`.
-
+No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.

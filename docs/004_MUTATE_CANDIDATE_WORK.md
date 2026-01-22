@@ -19,7 +19,7 @@ problem = "Tasks are scattered"
 
 The current candidate state is computed from its mutations.
 
-## Names Requiring Approval
+## Names Requiring Approval Or Confirmation
 
 - `Mutation`
 - `Sequence`
@@ -72,6 +72,35 @@ struct Allele {
 - Decide whether vectors append by default or replace by default.
 - Decide whether a Mutation needs rationale/context.
 
+## Approved For This Slice
+
+- None yet.
+
+## Rejected For This Slice
+
+- None yet.
+
+## Deferred
+
+- None yet.
+
+## Recovered Spec Gaps To Decide
+
+- Whether `Mutation` keeps a `context`/rationale field from the old implementation, or whether workflow context waits for slice 007 artifacts.
+- Whether author identity is always `TfId`; recovered/old context had simpler author categories such as human/LLM that may need mapping into TFs later.
+- Whether vector `SequenceValue` mutations replace whole vectors or support append/remove operations.
+- Whether references in `SequenceValue::GeneRef` use `GeneId`, `LocusId`, or raw UUIDs.
+- Whether `@Cell` references return with `Cell` and resolve eagerly or lazily, or remain deferred with `Cell`.
+- Whether current-state projection needs deletion/clear semantics for optional fields.
+- Whether mutations need optimistic concurrency/version preconditions so concurrent TF or agent changes do not overwrite unexpectedly.
+
+## Implementation Contract
+
+- Names: pending approval.
+- Structs: pending approval.
+- Invariants: pending approval.
+- Approved tests: none yet.
+
 ## Old Vs New
 
 Current code has Mutation on Gene:
@@ -97,11 +126,6 @@ New direction moves Mutation to Allele and replaces `trait_key` with `sequence`.
 
 Do not implement until Mutation shape and vector semantics are approved.
 
-## First Tests
+## Test Gate
 
-- Cannot mutate unknown SequenceKey.
-- Cannot mutate with wrong SequenceValue type.
-- Cannot mutate degraded Allele.
-- Projection returns latest value for scalar fields.
-- Required fields can be detected as missing.
-
+No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.
