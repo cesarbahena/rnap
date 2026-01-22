@@ -8,7 +8,7 @@ This slice wraps previous actions with the single approved authorization abstrac
 
 ## User-Visible Result
 
-A TF can perform or be denied actions based on HistoneMarks inherited from class, user, and resource context.
+A Tf can perform or be denied actions based on HistoneMarks inherited from class, user, and resource context.
 
 Tenant data still uses enterprise-native keys and values.
 
@@ -70,14 +70,14 @@ struct HistoneMark {
 
 ```text
 TfClass.histones
-+ TF.histones
++ Tf.histones
 + Genome/Gene/Allele histones
 ```
 
 Resolution:
 
 1. Explicit deny wins.
-2. TF histones override TfClass histones.
+2. Tf histones override TfClass histones.
 3. Resource histones constrain access.
 4. Default deny.
 
@@ -85,7 +85,7 @@ Resolution:
 
 - Permissions must not exist independently from Histones.
 - TfClass definitions are flat and non-inheritable.
-- Composition occurs through multiple `tf_classes` on `TF`.
+- Composition occurs through multiple `tf_classes` on `Tf`.
 - Histones may exist at Insulator or Genome scope.
 - Genome Histones extend Insulator Histones.
 - `Histone.key` is unique within an Insulator.
@@ -108,7 +108,7 @@ Resolution:
 
 ## Deferred Domain Ledger
 
-- Whether `TF` stores direct relationship lists for `tf_classes`, active `histones`, `pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity`, or whether those are derived/query-side relationships.
+- Whether `Tf` stores direct relationship lists for `tf_classes`, active `histones`, `pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity`, or whether those are derived/query-side relationships.
 - Whether `TfClassScope` should be explicit as an enum or represented by `insulator_id` plus optional `genome_id`.
 - Whether `HistoneTarget` includes `Exon` now; no earlier slice currently defines `Exon`.
 - Whether `HistoneValueType` and `HistoneValue` include only String/Int/Bool vectors as recovered, or need Float/Gene references like SequenceValue.

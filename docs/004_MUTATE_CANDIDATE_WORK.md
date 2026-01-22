@@ -8,7 +8,7 @@ This makes the first useful work loop possible: open candidate, change fields, i
 
 ## User-Visible Result
 
-A TF can set or change fields on an Allele.
+A Tf can set or change fields on an Allele.
 
 Example:
 
@@ -92,7 +92,7 @@ struct Allele {
 - Whether references in `SequenceValue::GeneRef` use `GeneId`, `LocusId`, or raw UUIDs.
 - Whether `@Cell` references return with `Cell` and resolve eagerly or lazily, or remain deferred with `Cell`.
 - Whether current-state projection needs deletion/clear semantics for optional fields.
-- Whether mutations need optimistic concurrency/version preconditions so concurrent TF or agent changes do not overwrite unexpectedly.
+- Whether mutations need optimistic concurrency/version preconditions so concurrent Tf or agent changes do not overwrite unexpectedly.
 
 ## Implementation Contract
 

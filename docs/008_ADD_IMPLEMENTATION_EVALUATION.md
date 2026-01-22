@@ -86,7 +86,7 @@ enum FoldState {
 - Whether `Chaperone` is a repair workflow, an actor class, or a generated patch record.
 - Whether `Chiasma` is a violation/finding record and whether it replaces or complements failed Fold details.
 - Whether old `Phenotype`/`Phenome` concepts are truly removed or deferred as reporting/read-model concepts.
-- Whether passed Fold allows commit selection automatically, or only satisfies one precondition for explicit TF selection.
+- Whether passed Fold allows commit selection automatically, or only satisfies one precondition for explicit Tf selection.
 
 ## Implementation Contract
 

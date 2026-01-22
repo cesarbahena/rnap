@@ -17,7 +17,7 @@ without tenant data needing biological vocabulary.
 
 ## User-Visible Result
 
-A TF can define a work type with fields.
+A Tf can define a work type with fields.
 
 Example tenant data:
 

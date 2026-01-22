@@ -19,7 +19,7 @@ Biology is heavy in code. Biology is more mainstream in commands. Biology is non
 - `Insulator` is tenant boundary.
 - `Genome` is project boundary.
 - `Cell` is removed for now.
-- `TF` is user identity.
+- `Tf` is user identity.
 - `Genome` can define project-local `GeneFamily`, `TfClass`, and `Histone` extensions.
 - `GeneFamily` defines a configurable work/document type.
 - `GeneFamilyGeneration` versions a GeneFamily schema.

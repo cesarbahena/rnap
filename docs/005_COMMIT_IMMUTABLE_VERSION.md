@@ -12,7 +12,7 @@ tenant -> project -> work type -> candidate -> mutations -> committed version
 
 ## User-Visible Result
 
-A TF can commit a complete candidate.
+A Tf can commit a complete candidate.
 
 The committed version is immutable and can be referenced later.
 

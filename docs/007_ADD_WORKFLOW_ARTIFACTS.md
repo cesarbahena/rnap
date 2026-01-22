@@ -8,7 +8,7 @@ This slice should only happen after the basic candidate/mutation/commit loop is 
 
 ## User-Visible Result
 
-A TF or agent can propose a mutation, attach context, and keep generated reasoning linked to the candidate.
+A Tf or agent can propose a mutation, attach context, and keep generated reasoning linked to the candidate.
 
 ## Names Requiring Approval Or Confirmation
 
@@ -77,7 +77,7 @@ struct GRna {
 - Workflow artifacts are created by TFs and evaluated through Histones.
 - Decide whether mutation proposals must always pass through SgRna.
 - Decide whether agents are TFs or a separate actor type.
-- Decide whether `TfComplex` replaces direct workflow fields on TF.
+- Decide whether `TfComplex` replaces direct workflow fields on Tf.
 
 ## Approved For This Slice
 
@@ -93,9 +93,9 @@ struct GRna {
 
 ## Deferred Domain Ledger
 
-- Whether agents are modeled as `TF` records, `TfClass` membership, or a separate actor type.
+- Whether agents are modeled as `Tf` records, `TfClass` membership, or a separate actor type.
 - Whether recovered pending concepts map directly: `Activator`, `Cofactor`, `Mediator`, `PreInitiationComplex`, `siRNA`, `tmRNA`, and `BindingAffinity`.
-- Whether `TF.pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity` are source-of-truth fields or derived from workflow artifacts.
+- Whether `Tf.pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity` are source-of-truth fields or derived from workflow artifacts.
 - Whether mutation proposals must pass through `SgRna`, or direct mutation remains valid and `SgRna` is optional workflow metadata.
 - Whether `SnRna` represents disambiguation/context only, or also stores reusable instruction/prompt state.
 - Whether `GRnaGeneration` needs immutable message snapshots, model/config metadata, and generated-by provenance.

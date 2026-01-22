@@ -8,7 +8,7 @@ This slice introduces stable identity and draft/candidate work without yet solvi
 
 ## User-Visible Result
 
-A TF can start work of a configured type inside a project.
+A Tf can start work of a configured type inside a project.
 
 Example:
 
@@ -79,7 +79,7 @@ enum AlleleState {
 - A new candidate starts in `Mutating`.
 - A candidate belongs to exactly one Genome.
 - The Genome must belong to the Locus Insulator.
-- The creator TF must belong to the same Insulator.
+- The creator Tf must belong to the same Insulator.
 - Decide whether multiple active Alleles can exist for one Locus.
 - Decide whether `Transposon` is needed now or can be deferred.
 
