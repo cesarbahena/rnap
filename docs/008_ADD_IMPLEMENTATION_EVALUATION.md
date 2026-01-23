@@ -2,23 +2,17 @@
 
 ## Capability
 
-Connect candidate work to implementation output and evaluation state.
+Link candidate work to implementation output and evaluation.
 
-This slice turns DNAp from structured work management into SDLC execution tracking.
+## Contract
 
-## User-Visible Result
+Use the model in [DOMAIN_MODEL.md](DOMAIN_MODEL.md).
 
-An Allele can produce implementation output, link to a commit, and record whether evaluation passed, failed, or needs repair.
-
-## Names Requiring Approval Or Confirmation
+Slice 008 implements:
 
 - `Protein`
 - `Fold`
 - `FoldState`
-- `Ribosome`
-- `Rrna`
-- `Chaperone`
-- `Chiasma`
 
 ## Candidate Structs
 
@@ -53,7 +47,7 @@ enum FoldState {
 }
 ```
 
-## Invariants To Decide
+## Behavior
 
 - Protein belongs to one Allele.
 - Fold belongs to one Protein.
@@ -61,59 +55,11 @@ enum FoldState {
 - Failed Fold may move Allele to repair.
 - Passed Fold may allow Allele selection.
 - Degraded Fold remains auditable.
-- Decide whether Fold needs more than `commit_sha`.
-- Decide whether Ribosome, Rrna, Chaperone, and Chiasma remain.
-
-## Approved For This Slice
-
-- None yet.
-
-## Rejected For This Slice
-
-- None yet.
-
-## Deferred
-
-- None yet.
-
-## Deferred Domain Ledger
-
-- Whether `Protein` represents implementation output for an `Allele`, for a committed `Gene`, or both.
-- Whether `Fold` needs more than `commit_sha`, such as repository, branch, PR, workflow run, artifact URI, environment, and evaluator provenance.
-- Whether `FoldState` should distinguish execution status from evaluation verdict instead of combining both.
-- Whether `Ribosome` is the evaluator/execution engine, and whether it should be first-class in this slice.
-- Whether `Rrna` is evaluator configuration/policy, model instructions, or something else.
-- Whether `Chaperone` is a repair workflow, an actor class, or a generated patch record.
-- Whether `Chiasma` is a violation/finding record and whether it replaces or complements failed Fold details.
-- Whether old `Phenotype`/`Phenome` concepts are truly removed or deferred as reporting/read-model concepts.
-- Whether passed Fold allows commit selection automatically, or only satisfies one precondition for explicit Tf selection.
 
 ## Implementation Contract
 
-- Names: pending approval.
-- Structs: pending approval.
-- Invariants: pending approval.
-- Approved tests: none yet.
+Pending implementation.
 
-## Old Vs New
+## Approved Tests
 
-Current code has thin modules for Protein, Fold, Ribosome, Rrna, Chaperone, Chiasma, Phenotype, and Phenome.
-
-New direction keeps only the concepts approved in this slice.
-
-## Possible Loss
-
-- Loss of `ProteinResult`.
-- Loss of Ribosome as evaluator.
-- Loss of Rrna as evaluator configuration.
-- Loss of Chaperone as repair mechanism.
-- Loss of Chiasma as violation record.
-- Loss of Phenotype/Phenome.
-
-## Implementation Gate
-
-Do not implement until implementation/evaluation vocabulary is approved.
-
-## Test Gate
-
-No tests are approved yet. Derive tests from approved invariants and high-value externally observable behavior during slice design.
+Pending.

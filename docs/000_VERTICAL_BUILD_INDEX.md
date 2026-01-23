@@ -1,111 +1,45 @@
-# DNAp Vertical Build Index
+# DNAp Build Index
 
-## Purpose
+DNAp is an enterprise multitenant SDLC platform for configurable document types and delivery workflows.
 
-These documents guide a vertical rebuild of DNAp.
+## Core Documents
 
-Each numbered document is an end-to-end slice that can be disambiguated, name-approved, implemented, and tested before moving to the next slice. The goal is not to finish all design upfront. The goal is to keep the whole product philosophy visible while making one useful capability real at a time.
+- [DOMAIN_MODEL.md](DOMAIN_MODEL.md): current product/domain model.
+- [ENCODING_TAXONOMY.md](ENCODING_TAXONOMY.md): system-fixed SDLC document encodings.
+- [DEFERRED_DOMAIN_LEDGER.md](DEFERRED_DOMAIN_LEDGER.md): domain obligations intentionally not implemented yet.
 
-## Product Philosophy
-
-DNAp is the ultimate SDLC platform.
-
-DNAp models software delivery as evolvable project work: users create and refine structured work, candidates evolve through explicit changes, committed versions become immutable history, authorization and evaluation are part of the model, and later workflow/implementation artifacts connect the model to real delivery.
-
-Biology is heavy in code. Biology is more mainstream in commands. Biology is nonexistent in tenant data unless a tenant explicitly chooses it. Every biological name must be approved before it becomes permanent code, command, file, module, or type language.
-
-## Approved Core Direction
-
-- `Insulator` is tenant boundary.
-- `Genome` is project boundary.
-- `Cell` is removed for now.
-- `Tf` is user identity.
-- `Genome` can define project-local `GeneFamily`, `TfClass`, and `Histone` extensions.
-- `GeneFamily` defines a configurable work/document type.
-- `GeneFamilyGeneration` versions a GeneFamily schema.
-- `Locus` anchors identity across committed versions.
-- `Allele` is mutable candidate work.
-- `Mutation` is append-only change.
-- `Gene` is immutable committed version selected from an Allele.
-- `Histone` and `HistoneMark` are the only authorization/contextual evaluation abstraction.
-
-## Vertical Slices
+## Build Order
 
 1. [001_BOOTSTRAP_TENANT_PROJECT_USER.md](001_BOOTSTRAP_TENANT_PROJECT_USER.md)
-   Create the minimum world: tenant, project, user identity.
+   Provision the minimum operational world: Insulator, placement, Genome, and Tf.
 
 2. [002_DEFINE_WORK_TYPE.md](002_DEFINE_WORK_TYPE.md)
-   Define the first tenant/project work type and its fields.
+   Define configurable SDLC document types through GeneFamily and GeneFamilyGeneration.
 
 3. [003_OPEN_CANDIDATE_WORK.md](003_OPEN_CANDIDATE_WORK.md)
-   Create stable work identity and open the first mutable candidate.
+   Open a Genome-scoped document instance through Locus, Transposon, and Allele.
 
 4. [004_MUTATE_CANDIDATE_WORK.md](004_MUTATE_CANDIDATE_WORK.md)
-   Apply append-only changes and project candidate state.
+   Apply append-only Mutations to an Allele and project candidate state.
 
 5. [005_COMMIT_IMMUTABLE_VERSION.md](005_COMMIT_IMMUTABLE_VERSION.md)
-   Select a candidate and create an immutable committed version.
+   Select an Allele and create an immutable Gene.
 
 6. [006_AUTHORIZE_WITH_HISTONES.md](006_AUTHORIZE_WITH_HISTONES.md)
-   Add the authorization layer across the already-working vertical path.
+   Add Histone-based authorization and contextual evaluation.
 
 7. [007_ADD_WORKFLOW_ARTIFACTS.md](007_ADD_WORKFLOW_ARTIFACTS.md)
-   Add proposal/context/reasoning artifacts around candidate work.
+   Add Regulatory RNA workflow documents around candidate work.
 
 8. [008_ADD_IMPLEMENTATION_EVALUATION.md](008_ADD_IMPLEMENTATION_EVALUATION.md)
-   Add implementation and evaluation records connected to candidates.
+   Link candidate work to implementation output and evaluation.
 
-## Slice Document Shape
+## Build Rules
 
-Every slice includes:
-
-- capability,
-- user-visible result,
-- names requiring approval or confirmation,
-- structs touched,
-- invariants to decide,
-- approved decisions for this slice,
-- rejected alternatives for this slice,
-- deferred decisions,
-- deferred domain ledger,
-- implementation contract,
-- old-vs-new context,
-- possible loss,
-- implementation gate,
-- test gate.
-
-## How We Work
-
-For each slice:
-
-1. Read the slice document.
-2. Decide only the names, invariants, implementation contract, and tests needed for that slice.
-3. Ask one high-value blocking question at a time.
-4. Update the document only with approved decisions.
-5. Implement the approved contract.
-6. Run only approved tests/checks.
-7. Move to the next slice after implementation and verification are coherent.
-
-Cross-cutting design can be noted ahead of time, but it should not block a slice unless the current slice cannot be implemented coherently without it.
-
-## Deferred Domain Ledger
-
-The Deferred Domain Ledger keeps recovered or earlier domain concepts from being lost when a slice intentionally stays small.
-
-Ledger entries are not approved implementation. Each entry is a domain obligation that must later be resolved as one of:
-
-- implemented as-is,
-- implemented differently,
-- rejected with a reason,
-- deferred again to a named slice or decision point.
-
-When a later slice owns a ledger concept, that slice must close the inherited entry in its approved decisions, rejected alternatives, deferred decisions, or implementation contract before implementation.
-
-## Non-Goals
-
-- Do not design from persistence.
-- Do not preserve current code structure.
-- Do not preserve old crate/module boundaries.
-- Do not build a horizontal domain layer before the first vertical capability works.
-- Do not keep old biological names by accident.
-- Do not pre-author tests before invariants are approved.
+- Build backend/application behavior first.
+- Do not expose normal tenant-user CLI commands for provisioning Insulators.
+- CLI commands should use mainstream biology-oriented workflow language and avoid generic CRUD.
+- Tenant data remains enterprise-native unless a tenant explicitly configures biology-heavy language.
+- Configurable definitions may be Insulator-scoped or Genome-scoped.
+- Scoped configurable definitions resolve nearest scope first: Genome override, then Insulator default.
+- Do not ask sequencing-only questions when the long-term product model is clear.
