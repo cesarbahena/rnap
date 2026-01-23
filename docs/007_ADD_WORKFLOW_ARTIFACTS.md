@@ -71,7 +71,7 @@ struct GRna {
 
 - SgRna carries a concrete mutation proposal.
 - SnRna carries structured workflow context.
-- GRna carries conversational or generated reasoning.
+- GRna carries a general message document.
 - GRnaGeneration is immutable.
 - A GRna points to one current generation.
 - Workflow artifacts are created by TFs and evaluated through Histones.
@@ -94,14 +94,14 @@ struct GRna {
 ## Deferred Domain Ledger
 
 - Whether agents are modeled as `Tf` records, `TfClass` membership, or a separate actor type.
-- Whether recovered pending concepts map directly: `Activator`, `Cofactor`, `Mediator`, `PreInitiationComplex`, `siRNA`, `tmRNA`, and `BindingAffinity`.
+- Whether recovered pending concepts map directly: `Activator`, `Cofactor`, `Mediator`, `PreInitiationComplex`, `SiRNA`, `TmRNA`, and `BindingAffinity`.
 - Whether `Tf.pre_initiation_complex`, `mediator_complex`, `repressors`, and `affinity` are source-of-truth fields or derived from workflow artifacts.
 - Whether mutation proposals must pass through `SgRna`, or direct mutation remains valid and `SgRna` is optional workflow metadata.
 - Whether `SnRna` represents disambiguation/context only, or also stores reusable instruction/prompt state.
-- Whether `GRnaGeneration` needs immutable message snapshots, model/config metadata, and generated-by provenance.
+- Whether `GRnaGeneration` needs immutable general-message snapshots, model/config metadata, and generated-by provenance.
 - Whether `Mediator` is a first-class artifact in this slice or deferred until multi-actor orchestration requires it.
 - Whether `BindingAffinity` belongs to authorization evaluation, workflow ranking, or both.
-- Whether `SiRna` represents a repressor/blocking workflow artifact or should wait for authorization conflict handling.
+- Whether `SiRna` represents a stalled implementation document, a repressor/blocking workflow artifact, or both.
 
 ## Implementation Contract
 
@@ -118,8 +118,8 @@ Previous LLD had pending workflow terms:
 - Cofactor
 - Mediator
 - PreInitiationComplex
-- siRNA
-- tmRNA
+- SiRNA
+- TmRNA
 - BindingAffinity
 
 Recovered LLD had a richer `TfComplex`. This slice decides only what is needed after mutation/commit already works.
@@ -128,7 +128,7 @@ Recovered LLD had a richer `TfComplex`. This slice decides only what is needed a
 
 - Loss of direct CLI mutation if proposals must go through SgRna.
 - Loss of `TfComplex` if direct fields win.
-- Loss of current mRNA/tRNA/sRNA module distinctions.
+- Loss of current Translation RNA and Regulatory RNA document distinctions.
 
 ## Implementation Gate
 

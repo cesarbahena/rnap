@@ -93,6 +93,7 @@ struct Allele {
 - Whether `@Cell` references return with `Cell` and resolve eagerly or lazily, or remain deferred with `Cell`.
 - Whether current-state projection needs deletion/clear semantics for optional fields.
 - Whether mutations need optimistic concurrency/version preconditions so concurrent Tf or agent changes do not overwrite unexpectedly.
+- Implement CLI mutation flags using the approved sequence-name matcher: kebab-case, case-insensitive, fuzzy input must resolve to exactly one SequenceDefinition name or error.
 
 ## Implementation Contract
 
