@@ -13,7 +13,7 @@ Slice 003 implements:
 - `Locus`
 - `Transposon`
 - `Allele`
-- `AlleleBase`
+- `AlleleOrigin`
 - `AlleleState`
 
 ## Behavior
@@ -25,6 +25,7 @@ Slice 003 implements:
 - A new Gene/work item starts from a Transposon.
 - Transposon carries origin metadata only.
 - Transposon does not carry Sequence values.
+- Allele records whether it originated from an existing Gene or a Transposon.
 - Sequence values arrive through Mutations on the Allele.
 - A new candidate starts in `Mutating`.
 - A candidate belongs to exactly one Genome.

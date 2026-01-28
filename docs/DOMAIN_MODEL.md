@@ -152,7 +152,7 @@ struct Transposon {
 `Allele` is mutable candidate work.
 
 ```rust
-enum AlleleBase {
+enum AlleleOrigin {
     Gene(GeneId),
     Transposon(TransposonId),
 }
@@ -161,7 +161,7 @@ struct Allele {
     id: AlleleId,
     genome_id: GenomeId,
     locus_id: LocusId,
-    base: AlleleBase,
+    origin: AlleleOrigin,
     state: AlleleState,
     created_by: TfId,
     degraded_at: Option<Timestamp>,

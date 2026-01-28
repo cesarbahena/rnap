@@ -54,8 +54,17 @@ Implementing mutation CLI flags that use this matcher belongs to slice 004.
 
 ## Implementation Contract
 
-Pending implementation.
+- Implement backend/application behavior for defining `GeneFamily` and `GeneFamilyGeneration`.
+- Do not add tenant-user CLI commands in this slice.
+- Keep CLI sequence-name matching specified here and implement it when slice 004 adds mutation commands.
 
 ## Approved Tests
 
-Pending.
+- Reject blank `GeneFamily.name`.
+- Reject blank `GeneFamily.abbreviation`.
+- Reject blank `SequenceDefinition.name`.
+- Reject duplicate `SequenceDefinition.name` inside one GeneFamilyGeneration.
+- Require `EncodingType`.
+- Allow Genome-scoped GeneFamily to shadow an Insulator-scoped abbreviation.
+- Reject duplicate abbreviations in the same effective scope.
+- Resolve GeneFamily lookup from Genome context as Genome override first, then Insulator default.
