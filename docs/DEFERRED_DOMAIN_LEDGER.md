@@ -17,27 +17,29 @@ The ledger contains product concepts that are intentionally not implemented yet.
 
 - Schema evolution and rename tracking across GeneFamilyGenerations.
 - `SequenceValue` validation during work-type definition versus mutation application.
-- Gene reference semantics for `SequenceType::Gene` and `GeneVec`.
 - `PiRNA` versus `Silencer` boundary for discard/retirement behavior.
+- Exact Gene FQN configuration storage and override implementation.
 
 ## Candidate Work
 
-- Display identifier derived from GeneFamily abbreviation, document name sequence, and counter.
 - Allele initial sequence values versus all values arriving through Mutations.
 - Degraded candidate behavior before full authorization.
 
 ## Mutations
 
 - Mutation rationale/context before workflow artifacts.
-- Vector mutation behavior: replace, append, or remove.
 - Delete/clear semantics for sequence values.
 - Optimistic concurrency/version preconditions for concurrent Tf or agent edits.
 - CLI mutation flags using the approved sequence-name matcher.
 
+## Splicing
+
+- Exact Exon lifecycle after `dna splice`.
+- Whether Exons become controlled document items, implementation tasks, or both.
+
 ## Authorization
 
 - `TfClassScope` enum versus `insulator_id` plus optional `genome_id`.
-- Whether `HistoneTarget` includes `Exon`.
 - Full ChromatinState resolution semantics.
 - Time-bound marks through `valid_from` and `valid_until`.
 - Degraded auditable records beyond authorization records.

@@ -16,11 +16,10 @@ DNAp is an enterprise multitenant SDLC platform for configurable document types 
 2. [002_DEFINE_WORK_TYPE.md](002_DEFINE_WORK_TYPE.md)
    Define configurable SDLC document types through GeneFamily and GeneFamilyGeneration.
 
-3. [003_OPEN_CANDIDATE_WORK.md](003_OPEN_CANDIDATE_WORK.md)
-   Open a Genome-scoped document instance through Locus, Transposon, and Allele.
+3. [003_OPEN_CANDIDATE_WORK.md](003_OPEN_CANDIDATE_WORK.md) + [004_MUTATE_CANDIDATE_WORK.md](004_MUTATE_CANDIDATE_WORK.md)
+   Create or change candidate work through `dna mutate`; new work is created only with an initial Mutation.
 
-4. [004_MUTATE_CANDIDATE_WORK.md](004_MUTATE_CANDIDATE_WORK.md)
-   Apply append-only Mutations to an Allele and project candidate state.
+4. Reserved.
 
 5. [005_COMMIT_IMMUTABLE_VERSION.md](005_COMMIT_IMMUTABLE_VERSION.md)
    Select an Allele and create an immutable Gene.

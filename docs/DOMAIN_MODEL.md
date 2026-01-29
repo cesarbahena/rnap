@@ -110,7 +110,11 @@ enum SequenceType {
 }
 ```
 
-All SequenceDefinitions in a GeneFamilyGeneration are required before commit. SequenceDefinition names are enterprise-native tenant data and unique inside a GeneFamilyGeneration.
+All SequenceDefinitions in a GeneFamilyGeneration are required before commit. Empty vectors are missing for commit completeness. SequenceDefinition names are enterprise-native tenant data and unique inside a GeneFamilyGeneration.
+
+`SequenceType::Gene` and `SequenceType::GeneVec` are for embedded and linked Genes. A referenced Gene may be a full document such as a PRD or a controlled document item such as an FRS.
+
+CLI input for `Gene` and `GeneVec` sequence values uses Gene FQNs and resolves them to `GeneId` internally.
 
 GeneFamily definitions may be Insulator-scoped or Genome-scoped. Genome-scoped GeneFamilies are project-level overrides. Lookup from a Genome context resolves Genome-scoped override first, then Insulator-scoped default.
 
@@ -119,6 +123,54 @@ GeneFamily abbreviations are unique in effective scope:
 - Insulator-scoped abbreviations are unique within the Insulator.
 - Genome-scoped abbreviations are unique within the Genome.
 - Genome-scoped GeneFamilies may shadow Insulator-scoped abbreviations.
+
+## Gene FQN Presentation
+
+Gene fully qualified name presentation is configurable at Insulator scope and overridable at Genome scope.
+
+Configuration controls:
+
+- case,
+- component order,
+- version/generation formatting semantics.
+
+Default presentation:
+
+```text
+<gene-family-abbreviation>-<locus-name-slug>-<generation>
+```
+
+Example:
+
+```text
+FRS-checkout-0001
+```
+
+CLI matching for Gene FQNs is insensitive to presentation case. Presentation is configurable; command matching is forgiving.
+
+```rust
+struct GeneFqnFormat {
+    case: GeneFqnCase,
+    order: Vec<GeneFqnComponent>,
+    version: GeneFqnVersionFormat,
+}
+
+enum GeneFqnCase {
+    KebabLower,
+    KebabUpper,
+    Preserve,
+}
+
+enum GeneFqnComponent {
+    GeneFamilyAbbreviation,
+    LocusName,
+    Generation,
+}
+
+enum GeneFqnVersionFormat {
+    ZeroPadded { width: u8 },
+}
+```
 
 ## Document Instances
 
@@ -130,9 +182,12 @@ struct Locus {
     family_id: GeneFamilyId,
     insulator_id: InsulatorId,
     genome_id: GenomeId,
+    name: String,
     created_at: Timestamp,
 }
 ```
+
+`Locus.name` is the document instance name used for identity and Gene fully qualified names. It is not a Sequence value.
 
 `Transposon` is the origin path for a new Gene/work item. It carries origin metadata only; Sequence values arrive through Mutations on the Allele.
 
@@ -172,6 +227,10 @@ struct Allele {
 
 enum AlleleState {
     Mutating,
+    Spliced,
+    StaleSplice,
+    StaleTranscript,
+    Selected,
     Degraded,
 }
 ```
@@ -210,6 +269,41 @@ struct Mutation {
 }
 ```
 
+Mutations are individual and composable. One command versus many commands does not change domain semantics; each sequence change is its own Mutation.
+
+Mutating an Allele after it has been spliced is allowed, but it changes `Allele.state` from `Spliced` to `StaleSplice`. Running `dna transcribe` while the Allele is `StaleSplice` renders the current projection and changes `Allele.state` to `StaleTranscript`. A `StaleTranscript` Allele must be spliced again or acknowledged with `dna splice --lgtm` before selection or downstream workflow can proceed.
+
+`dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection for the current Allele against the committed Genes and candidate Alleles in the Chromosome of the Gene being worked on, including unapproved mutations such as sgRNA suggested document modifications.
+
+Approval-status comments for mutated and sgRNA Sequences are always shown. They are part of the transcript output, not an optional render mode.
+
+`Transcriptome` is render/access cursor metadata for token-saving transcript output. It tracks what was last shown so later transcriptions can avoid re-outputting unchanged Sequences unless a full render flag is provided. It does not store the projected document content.
+
+```rust
+struct Chromosome {
+    id: ChromosomeId,
+    genome_id: GenomeId,
+    locus_id: LocusId,
+    genes: Vec<GeneId>,
+    alleles: Vec<AlleleId>,
+}
+
+struct Transcriptome {
+    id: TranscriptomeId,
+    chromosome_id: ChromosomeId,
+    allele_id: AlleleId,
+    sequences: Vec<TranscriptSequenceCursor>,
+    created_by: TfId,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+}
+
+struct TranscriptSequenceCursor {
+    sequence_definition_id: SequenceDefinitionId,
+    last_rendered_mutation_id: Option<MutationId>,
+}
+```
+
 `Gene` is an immutable committed version selected from an Allele.
 
 ```rust
@@ -225,6 +319,21 @@ struct Gene {
     created_at: Timestamp,
 }
 ```
+
+`Exon` is created by `dna splice` from an mRNA Allele. Exons are attached to the working Allele and represent the spliced task/work items derived from that requirements analysis document.
+
+```rust
+struct Exon {
+    id: ExonId,
+    allele_id: AlleleId,
+    text: String,
+    depends_on: Vec<ExonId>,
+    created_by: TfId,
+    created_at: Timestamp,
+}
+```
+
+Exons attached to an Allele organize as a DAG through `depends_on`, not a positional list. If Exon A depends on Exon B, B must precede A in the work graph.
 
 ## Authorization And Context
 
@@ -289,7 +398,7 @@ enum HistoneTarget {
     Genome(GenomeId),
     Gene(GeneId),
     Allele(AlleleId),
-    Sequence(SequenceDefinitionId),
+    Exon(ExonId),
 }
 ```
 
@@ -309,3 +418,99 @@ CLI sequence-name matching is designed for ease of use:
 - must resolve to exactly one SequenceDefinition,
 - returns an error for zero or multiple matches,
 - lets the user disambiguate with more exact input.
+
+## CLI Mutation Entry Point
+
+`dna mutate` is the user-facing command for creating or changing candidate work.
+
+Starting a new document uses `--new` with a GeneFamily abbreviation and a document name as the first positional argument:
+
+```sh
+dna mutate --new FRS 'Checkout' --some-section 'Awesome section'
+```
+
+In this form:
+
+- `FRS` is resolved as a GeneFamily abbreviation in the current Genome context.
+- `Checkout` is the Locus document instance name.
+- At least one Sequence mutation flag is required.
+- DNAp creates the Locus, Transposon, first Allele, and initial Mutation records in one operation.
+- Alleles are created by `dna mutate --new` only when the command actually mutates at least one Sequence.
+
+Mutating existing work omits `--new` and uses the Gene fully qualified name as the first positional argument:
+
+```sh
+dna mutate FRS-checkout-0001
+```
+
+Gene FQN matching is fuzzy and case-insensitive. The generation may be omitted when the matcher resolves exactly one Gene.
+
+Sequence values are provided through mutation flags. Sequence flag names use the approved sequence-name matcher.
+
+Scalar sequence mutation flags use the sequence name directly:
+
+```sh
+--<sequence-name> <value>
+```
+
+`--set-<sequence-name>` is not scalar syntax.
+
+Gene reference values use Gene FQNs:
+
+```sh
+dna mutate --new PRD 'Checkout PRD' --feature FRS-checkout-0001
+```
+
+The CLI resolves `FRS-checkout-0001` to a `GeneId` before storing the Mutation.
+
+Vector sequence mutation flags use explicit add/set/remove operations. The flag shape is:
+
+```sh
+--add-<sequence-name> <value-1> ... <value-n>
+--set-<sequence-name> <value-1> ... <value-n>
+--set-<sequence-name>-<n> <value>
+--remove-<sequence-name>-<n>
+```
+
+For a vector Sequence named `label`, examples are `--add-label`, `--set-label`, `--set-label-2`, and `--remove-label-2`. `label` is not a keyword; it is the matched Sequence name.
+
+Semantics:
+
+- `--add-<sequence-name>` appends one or more values.
+- `--set-<sequence-name>` replaces the whole vector.
+- `--set-<sequence-name>-<n>` replaces only index `n`.
+- `--remove-<sequence-name>-<n>` removes index `n` and shifts following elements.
+- CLI vector indexes are one-based because these indexes are document-facing.
+- Indexed vector operations error when `n` is out of bounds.
+- DNAp does not expose a command for emptying a sequence. Scalars are overwritten by setting a new value. Vectors are replaced with `--set-<sequence-name>` and one or more values.
+
+Dynamic sequence-name matching still applies to the sequence-name part of these flags.
+
+Plain `--<sequence-name> <value>` is invalid for vector sequences because append, replacement, and indexed edits must be explicit.
+
+## CLI Splice Entry Point
+
+`dna splice` creates or acknowledges Exons attached to the active mRNA Allele.
+
+```sh
+dna splice <mrna-gene> "Some hard task" "An even harder one"
+dna splice <mrna-gene> "Buy soap" --before-go-laundry
+dna splice <mrna-gene> --pick-laundry --after-go-laundry
+dna splice <mrna-gene> --set-buy-soap "Buy hypoallergenic soap"
+dna splice <mrna-gene> --lgtm
+```
+
+In this form:
+
+- `<mrna-gene>` is the Gene FQN used to resolve the active mRNA Allele for the work item.
+- Gene FQN matching is fuzzy and case-insensitive. The generation may be omitted when the matcher resolves exactly one Gene or active Allele.
+- Quoted positional arguments create new Exons attached to that mRNA Allele.
+- `--before-<exon-name>` places the new or selected Exon before an existing Exon by making the existing Exon depend on it.
+- `--after-<exon-name>` places the new or selected Exon after an existing Exon by making it depend on the existing Exon.
+- `--<exon-name>` selects an existing Exon in the mRNA Allele's Exon DAG.
+- `--set-<exon-name> <text>` replaces the text of an existing Exon.
+- `--lgtm` acknowledges that the existing Exon DAG is still up to date after post-splice Mutations.
+- Exons attached to the Allele organize as a DAG through `depends_on`.
+- `dna splice` is not a mutation staging command.
+
+After `dna splice`, the Allele remains an Allele with `state = Spliced`. `dna select` is the final command that creates the immutable Gene.

@@ -110,8 +110,19 @@ Check these before slice 006:
 - Histones may exist at Insulator or Genome scope.
 - Genome Histones extend Insulator Histones.
 - `Histone.key` is unique within an Insulator.
-- `HistoneTarget` may need `Exon`; no active slice defines `Exon` yet.
-- Current `DOMAIN_MODEL.md` uses `Sequence(SequenceDefinitionId)` as the sequence-level target. Confirm before implementation.
+- `HistoneTarget` includes `Exon`.
+- `dna splice <mrna-gene> "Some hard task" "An even harder one"` creates Exons attached to the active mRNA Allele.
+- `dna splice` takes a Gene FQN. Gene FQN matching is fuzzy and case-insensitive, and generation may be omitted when the matcher resolves exactly one Gene.
+- `dna splice <mrna-gene> "Buy soap" --before-go-laundry` creates or selects the Exon and makes `go-laundry` depend on it.
+- `dna splice <mrna-gene> --pick-laundry --after-go-laundry` makes `pick-laundry` depend on `go-laundry`.
+- `dna splice <mrna-gene> --set-buy-soap "Buy hypoallergenic soap"` replaces the text of the existing Exon.
+- `dna splice <mrna-gene> --lgtm` acknowledges that the existing Exon DAG is still up to date after post-splice Mutations.
+- Splicing changes `Allele.state` to `Spliced`; mutating a spliced Allele changes it to `StaleSplice`; transcribing stale spliced work changes it to `StaleTranscript`; `dna select` is the final immutable Gene boundary.
+- `dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection, including unapproved mutations such as sgRNA suggested document modifications.
+- `dna transcribe` always shows approval-status comments for mutated and sgRNA Sequences.
+- `Transcriptome` stores render/access cursor metadata for token-saving transcript output, not projected document content.
+- Exons attached to an Allele organize as a DAG through `depends_on`, not an ordinal list and not a separate edge object.
+- Exons were lost during the docs reset and must not be collapsed into SequenceDefinition or Mutation.
 
 ### Fold And Evaluation Semantics
 

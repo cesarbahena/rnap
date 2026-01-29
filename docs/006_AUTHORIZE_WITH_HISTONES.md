@@ -37,7 +37,7 @@ Slice 006 implements:
 ```text
 TfClass histones
 + Tf histones
-+ Genome/Gene/Allele/Sequence context histones
++ Genome/Gene/Allele/Exon context histones
 ```
 
 Resolution defaults to deny.
