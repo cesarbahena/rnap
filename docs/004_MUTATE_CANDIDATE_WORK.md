@@ -100,8 +100,20 @@ dna mutate FRS-checkout-0001
 
 ## Implementation Contract
 
-Pending implementation.
+- Implement backend/application behavior for starting new candidate work through `dna mutate --new`.
+- Implement backend/application behavior for mutating existing active Alleles by Gene FQN.
+- Implement SequenceDefinition matching with case/kebab-insensitive command input.
+- Implement SequenceValue type checks against the matched SequenceDefinition.
+- Implement current Allele projection from latest Mutations.
+- Implement Transcriptome render cursor metadata per Sequence.
+- Implement stale splice lifecycle transitions through `dna mutate`, `dna transcribe`, `dna splice`, and `dna splice --lgtm`.
 
 ## Approved Tests
 
-Pending.
+- Sequence mutation names match case/kebab-insensitively.
+- Mutation values must match SequenceDefinition type.
+- `dna transcribe` returns latest candidate projection.
+- Transcriptome stores per-Sequence render cursor metadata, not projected document content.
+- Unchanged transcriptions can omit unchanged Sequences through the Transcriptome cursor.
+- Changed Sequences are shown again after later Mutations.
+- `dna splice --lgtm` is blocked from `StaleSplice` until `dna transcribe` moves the Allele to `StaleTranscript`.

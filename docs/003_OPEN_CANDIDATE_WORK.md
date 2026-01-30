@@ -77,4 +77,10 @@ dna mutate --new FRS 'Checkout' --some-section 'Awesome section'
 
 ## Approved Tests
 
-Pending.
+- `dna mutate --new` rejects commands without at least one Sequence mutation.
+- `dna mutate --new` creates Locus, Transposon, Allele, initial Mutation records, and default Gene FQN.
+- Gene FQN matching allows omitted generation when it resolves exactly one active Allele.
+- Mutating a `Spliced` Allele moves it to `StaleSplice`.
+- `dna transcribe` moves `StaleSplice` to `StaleTranscript`.
+- `dna splice --lgtm` moves `StaleTranscript` back to `Spliced`.
+- Active Allele FQN resolution is scoped to the creating Tf.
