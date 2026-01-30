@@ -21,16 +21,19 @@ DNAp is an enterprise multitenant SDLC platform for configurable document types 
 
 4. Reserved.
 
-5. [005_COMMIT_IMMUTABLE_VERSION.md](005_COMMIT_IMMUTABLE_VERSION.md)
+5. [005_CLI_SESSION_AND_EPIGENETICS.md](005_CLI_SESSION_AND_EPIGENETICS.md)
+   Run local CLI workflows through a replaceable session boundary and temporary `dna epigenetics` bootstrap namespace.
+
+6. [005_COMMIT_IMMUTABLE_VERSION.md](005_COMMIT_IMMUTABLE_VERSION.md)
    Select an Allele and create an immutable Gene.
 
-6. [006_AUTHORIZE_WITH_HISTONES.md](006_AUTHORIZE_WITH_HISTONES.md)
+7. [006_AUTHORIZE_WITH_HISTONES.md](006_AUTHORIZE_WITH_HISTONES.md)
    Add Histone-based authorization and contextual evaluation.
 
-7. [007_ADD_WORKFLOW_ARTIFACTS.md](007_ADD_WORKFLOW_ARTIFACTS.md)
+8. [007_ADD_WORKFLOW_ARTIFACTS.md](007_ADD_WORKFLOW_ARTIFACTS.md)
    Add Regulatory RNA workflow documents around candidate work.
 
-8. [008_ADD_IMPLEMENTATION_EVALUATION.md](008_ADD_IMPLEMENTATION_EVALUATION.md)
+9. [008_ADD_IMPLEMENTATION_EVALUATION.md](008_ADD_IMPLEMENTATION_EVALUATION.md)
    Link candidate work to implementation output and evaluation.
 
 ## Build Rules
