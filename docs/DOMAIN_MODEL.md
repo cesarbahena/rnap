@@ -204,7 +204,7 @@ struct Transposon {
 }
 ```
 
-`Allele` is mutable candidate work.
+`Allele` is the mutable working version for a Locus.
 
 ```rust
 enum AlleleOrigin {
@@ -227,9 +227,7 @@ struct Allele {
 
 enum AlleleState {
     Mutating,
-    Spliced,
-    StaleSplice,
-    StaleTranscript,
+    Expressing,
     Selected,
     Degraded,
 }
@@ -237,7 +235,7 @@ enum AlleleState {
 
 One active Allele is allowed per `(Locus, Tf)`. Multiple Tfs may each have one active Allele for the same Locus.
 
-`Mutation` is an append-only field change on an Allele.
+`Mutation` is a Sequence value change on an Allele.
 
 ```rust
 type SequenceKey = String;
@@ -262,16 +260,25 @@ enum SequenceValue {
 }
 
 struct Mutation {
+    id: MutationId,
+    allele_id: AlleleId,
     sequence_definition_id: SequenceDefinitionId,
     value: SequenceValue,
+    state: MutationState,
     created_by: TfId,
     created_at: Timestamp,
+    updated_at: Timestamp,
+}
+
+enum MutationState {
+    Unexpressed,
+    Expressing,
 }
 ```
 
-Mutations are individual and composable. One command versus many commands does not change domain semantics; each sequence change is its own Mutation.
+Mutations are individual and composable. Before expression, mutating the same Sequence updates the same `Unexpressed` Mutation row. `dna splice` expresses all current `Unexpressed` Mutations, changing them to `Expressing`. Mutating a Sequence that already has an `Expressing` Mutation creates a new `Unexpressed` Mutation for that Sequence.
 
-Mutating an Allele after it has been spliced is allowed, but it changes `Allele.state` from `Spliced` to `StaleSplice`. Running `dna transcribe` while the Allele is `StaleSplice` renders the current projection and changes `Allele.state` to `StaleTranscript`. A `StaleTranscript` Allele must be spliced again or acknowledged with `dna splice --lgtm` before selection or downstream workflow can proceed.
+`dna splice` moves the Allele to `Expressing`. `dna splice --lgtm` is an escape hatch: it expresses current `Unexpressed` Mutations without changing Exons when the current Exon DAG is still acceptable.
 
 `dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection for the current Allele against the committed Genes and candidate Alleles in the Chromosome of the Gene being worked on, including unapproved mutations such as sgRNA suggested document modifications.
 
@@ -301,6 +308,7 @@ struct Transcriptome {
 struct TranscriptSequenceCursor {
     sequence_definition_id: SequenceDefinitionId,
     last_rendered_mutation_id: Option<MutationId>,
+    last_rendered_sequence_hash: Option<SequenceHash>,
 }
 ```
 
@@ -421,7 +429,7 @@ CLI sequence-name matching is designed for ease of use:
 
 ## CLI Mutation Entry Point
 
-`dna mutate` is the user-facing command for creating or changing candidate work.
+`dna mutate` is the user-facing command for creating or changing an Allele.
 
 Starting a new document uses `--new` with a GeneFamily abbreviation and a document name as the first positional argument:
 
@@ -443,7 +451,7 @@ Mutating existing work omits `--new` and uses the Gene fully qualified name as t
 dna mutate FRS-checkout-0001
 ```
 
-Gene FQN matching is fuzzy and case-insensitive. The generation may be omitted when the matcher resolves exactly one Gene.
+Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
 
 Sequence values are provided through mutation flags. Sequence flag names use the approved sequence-name matcher.
 
@@ -502,15 +510,15 @@ dna splice <mrna-gene> --lgtm
 
 In this form:
 
-- `<mrna-gene>` is the Gene FQN used to resolve the active mRNA Allele for the work item.
-- Gene FQN matching is fuzzy and case-insensitive. The generation may be omitted when the matcher resolves exactly one Gene or active Allele.
+- `<mrna-gene>` resolves the active mRNA Allele by Locus name or Gene FQN.
+- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
 - Quoted positional arguments create new Exons attached to that mRNA Allele.
 - `--before-<exon-name>` places the new or selected Exon before an existing Exon by making the existing Exon depend on it.
 - `--after-<exon-name>` places the new or selected Exon after an existing Exon by making it depend on the existing Exon.
 - `--<exon-name>` selects an existing Exon in the mRNA Allele's Exon DAG.
 - `--set-<exon-name> <text>` replaces the text of an existing Exon.
-- `--lgtm` acknowledges that the existing Exon DAG is still up to date after post-splice Mutations.
+- `--lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without changing Exons when the existing Exon DAG is still acceptable.
 - Exons attached to the Allele organize as a DAG through `depends_on`.
 - `dna splice` is not a mutation staging command.
 
-After `dna splice`, the Allele remains an Allele with `state = Spliced`. `dna select` is the final command that creates the immutable Gene.
+After `dna splice`, the Allele remains an Allele with `state = Expressing`. `dna select` is the final command that creates the immutable Gene.

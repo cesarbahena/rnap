@@ -233,10 +233,14 @@ fn transcribe(state: &mut LocalState, args: &[String]) -> Result<String, CliErro
         created_by: session.actor.tf_id,
     })?;
 
-    let mut output = format!(
-        "transcribed {:?}; approval comments shown",
-        transcribed.allele.state
-    );
+    let mut output = if transcribed.sequences.is_empty() {
+        format!(
+            "transcribed {:?}; no Sequence changes to render",
+            transcribed.allele.state
+        )
+    } else {
+        format!("transcribed {:?}", transcribed.allele.state)
+    };
     for sequence in transcribed.sequences {
         output.push_str(&format!(
             "\n{}: {}",
@@ -257,6 +261,11 @@ fn splice(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
         .filter(|arg| !arg.starts_with("--"))
         .cloned()
         .collect::<Vec<_>>();
+    if exon_texts.is_empty() && !lgtm {
+        return Err(CliError::Usage(
+            "splice requires at least one Exon text or --lgtm".to_owned(),
+        ));
+    }
     let spliced = state.dnap.splice(SpliceAllele {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
@@ -266,9 +275,10 @@ fn splice(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
         created_by: session.actor.tf_id,
     })?;
     Ok(format!(
-        "spliced {:?} with {} new exon(s)",
+        "spliced {:?} with {} new exon(s); {} untranscribed unexpressed mutation(s)",
         spliced.allele.state,
-        spliced.exons.len()
+        spliced.exons.len(),
+        spliced.untranscribed_unexpressed_mutations
     ))
 }
 
@@ -458,11 +468,28 @@ mod tests {
 
         let spliced =
             dispatch(&mut state, words("splice FRS-checkout BuildCheckout")).expect("splice");
-        assert!(spliced.contains("Spliced"));
+        assert!(spliced.contains("Expressing"));
+
+        let unchanged_transcript =
+            dispatch(&mut state, words("transcribe FRS-checkout")).expect("transcribe unchanged");
+        assert!(unchanged_transcript.contains("no Sequence changes to render"));
+        assert!(!unchanged_transcript.contains("approval comments shown"));
     }
 
     #[test]
-    fn stale_splice_cli_flow_requires_transcribe_before_lgtm() {
+    fn splice_requires_exon_text_or_lgtm_escape_hatch() {
+        let mut state = bootstrapped_state();
+        dispatch(&mut state, words("mutate --new FRS Checkout")).expect("mutate new");
+
+        let error =
+            dispatch(&mut state, words("splice checkout")).expect_err("empty splice is invalid");
+        assert!(
+            matches!(error, CliError::Usage(message) if message.contains("Exon text or --lgtm"))
+        );
+    }
+
+    #[test]
+    fn lgtm_cli_flow_expresses_without_requiring_transcribe() {
         let mut state = bootstrapped_state();
         dispatch(
             &mut state,
@@ -476,20 +503,10 @@ mod tests {
         )
         .expect("stale mutation");
 
-        let blocked = dispatch(&mut state, words("splice FRS-checkout --lgtm"))
-            .expect_err("lgtm blocked before transcribe");
-        assert!(matches!(
-            blocked,
-            CliError::Dnap(DnapError::StaleSpliceRequiresTranscribe)
-        ));
-
-        let transcript =
-            dispatch(&mut state, words("transcribe FRS-checkout")).expect("stale transcript");
-        assert!(transcript.contains("StaleTranscript"));
-
         let spliced = dispatch(&mut state, words("splice FRS-checkout --lgtm"))
-            .expect("lgtm after transcript");
-        assert!(spliced.contains("Spliced"));
+            .expect("lgtm expresses latest mutation");
+        assert!(spliced.contains("Expressing"));
+        assert!(spliced.contains("1 untranscribed unexpressed mutation"));
     }
 
     fn bootstrapped_state() -> LocalState {

@@ -146,9 +146,7 @@ pub enum AlleleOrigin {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AlleleState {
     Mutating,
-    Spliced,
-    StaleSplice,
-    StaleTranscript,
+    Expressing,
     Selected,
     Degraded,
 }
@@ -196,8 +194,19 @@ pub struct Mutation {
     pub allele_id: AlleleId,
     pub sequence_definition_id: SequenceDefinitionId,
     pub value: SequenceValue,
+    pub state: MutationState,
     pub created_by: TfId,
     pub created_at: SystemTime,
+    pub updated_at: SystemTime,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct SequenceHash(String);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MutationState {
+    Unexpressed,
+    Expressing,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -224,6 +233,7 @@ pub struct Transcriptome {
 pub struct TranscriptSequenceCursor {
     pub sequence_definition_id: SequenceDefinitionId,
     pub last_rendered_mutation_id: Option<MutationId>,
+    pub last_rendered_sequence_hash: Option<SequenceHash>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -400,9 +410,10 @@ pub struct SpliceAllele {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SplicedAllele {
+pub struct SpliceResult {
     pub allele: Allele,
     pub exons: Vec<Exon>,
+    pub untranscribed_unexpressed_mutations: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -424,20 +435,19 @@ pub enum DnapError {
     DuplicateGeneFamilyAbbreviation,
     DuplicateActiveAllele,
     MissingEncodingType,
-    MissingMutation,
     BlankLocusName,
     BlankGeneFamilyLookup,
     BlankMutationSequenceName,
     BlankExonText,
     GeneFamilyNotFound,
     SequenceDefinitionNotFound,
+    AmbiguousSequenceDefinition,
     SequenceValueTypeMismatch,
     GeneFqnNotFound,
     AmbiguousGeneFqn,
     AlleleNotFound,
     AlleleCannotMutate,
-    StaleSpliceRequiresTranscribe,
-    LgtmRequiresStaleTranscript,
+    LgtmRequiresUnexpressedMutation,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -634,9 +644,6 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-        if input.mutations.is_empty() {
-            return Err(DnapError::MissingMutation);
-        }
 
         let family_lookup = require_text(
             input.gene_family_abbreviation,
@@ -725,9 +732,6 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-        if input.mutations.is_empty() {
-            return Err(DnapError::MissingMutation);
-        }
 
         let allele_id = self.resolve_active_allele_id(
             input.insulator_id,
@@ -752,10 +756,9 @@ impl Dnap {
             input.created_by,
             now,
         )?;
-        allele.state = match allele.state {
-            AlleleState::Spliced | AlleleState::StaleTranscript => AlleleState::StaleSplice,
-            state => state,
-        };
+        if allele.state == AlleleState::Expressing && !mutations.is_empty() {
+            allele.state = AlleleState::Mutating;
+        }
         allele.updated_at = now;
 
         let locus = self
@@ -794,7 +797,7 @@ impl Dnap {
             input.created_by,
             &input.gene_fqn,
         )?;
-        let mut allele = self
+        let allele = self
             .alleles
             .get(&allele_id)
             .cloned()
@@ -815,23 +818,27 @@ impl Dnap {
                     let previous = previous_cursors
                         .iter()
                         .find(|cursor| cursor.sequence_definition_id == sequence.definition_id)
-                        .and_then(|cursor| cursor.last_rendered_mutation_id);
+                        .map(|cursor| {
+                            (
+                                cursor.last_rendered_mutation_id,
+                                cursor.last_rendered_sequence_hash.clone(),
+                            )
+                        });
                     let latest = latest_cursors
                         .iter()
                         .find(|cursor| cursor.sequence_definition_id == sequence.definition_id)
-                        .and_then(|cursor| cursor.last_rendered_mutation_id);
+                        .map(|cursor| {
+                            (
+                                cursor.last_rendered_mutation_id,
+                                cursor.last_rendered_sequence_hash.clone(),
+                            )
+                        });
                     previous != latest
                 })
                 .collect()
         };
 
         let now = SystemTime::now();
-        if allele.state == AlleleState::StaleSplice {
-            allele.state = AlleleState::StaleTranscript;
-            allele.updated_at = now;
-            self.alleles.insert(allele.id, allele.clone());
-        }
-
         let chromosome_id = self
             .chromosomes
             .get(&allele.locus_id)
@@ -863,7 +870,7 @@ impl Dnap {
         })
     }
 
-    pub fn splice(&mut self, input: SpliceAllele) -> Result<SplicedAllele, DnapError> {
+    pub fn splice(&mut self, input: SpliceAllele) -> Result<SpliceResult, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
@@ -879,14 +886,21 @@ impl Dnap {
             .get(&allele_id)
             .cloned()
             .ok_or(DnapError::AlleleNotFound)?;
-        if allele.state == AlleleState::StaleSplice {
-            return Err(DnapError::StaleSpliceRequiresTranscribe);
-        }
-        if input.lgtm && allele.state != AlleleState::StaleTranscript {
-            return Err(DnapError::LgtmRequiresStaleTranscript);
+        let unexpressed_mutation_ids = self
+            .mutations
+            .values()
+            .filter(|mutation| {
+                mutation.allele_id == allele.id && mutation.state == MutationState::Unexpressed
+            })
+            .map(|mutation| mutation.id)
+            .collect::<Vec<_>>();
+        if input.lgtm && unexpressed_mutation_ids.is_empty() {
+            return Err(DnapError::LgtmRequiresUnexpressedMutation);
         }
 
         let now = SystemTime::now();
+        let untranscribed_unexpressed_mutations =
+            self.untranscribed_unexpressed_mutation_count(allele.id);
         let mut exons = Vec::new();
         for exon_text in input.exon_texts {
             let text = require_text(exon_text, DnapError::BlankExonText)?;
@@ -901,12 +915,23 @@ impl Dnap {
             self.exons.insert(exon.id, exon.clone());
             exons.push(exon);
         }
+        for mutation_id in unexpressed_mutation_ids {
+            let Some(mutation) = self.mutations.get_mut(&mutation_id) else {
+                continue;
+            };
+            mutation.state = MutationState::Expressing;
+            mutation.updated_at = now;
+        }
 
-        allele.state = AlleleState::Spliced;
+        allele.state = AlleleState::Expressing;
         allele.updated_at = now;
         self.alleles.insert(allele.id, allele.clone());
 
-        Ok(SplicedAllele { allele, exons })
+        Ok(SpliceResult {
+            allele,
+            exons,
+            untranscribed_unexpressed_mutations,
+        })
     }
 
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
@@ -1098,25 +1123,48 @@ impl Dnap {
             .get(&generation_id)
             .ok_or(DnapError::GeneFamilyNotFound)?
             .clone();
-        let mut built = Vec::with_capacity(mutations.len());
+        let mut open_by_sequence = self
+            .mutations
+            .values()
+            .filter(|mutation| {
+                mutation.allele_id == allele_id && mutation.state == MutationState::Unexpressed
+            })
+            .map(|mutation| (mutation.sequence_definition_id, mutation.clone()))
+            .collect::<BTreeMap<_, _>>();
+        let mut touched = Vec::<SequenceDefinitionId>::new();
         for mutation in mutations {
             let sequence_name =
                 require_text(mutation.sequence_name, DnapError::BlankMutationSequenceName)?;
-            let definition = resolve_sequence_definition(&generation, &sequence_name)
-                .ok_or(DnapError::SequenceDefinitionNotFound)?;
+            let definition = resolve_sequence_definition(&generation, &sequence_name)?;
             if !value_matches_sequence_type(&mutation.value, definition.sequence_type) {
                 return Err(DnapError::SequenceValueTypeMismatch);
             }
-            built.push(Mutation {
-                id: self.allocate_mutation_id(),
-                allele_id,
-                sequence_definition_id: definition.id,
-                value: mutation.value,
-                created_by,
-                created_at,
-            });
+            if let Some(existing) = open_by_sequence.get_mut(&definition.id) {
+                existing.value = mutation.value;
+                existing.updated_at = created_at;
+            } else {
+                open_by_sequence.insert(
+                    definition.id,
+                    Mutation {
+                        id: self.allocate_mutation_id(),
+                        allele_id,
+                        sequence_definition_id: definition.id,
+                        value: mutation.value,
+                        state: MutationState::Unexpressed,
+                        created_by,
+                        created_at,
+                        updated_at: created_at,
+                    },
+                );
+            }
+            if !touched.contains(&definition.id) {
+                touched.push(definition.id);
+            }
         }
-        Ok(built)
+        Ok(touched
+            .into_iter()
+            .filter_map(|definition_id| open_by_sequence.remove(&definition_id))
+            .collect())
     }
 
     fn resolve_active_allele_id(
@@ -1148,7 +1196,9 @@ impl Dnap {
                 let full = normalize_match_text(&self.gene_fqn(family, locus, allele.generation));
                 let without_generation =
                     normalize_match_text(&self.gene_fqn_without_generation(family, locus));
-                (normalized == full || normalized == without_generation).then_some(allele.id)
+                let locus_name = normalize_match_text(&locus.name);
+                (normalized == full || normalized == without_generation || normalized == locus_name)
+                    .then_some(allele.id)
             })
             .collect::<Vec<_>>();
 
@@ -1160,23 +1210,54 @@ impl Dnap {
     }
 
     fn latest_sequence_cursors(&self, allele_id: AlleleId) -> Vec<TranscriptSequenceCursor> {
-        let mut latest = BTreeMap::<SequenceDefinitionId, MutationId>::new();
+        let mut latest = BTreeMap::<SequenceDefinitionId, (MutationId, SequenceHash)>::new();
         for mutation in self
             .mutations
             .values()
             .filter(|mutation| mutation.allele_id == allele_id)
         {
-            latest.insert(mutation.sequence_definition_id, mutation.id);
+            latest.insert(
+                mutation.sequence_definition_id,
+                (mutation.id, sequence_hash(&mutation.value)),
+            );
         }
         latest
             .into_iter()
-            .map(
-                |(sequence_definition_id, mutation_id)| TranscriptSequenceCursor {
+            .map(|(sequence_definition_id, (mutation_id, sequence_hash))| {
+                TranscriptSequenceCursor {
                     sequence_definition_id,
                     last_rendered_mutation_id: Some(mutation_id),
-                },
-            )
+                    last_rendered_sequence_hash: Some(sequence_hash),
+                }
+            })
             .collect()
+    }
+
+    fn untranscribed_unexpressed_mutation_count(&self, allele_id: AlleleId) -> usize {
+        let previous_cursors = self
+            .transcriptomes
+            .get(&allele_id)
+            .map(|transcriptome| transcriptome.sequences.as_slice())
+            .unwrap_or(&[]);
+
+        self.mutations
+            .values()
+            .filter(|mutation| {
+                mutation.allele_id == allele_id
+                    && mutation.state == MutationState::Unexpressed
+                    && previous_cursors
+                        .iter()
+                        .find(|cursor| {
+                            cursor.sequence_definition_id == mutation.sequence_definition_id
+                        })
+                        .map(|cursor| {
+                            cursor.last_rendered_mutation_id == Some(mutation.id)
+                                && cursor.last_rendered_sequence_hash
+                                    == Some(sequence_hash(&mutation.value))
+                        })
+                        != Some(true)
+            })
+            .count()
     }
 
     fn gene_fqn(&self, family: &GeneFamily, locus: &Locus, generation: u32) -> String {
@@ -1297,12 +1378,27 @@ fn slugify(value: &str) -> String {
 fn resolve_sequence_definition<'a>(
     generation: &'a GeneFamilyGeneration,
     name: &str,
-) -> Option<&'a SequenceDefinition> {
+) -> Result<&'a SequenceDefinition, DnapError> {
     let normalized = normalize_match_text(name);
-    generation
+    if let Some(exact) = generation
         .sequences
         .iter()
         .find(|definition| normalize_match_text(&definition.name) == normalized)
+    {
+        return Ok(exact);
+    }
+
+    let matches = generation
+        .sequences
+        .iter()
+        .filter(|definition| normalize_match_text(&definition.name).starts_with(&normalized))
+        .collect::<Vec<_>>();
+
+    match matches.as_slice() {
+        [definition] => Ok(*definition),
+        [] => Err(DnapError::SequenceDefinitionNotFound),
+        _ => Err(DnapError::AmbiguousSequenceDefinition),
+    }
 }
 
 fn value_matches_sequence_type(value: &SequenceValue, sequence_type: SequenceType) -> bool {
@@ -1319,6 +1415,29 @@ fn value_matches_sequence_type(value: &SequenceValue, sequence_type: SequenceTyp
             | (SequenceValue::GeneRef(_), SequenceType::Gene)
             | (SequenceValue::GeneRefVec(_), SequenceType::GeneVec)
     )
+}
+
+fn sequence_hash(value: &SequenceValue) -> SequenceHash {
+    let serialized = match value {
+        SequenceValue::String(value) => format!("string:{value}"),
+        SequenceValue::StringVec(value) => format!("string_vec:{value:?}"),
+        SequenceValue::Int(value) => format!("int:{value}"),
+        SequenceValue::IntVec(value) => format!("int_vec:{value:?}"),
+        SequenceValue::Float(value) => format!("float:{value:?}"),
+        SequenceValue::FloatVec(value) => format!("float_vec:{value:?}"),
+        SequenceValue::Bool(value) => format!("bool:{value}"),
+        SequenceValue::BoolVec(value) => format!("bool_vec:{value:?}"),
+        SequenceValue::GeneRef(value) => format!("gene:{value:?}"),
+        SequenceValue::GeneRefVec(value) => format!("gene_vec:{value:?}"),
+    };
+
+    // FNV-1a is enough here: this is a deterministic render cursor, not a security hash.
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in serialized.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    SequenceHash(format!("{hash:016x}"))
 }
 
 #[cfg(test)]
@@ -1617,7 +1736,7 @@ mod tests {
     }
 
     #[test]
-    fn mutate_new_requires_initial_mutation_and_creates_candidate_work() {
+    fn mutate_new_can_create_locus_transposon_and_allele_without_initial_mutations() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
         define_gene_family(
@@ -1629,18 +1748,40 @@ mod tests {
             "FRS",
         );
 
-        assert_eq!(
-            dnap.mutate_new(MutateNew {
+        let empty = dnap
+            .mutate_new(MutateNew {
                 insulator_id,
                 genome_id,
                 gene_family_abbreviation: "FRS".to_owned(),
                 locus_name: "Checkout".to_owned(),
                 mutations: Vec::new(),
                 created_by: tf_id,
-            }),
-            Err(DnapError::MissingMutation)
-        );
+            })
+            .expect("new allele without initial mutations");
 
+        assert_eq!(empty.locus.name, "Checkout");
+        assert_eq!(empty.allele.state, AlleleState::Mutating);
+        assert_eq!(empty.gene_fqn, "FRS-checkout-0001");
+        assert!(empty.mutations.is_empty());
+        assert!(empty.transposon.is_some());
+        assert!(dnap
+            .project_allele(empty.allele.id)
+            .expect("empty projection")
+            .is_empty());
+    }
+
+    #[test]
+    fn mutate_new_can_create_initial_sequence_mutations() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Feature Requirements Specification",
+            "FRS",
+        );
         let mutated = dnap
             .mutate_new(MutateNew {
                 insulator_id,
@@ -1710,7 +1851,7 @@ mod tests {
     }
 
     #[test]
-    fn fqn_generation_may_be_omitted_when_it_resolves_one_active_allele() {
+    fn active_allele_can_be_resolved_by_locus_name_without_fuzzy_matching() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
         define_gene_family(
@@ -1738,14 +1879,11 @@ mod tests {
             .mutate_existing(MutateExisting {
                 insulator_id,
                 genome_id,
-                gene_fqn: "frs checkout".to_owned(),
-                mutations: vec![mutation(
-                    "Problem",
-                    SequenceValue::String("Pain".to_owned()),
-                )],
+                gene_fqn: "checkout".to_owned(),
+                mutations: vec![mutation("Prob", SequenceValue::String("Pain".to_owned()))],
                 created_by: tf_id,
             })
-            .expect("omitted generation resolves");
+            .expect("locus name resolves");
 
         assert_eq!(mutated.gene_fqn, "FRS-checkout-0001");
         assert_eq!(mutated.allele.state, AlleleState::Mutating);
@@ -1800,7 +1938,7 @@ mod tests {
     }
 
     #[test]
-    fn stale_spliced_work_must_be_transcribed_before_lgtm_splice_acknowledgement() {
+    fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
         define_gene_family(
@@ -1835,7 +1973,7 @@ mod tests {
         })
         .expect("first splice");
 
-        let stale = dnap
+        let unexpressed = dnap
             .mutate_existing(MutateExisting {
                 insulator_id,
                 genome_id,
@@ -1847,31 +1985,7 @@ mod tests {
                 created_by: tf_id,
             })
             .expect("mutate spliced work");
-        assert_eq!(stale.allele.state, AlleleState::StaleSplice);
-
-        assert_eq!(
-            dnap.splice(SpliceAllele {
-                insulator_id,
-                genome_id,
-                gene_fqn: "FRS-checkout".to_owned(),
-                exon_texts: Vec::new(),
-                lgtm: true,
-                created_by: tf_id,
-            }),
-            Err(DnapError::StaleSpliceRequiresTranscribe)
-        );
-
-        let transcribed = dnap
-            .transcribe(TranscribeAllele {
-                insulator_id,
-                genome_id,
-                gene_fqn: "frs checkout".to_owned(),
-                full: false,
-                created_by: tf_id,
-            })
-            .expect("stale transcription");
-        assert_eq!(transcribed.allele.state, AlleleState::StaleTranscript);
-        assert!(transcribed.approval_comments_visible);
+        assert_eq!(unexpressed.allele.state, AlleleState::Mutating);
 
         let spliced = dnap
             .splice(SpliceAllele {
@@ -1883,8 +1997,9 @@ mod tests {
                 created_by: tf_id,
             })
             .expect("lgtm acknowledgement");
-        assert_eq!(spliced.allele.state, AlleleState::Spliced);
+        assert_eq!(spliced.allele.state, AlleleState::Expressing);
         assert!(spliced.exons.is_empty());
+        assert_eq!(spliced.untranscribed_unexpressed_mutations, 1);
     }
 
     #[test]
@@ -1924,6 +2039,11 @@ mod tests {
             .expect("first transcript");
         assert_eq!(first.sequences.len(), 2);
         assert_eq!(first.transcriptome.sequences.len(), 2);
+        let mutation_count = dnap
+            .mutations
+            .values()
+            .filter(|mutation| mutation.allele_id == mutated.allele.id)
+            .count();
 
         let second = dnap
             .transcribe(TranscribeAllele {
@@ -1961,6 +2081,13 @@ mod tests {
         assert_eq!(third.sequences.len(), 1);
         assert_eq!(third.sequences[0].name, "Problem");
         assert_eq!(third.transcriptome.sequences.len(), 2);
+        assert_eq!(
+            dnap.mutations
+                .values()
+                .filter(|mutation| mutation.allele_id == changed.allele.id)
+                .count(),
+            mutation_count
+        );
     }
 
     fn provision_acme(dnap: &mut Dnap) -> ProvisionedInsulator {

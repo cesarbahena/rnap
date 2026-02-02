@@ -17,7 +17,7 @@ DNAp is an enterprise multitenant SDLC platform for configurable document types 
    Define configurable SDLC document types through GeneFamily and GeneFamilyGeneration.
 
 3. [003_OPEN_CANDIDATE_WORK.md](003_OPEN_CANDIDATE_WORK.md) + [004_MUTATE_CANDIDATE_WORK.md](004_MUTATE_CANDIDATE_WORK.md)
-   Create or change candidate work through `dna mutate`; new work is created only with an initial Mutation.
+   Create or change an Allele through `dna mutate`; `dna mutate --new` can create an Allele before Sequence values are filled.
 
 4. Reserved.
 
@@ -31,10 +31,10 @@ DNAp is an enterprise multitenant SDLC platform for configurable document types 
    Add Histone-based authorization and contextual evaluation.
 
 8. [007_ADD_WORKFLOW_ARTIFACTS.md](007_ADD_WORKFLOW_ARTIFACTS.md)
-   Add Regulatory RNA workflow documents around candidate work.
+   Add Regulatory RNA workflow documents around Alleles.
 
 9. [008_ADD_IMPLEMENTATION_EVALUATION.md](008_ADD_IMPLEMENTATION_EVALUATION.md)
-   Link candidate work to implementation output and evaluation.
+   Link Alleles to implementation output and evaluation.
 
 ## Build Rules
 

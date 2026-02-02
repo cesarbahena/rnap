@@ -75,7 +75,6 @@ dna splice FRS-checkout --lgtm
 
 - Epigenetics bootstrap can create Insulator, Genome, Tf, active session, and GeneFamily.
 - Normal CLI workflow commands use the active session.
-- CLI workflow can mutate, transcribe, and splice candidate work.
-- `dna splice --lgtm` is blocked from `StaleSplice` before `dna transcribe`.
-- `dna transcribe` moves stale work to `StaleTranscript`.
-- `dna splice --lgtm` succeeds after stale transcription.
+- CLI workflow can mutate, transcribe, and splice an Allele.
+- `dna splice --lgtm` expresses current `Unexpressed` Mutations without changing Exons.
+- CLI transcribe output includes approval comments.

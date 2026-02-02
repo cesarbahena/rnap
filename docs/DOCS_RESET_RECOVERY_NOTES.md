@@ -34,9 +34,9 @@ The reset preserved these product concepts in active docs:
 - CLI sequence-name matcher: kebab-case, case-insensitive, fuzzy, exactly one match or error.
 - `Locus` as Genome-scoped document/work item identity.
 - `Transposon` as origin metadata for new Genes/work items.
-- `Allele` as mutable candidate work.
+- `Allele` as the mutable working version for a Locus.
 - One active Allele per `(Locus, Tf)`.
-- `Mutation` as append-only field change.
+- `Mutation` as a mutable `Unexpressed` Sequence value change until expression.
 - `Gene` as immutable committed version selected from an Allele.
 - `Histone` / `HistoneMark` as the single authorization/contextual evaluation abstraction.
 - `Protein` / `Fold` / `FoldState` as implementation and evaluation concepts.
@@ -112,12 +112,12 @@ Check these before slice 006:
 - `Histone.key` is unique within an Insulator.
 - `HistoneTarget` includes `Exon`.
 - `dna splice <mrna-gene> "Some hard task" "An even harder one"` creates Exons attached to the active mRNA Allele.
-- `dna splice` takes a Gene FQN. Gene FQN matching is fuzzy and case-insensitive, and generation may be omitted when the matcher resolves exactly one Gene.
+- `dna splice` takes a Locus name or Gene FQN. Positional target matching is case-insensitive and kebab-insensitive, not fuzzy.
 - `dna splice <mrna-gene> "Buy soap" --before-go-laundry` creates or selects the Exon and makes `go-laundry` depend on it.
 - `dna splice <mrna-gene> --pick-laundry --after-go-laundry` makes `pick-laundry` depend on `go-laundry`.
 - `dna splice <mrna-gene> --set-buy-soap "Buy hypoallergenic soap"` replaces the text of the existing Exon.
-- `dna splice <mrna-gene> --lgtm` acknowledges that the existing Exon DAG is still up to date after post-splice Mutations.
-- Splicing changes `Allele.state` to `Spliced`; mutating a spliced Allele changes it to `StaleSplice`; transcribing stale spliced work changes it to `StaleTranscript`; `dna select` is the final immutable Gene boundary.
+- `dna splice <mrna-gene> --lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without changing Exons.
+- Splicing changes `Allele.state` to `Expressing`; mutating an expressing Allele with Sequence flags changes it to `Mutating`; `dna select` is the final immutable Gene boundary.
 - `dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection, including unapproved mutations such as sgRNA suggested document modifications.
 - `dna transcribe` always shows approval-status comments for mutated and sgRNA Sequences.
 - `Transcriptome` stores render/access cursor metadata for token-saving transcript output, not projected document content.

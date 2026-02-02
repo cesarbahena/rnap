@@ -2,7 +2,7 @@
 
 ## Capability
 
-Create or change candidate work through mutation.
+Create or change an Allele through mutation.
 
 This contract is implemented together with [004_MUTATE_CANDIDATE_WORK.md](004_MUTATE_CANDIDATE_WORK.md).
 
@@ -36,51 +36,50 @@ Combined slice 003/004 implements:
 - Transposon carries origin metadata only.
 - Transposon does not carry Sequence values.
 - Allele records whether it originated from an existing Gene or a Transposon.
-- Allele is created only when `dna mutate --new` includes at least one Sequence mutation.
-- Sequence values arrive through Mutations on the Allele in the same operation that creates the new document.
+- Allele may be created by `dna mutate --new` with zero Sequence mutations.
+- Sequence values arrive through later or same-command Mutations on the Allele.
 - A new candidate starts in `Mutating`.
-- `dna splice` moves an Allele to `Spliced`.
-- Mutating a `Spliced` Allele moves it to `StaleSplice`.
-- `dna transcribe` moves a `StaleSplice` Allele to `StaleTranscript`.
-- `dna splice --lgtm` acknowledges the current Exon DAG and moves a `StaleTranscript` Allele back to `Spliced`.
+- `dna splice` moves an Allele to `Expressing`.
+- Mutating an `Expressing` Allele moves it back to `Mutating` when it creates or updates `Unexpressed` Mutations.
+- `dna splice --lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without changing Exons.
 - `dna select` moves the Allele to `Selected` and creates the immutable Gene.
 - A candidate belongs to exactly one Genome.
 - The Genome must belong to the Locus Insulator.
 - The creator Tf must belong to the same Insulator.
 - One active Allele is allowed per `(Locus, Tf)`.
 - Multiple Tfs may each have one active Allele for the same Locus.
-- Mutations are append-only.
+- Mutations are editable while `Unexpressed`.
 - Mutations target SequenceDefinitions by `SequenceDefinitionId`.
 - Mutation values must match the SequenceDefinition type.
-- Current candidate state is projected from Mutations.
+- Current Allele state is projected from Mutations.
 - A degraded Allele cannot accept new Mutations.
 
 ## CLI
 
-Start a new document with an initial mutation:
+Start a new document:
 
 ```sh
+dna mutate --new FRS 'Checkout'
 dna mutate --new FRS 'Checkout' --some-section 'Awesome section'
 ```
 
 - `--new FRS` resolves `FRS` as the effective GeneFamily abbreviation in the current Genome context.
 - The first positional argument, `Checkout`, is the Locus document instance name.
-- At least one Sequence mutation flag is required.
-- DNAp creates Locus, Transposon, first Allele, and initial Mutation records together.
+- Sequence mutation flags are optional for `dna mutate --new`.
+- DNAp creates Locus, Transposon, and first Allele together. If Sequence mutation flags are present, it also creates or updates `Unexpressed` Mutations.
 
 ## Implementation Contract
 
-- Implement backend/application behavior for starting a new document through Locus, Transposon, first Allele, and at least one initial Mutation.
+- Implement backend/application behavior for starting a new document through Locus, Transposon, and first Allele.
 - Implement the default Gene FQN format only: `<gene-family-abbreviation>-<locus-name-slug>-<generation>`.
 - Keep Gene FQN matching case-insensitive.
 - Defer configurable FQN storage and Genome override implementation.
 
 ## Approved Tests
 
-- `dna mutate --new` rejects commands without at least one Sequence mutation.
-- `dna mutate --new` creates Locus, Transposon, Allele, initial Mutation records, and default Gene FQN.
-- Gene FQN matching allows omitted generation when it resolves exactly one active Allele.
-- Mutating a `Spliced` Allele moves it to `StaleSplice`.
-- `dna transcribe` moves `StaleSplice` to `StaleTranscript`.
-- `dna splice --lgtm` moves `StaleTranscript` back to `Spliced`.
+- `dna mutate --new` can create Locus, Transposon, Allele, zero Mutations, and default Gene FQN.
+- `dna mutate --new` can also create initial `Unexpressed` Mutation records.
+- Active Allele target matching allows Locus name or omitted generation when it resolves exactly one active Allele.
+- Mutating an `Expressing` Allele with Sequence flags moves it to `Mutating`.
+- `dna splice --lgtm` moves the Allele back to `Expressing` by expressing current `Unexpressed` Mutations without changing Exons.
 - Active Allele FQN resolution is scoped to the creating Tf.

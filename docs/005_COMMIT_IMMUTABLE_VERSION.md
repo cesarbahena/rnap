@@ -21,7 +21,7 @@ Slice 005 implements:
 - Gene generation increments within a Locus.
 - All sequences required by the GeneFamilyGeneration must be present before selection.
 - Empty vector values are missing for commit completeness.
-- The selected Allele must be `Spliced`; `StaleSplice` must be transcribed first, and `StaleTranscript` must be spliced again or acknowledged with `dna splice --lgtm` before selection.
+- The selected Allele must be `Expressing`; current `Unexpressed` Mutations must be expressed through `dna splice` or `dna splice --lgtm` before selection.
 - The selected Allele no longer accepts Mutations after commit.
 - Committed Gene is immutable history; active viewing/transcription of in-progress work uses the current Allele projection.
 
