@@ -233,13 +233,21 @@ fn transcribe(state: &mut LocalState, args: &[String]) -> Result<String, CliErro
         created_by: session.actor.tf_id,
     })?;
 
-    let mut output = if transcribed.sequences.is_empty() {
+    let mut output = if full {
         format!(
-            "transcribed {:?}; no Sequence changes to render",
+            "transcribed {:?}; showing full transcript",
+            transcribed.allele.state
+        )
+    } else if transcribed.sequences.is_empty() {
+        format!(
+            "transcribed {:?}; no new Sequence changes since last transcription",
             transcribed.allele.state
         )
     } else {
-        format!("transcribed {:?}", transcribed.allele.state)
+        format!(
+            "transcribed {:?}; showing Sequence changes since last transcription",
+            transcribed.allele.state
+        )
     };
     for sequence in transcribed.sequences {
         output.push_str(&format!(
@@ -463,8 +471,14 @@ mod tests {
 
         let transcript =
             dispatch(&mut state, words("transcribe FRS-checkout")).expect("transcribe latest");
+        assert!(transcript.contains("showing Sequence changes since last transcription"));
         assert!(transcript.contains("Summary: Draft"));
         assert!(transcript.contains("approval: visible"));
+
+        let full_transcript =
+            dispatch(&mut state, words("transcribe FRS-checkout --full")).expect("full transcript");
+        assert!(full_transcript.contains("showing full transcript"));
+        assert!(full_transcript.contains("Summary: Draft"));
 
         let spliced =
             dispatch(&mut state, words("splice FRS-checkout BuildCheckout")).expect("splice");
@@ -472,7 +486,7 @@ mod tests {
 
         let unchanged_transcript =
             dispatch(&mut state, words("transcribe FRS-checkout")).expect("transcribe unchanged");
-        assert!(unchanged_transcript.contains("no Sequence changes to render"));
+        assert!(unchanged_transcript.contains("no new Sequence changes since last transcription"));
         assert!(!unchanged_transcript.contains("approval comments shown"));
     }
 
