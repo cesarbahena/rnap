@@ -40,6 +40,8 @@ Slice 004 implements:
 - `dna transcribe` renders the latest Mutation projection, including unapproved mutations such as sgRNA suggested document modifications.
 - `dna transcribe` always shows approval-status comments for mutated and sgRNA Sequences.
 - `Transcriptome` stores render/access cursor metadata for token-saving transcript output, not projected document content.
+- `dna translate` renders Exons attached to the active Allele.
+- `dna translate` does not render Sequences and does not mutate state.
 
 ## CLI
 
@@ -75,6 +77,19 @@ dna splice FRS-checkout --lgtm
 - Exons attached to the Allele organize as a DAG through `depends_on`.
 - `dna splice` is not a mutation staging command.
 
+Render Exons from the active Allele:
+
+```sh
+dna translate FRS-checkout-0001
+```
+
+- `dna translate` takes a Locus name or Gene FQN as the first positional argument.
+- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
+- `dna translate` renders Exons in dependency order.
+- `dna translate` shows dependency text for Exons that depend on other Exons.
+- `dna translate` errors when the active Allele has no Exons.
+- `dna translate` does not change Allele, Mutation, Exon, or Transcriptome state.
+
 Mutate existing work:
 
 ```sh
@@ -106,6 +121,7 @@ dna mutate FRS-checkout-0001
 - Implement current Allele projection from latest Mutations.
 - Implement Transcriptome render cursor metadata per Sequence.
 - Implement expression transitions through `dna mutate`, `dna splice`, and `dna splice --lgtm`.
+- Implement `dna translate` as the Exon read side for the active Allele.
 
 ## Approved Tests
 
@@ -118,3 +134,4 @@ dna mutate FRS-checkout-0001
 - Repeated edits to the same `Unexpressed` Mutation update the same row and are detected by `SequenceHash` cursor changes.
 - `dna splice --lgtm` expresses `Unexpressed` Mutations without requiring prior transcription.
 - `dna splice <target>` errors when it has neither Exon text nor `--lgtm`.
+- `dna translate` renders Exons and errors when the active Allele has no Exons.

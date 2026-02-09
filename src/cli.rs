@@ -5,7 +5,8 @@ use std::time::SystemTime;
 use crate::app::{
     CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType, GrnType,
     MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation,
-    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslationRnaType,
+    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
+    TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -47,6 +48,7 @@ fn dispatch(state: &mut LocalState, args: Vec<String>) -> Result<String, CliErro
         "mutate" => mutate(state, &args[1..]),
         "transcribe" => transcribe(state, &args[1..]),
         "splice" => splice(state, &args[1..]),
+        "translate" => translate(state, &args[1..]),
         _ => Err(CliError::Usage(format!("unknown command `{command}`"))),
     }
 }
@@ -290,6 +292,37 @@ fn splice(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     ))
 }
 
+fn translate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let gene_fqn = positional(args, 0, "gene fqn")?;
+    let translated = state.dnap.translate(TranslateAllele {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        gene_fqn,
+        created_by: session.actor.tf_id,
+    })?;
+
+    let mut output = format!("translated {:?}", translated.allele.state);
+    for (index, exon) in translated.exons.iter().enumerate() {
+        output.push_str(&format!("\n{}. {}", index + 1, exon.text));
+        let dependencies = exon
+            .depends_on
+            .iter()
+            .filter_map(|dependency_id| {
+                translated
+                    .exons
+                    .iter()
+                    .find(|candidate| candidate.id == *dependency_id)
+            })
+            .map(|dependency| dependency.text.as_str())
+            .collect::<Vec<_>>();
+        if !dependencies.is_empty() {
+            output.push_str(&format!("\n   depends on: {}", dependencies.join(", ")));
+        }
+    }
+    Ok(output)
+}
+
 fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, CliError> {
     let mut mutations = Vec::new();
     let mut index = 0;
@@ -484,6 +517,11 @@ mod tests {
             dispatch(&mut state, words("splice FRS-checkout BuildCheckout")).expect("splice");
         assert!(spliced.contains("Expressing"));
 
+        let translated =
+            dispatch(&mut state, words("translate FRS-checkout")).expect("translate exons");
+        assert!(translated.contains("translated Expressing"));
+        assert!(translated.contains("1. BuildCheckout"));
+
         let unchanged_transcript =
             dispatch(&mut state, words("transcribe FRS-checkout")).expect("transcribe unchanged");
         assert!(unchanged_transcript.contains("no new Sequence changes since last transcription"));
@@ -521,6 +559,16 @@ mod tests {
             .expect("lgtm expresses latest mutation");
         assert!(spliced.contains("Expressing"));
         assert!(spliced.contains("1 untranscribed unexpressed mutation"));
+    }
+
+    #[test]
+    fn translate_errors_when_no_exons_exist() {
+        let mut state = bootstrapped_state();
+        dispatch(&mut state, words("mutate --new FRS Checkout")).expect("mutate new");
+
+        let error = dispatch(&mut state, words("translate checkout"))
+            .expect_err("translate requires exons");
+        assert!(matches!(error, CliError::Dnap(DnapError::ExonsNotFound)));
     }
 
     fn bootstrapped_state() -> LocalState {

@@ -417,6 +417,20 @@ pub struct SpliceResult {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct TranslateAllele {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub gene_fqn: String,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct TranslatedAllele {
+    pub allele: Allele,
+    pub exons: Vec<Exon>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProvisionedInsulator {
     pub insulator: Insulator,
     pub placement: InsulatorPlacement,
@@ -448,6 +462,7 @@ pub enum DnapError {
     AlleleNotFound,
     AlleleCannotMutate,
     LgtmRequiresUnexpressedMutation,
+    ExonsNotFound,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -934,6 +949,30 @@ impl Dnap {
         })
     }
 
+    pub fn translate(&self, input: TranslateAllele) -> Result<TranslatedAllele, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.created_by,
+            &input.gene_fqn,
+        )?;
+        let allele = self
+            .alleles
+            .get(&allele_id)
+            .cloned()
+            .ok_or(DnapError::AlleleNotFound)?;
+        let exons = self.ordered_exons(allele.id);
+        if exons.is_empty() {
+            return Err(DnapError::ExonsNotFound);
+        }
+
+        Ok(TranslatedAllele { allele, exons })
+    }
+
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
         let allele = self
             .alleles
@@ -1258,6 +1297,38 @@ impl Dnap {
                         != Some(true)
             })
             .count()
+    }
+
+    fn ordered_exons(&self, allele_id: AlleleId) -> Vec<Exon> {
+        let mut remaining = self
+            .exons
+            .values()
+            .filter(|exon| exon.allele_id == allele_id)
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut ordered = Vec::<Exon>::new();
+
+        while !remaining.is_empty() {
+            let before = remaining.len();
+            let mut index = 0;
+            while index < remaining.len() {
+                let ready = remaining[index]
+                    .depends_on
+                    .iter()
+                    .all(|dependency| ordered.iter().any(|exon| exon.id == *dependency));
+                if ready {
+                    ordered.push(remaining.remove(index));
+                } else {
+                    index += 1;
+                }
+            }
+            if remaining.len() == before {
+                ordered.extend(remaining);
+                break;
+            }
+        }
+
+        ordered
     }
 
     fn gene_fqn(&self, family: &GeneFamily, locus: &Locus, generation: u32) -> String {
@@ -2000,6 +2071,101 @@ mod tests {
         assert_eq!(spliced.allele.state, AlleleState::Expressing);
         assert!(spliced.exons.is_empty());
         assert_eq!(spliced.untranscribed_unexpressed_mutations, 1);
+    }
+
+    #[test]
+    fn translate_returns_exons_without_changing_allele_state() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Feature Requirements Specification",
+            "FRS",
+        );
+        let mutated = dnap
+            .mutate_new(MutateNew {
+                insulator_id,
+                genome_id,
+                gene_family_abbreviation: "FRS".to_owned(),
+                locus_name: "Checkout".to_owned(),
+                mutations: vec![mutation(
+                    "Some Section",
+                    SequenceValue::String("Draft".to_owned()),
+                )],
+                created_by: tf_id,
+            })
+            .expect("new candidate work");
+        dnap.splice(SpliceAllele {
+            insulator_id,
+            genome_id,
+            gene_fqn: mutated.gene_fqn.clone(),
+            exon_texts: vec![
+                "Implement checkout API".to_owned(),
+                "Add retry tests".to_owned(),
+            ],
+            lgtm: false,
+            created_by: tf_id,
+        })
+        .expect("splice exons");
+
+        let translated = dnap
+            .translate(TranslateAllele {
+                insulator_id,
+                genome_id,
+                gene_fqn: "checkout".to_owned(),
+                created_by: tf_id,
+            })
+            .expect("translate exons");
+
+        assert_eq!(translated.allele.state, AlleleState::Expressing);
+        assert_eq!(
+            translated
+                .exons
+                .iter()
+                .map(|exon| exon.text.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Implement checkout API", "Add retry tests"]
+        );
+        assert_eq!(
+            dnap.allele(translated.allele.id).expect("allele").state,
+            AlleleState::Expressing
+        );
+    }
+
+    #[test]
+    fn translate_errors_when_the_active_allele_has_no_exons() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Feature Requirements Specification",
+            "FRS",
+        );
+        dnap.mutate_new(MutateNew {
+            insulator_id,
+            genome_id,
+            gene_family_abbreviation: "FRS".to_owned(),
+            locus_name: "Checkout".to_owned(),
+            mutations: Vec::new(),
+            created_by: tf_id,
+        })
+        .expect("new candidate work");
+
+        assert_eq!(
+            dnap.translate(TranslateAllele {
+                insulator_id,
+                genome_id,
+                gene_fqn: "checkout".to_owned(),
+                created_by: tf_id,
+            }),
+            Err(DnapError::ExonsNotFound)
+        );
     }
 
     #[test]
