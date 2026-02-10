@@ -355,6 +355,8 @@ TfComplex does not define Gene schemas, does not own workflow rules, and does no
 
 TfComplex discussions may involve both canonical Genes and in-progress Alleles. Many discussions target work items inside Genes or Alleles rather than the whole document. Those targets must be constrained by the specific discussion use case instead of using unrestricted links between arbitrary Genes.
 
+`eRNA` work may be canonized or transformed into another RNA document type. Canonization creates a new target Transposon and Allele with provenance back to the source eRNA. The source eRNA remains unchanged as exploration history.
+
 ## Authorization And Context
 
 `Histone` and `HistoneMark` are the single authorization/contextual evaluation abstraction. Permissions do not exist independently from Histones.

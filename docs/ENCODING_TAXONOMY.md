@@ -30,7 +30,7 @@ enum GrnType {
 ```
 
 - `Promoter`: user story or idea used to start discussion.
-- `Enhancer`: research document.
+- `Enhancer`: formal research document. Examples include business, technology, and market research.
 - `PIWI`: documented scope.
 - `Spacers`: documented risk.
 - `Telomere`: testing document.
@@ -61,7 +61,7 @@ enum TranslationRnaType {
 }
 ```
 
-- `ERNA`: exploratory idea.
+- `ERNA`: flexible typed exploration graph node. Examples include event storming, draft diagrams, and follow-up exploration.
 - `MRNA`: requirements analysis document.
 - `RRNA`: architecture/design document.
 - `TRNA`: agentic skills.
