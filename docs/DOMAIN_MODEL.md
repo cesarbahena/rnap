@@ -280,9 +280,9 @@ Mutations are individual and composable. Before expression, mutating the same Se
 
 `dna splice` moves the Allele to `Expressing`. `dna splice --lgtm` is an escape hatch: it expresses current `Unexpressed` Mutations without changing Exons when the current Exon DAG is still acceptable.
 
-`dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection for the current Allele against the committed Genes and candidate Alleles in the Chromosome of the Gene being worked on, including unapproved mutations such as sgRNA suggested document modifications.
+`dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection for the current Allele against the committed Genes and candidate Alleles in the Chromosome of the Gene being worked on, including unapproved workflow-driven changes.
 
-Approval-status comments for mutated and sgRNA Sequences are always shown. They are part of the transcript output, not an optional render mode.
+Approval-status comments for mutated and workflow-suggested Sequences are always shown. They are part of the transcript output, not an optional render mode.
 
 `Transcriptome` is render/access cursor metadata for token-saving transcript output. It tracks what was last shown so later transcriptions can avoid re-outputting unchanged Sequences unless a full render flag is provided. It does not store the projected document content.
 
@@ -328,7 +328,9 @@ struct Gene {
 }
 ```
 
-`Exon` is created by `dna splice` from an mRNA Allele. Exons are attached to the working Allele and represent the spliced task/work items derived from that requirements analysis document.
+`Exon` is created by `dna splice` from an mRNA Allele. Exons are attached to the working Allele and represent executable tasks derived from that requirements analysis document.
+
+`Exon` is not an `EncodingType`; it is a workflow/task object.
 
 ```rust
 struct Exon {
@@ -342,6 +344,16 @@ struct Exon {
 ```
 
 Exons attached to an Allele organize as a DAG through `depends_on`, not a positional list. If Exon A depends on Exon B, B must precede A in the work graph.
+
+`Intron` is a Regulatory RNA encoding for chainable disambiguation items. Unlike Exons, Introns are controlled document items modeled through normal GeneFamily and GeneFamilyGeneration configuration.
+
+`Cas` is a CRISPR action concept, not an EncodingType.
+
+`TfComplex` names the discussion and alignment subsystem around Genes, Alleles, and internal work items such as Exons. It is not automatically a persisted container object. Code should persist only concrete discussion records and typed relationships that have a defined workflow purpose.
+
+TfComplex does not define Gene schemas, does not own workflow rules, and does not replace GeneFamily or EncodingType. Workflow rules are interpreted by application behavior over concrete discussion records and relationship edges.
+
+TfComplex discussions may involve both canonical Genes and in-progress Alleles. Many discussions target work items inside Genes or Alleles rather than the whole document. Those targets must be constrained by the specific discussion use case instead of using unrestricted links between arbitrary Genes.
 
 ## Authorization And Context
 
