@@ -269,6 +269,9 @@ pub enum EncodingType {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GrnType {
     Promoter,
+    Enhancer,
+    PIWI,
+    Spacers,
     Telomere,
     Centromere,
     Silencer,
@@ -282,6 +285,7 @@ pub enum RnaType {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TranslationRnaType {
+    ERNA,
     MRNA,
     RRNA,
     TRNA,
@@ -289,13 +293,14 @@ pub enum TranslationRnaType {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegulatoryRnaType {
+    Intron,
     SnRNA,
+    ScaRNA,
     SiRNA,
     TmRNA,
     GRNA,
     MiRNA,
     PiRNA,
-    ERNA,
     SnoRNA,
     CrRNA,
     TracrRNA,

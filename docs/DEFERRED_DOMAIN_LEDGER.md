@@ -18,7 +18,6 @@ The ledger contains implementation obligations and open decisions that are inten
 - Schema evolution and rename tracking across GeneFamilyGenerations.
 - `SequenceValue` validation during work-type definition versus mutation application.
 - Exact Gene FQN configuration storage and override implementation.
-- Update the Rust `EncodingType` enum and CLI parser to the current taxonomy: `Promoter`, `Enhancer`, `PIWI`, `Spacers`, `Telomere`, `Centromere`, `Silencer`, `eRNA`, `mRNA`, `rRNA`, `tRNA`, `Intron`, `snRNA`, `scaRNA`, `siRNA`, `tmRNA`, `gRNA`, `miRNA`, `piRNA`, `snoRNA`, `crRNA`, `tracrRNA`, `lncRNA`, `circRNA`, and `sgRNA`.
 - Keep `Exon` and `Cas` out of `EncodingType`.
 
 ## Candidate Work

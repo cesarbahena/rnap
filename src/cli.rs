@@ -350,6 +350,9 @@ fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, Cl
 
 fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
     match normalize(value).as_str() {
+        "erna" => Ok(EncodingType::RNA(RnaType::Translation(
+            TranslationRnaType::ERNA,
+        ))),
         "mrna" => Ok(EncodingType::RNA(RnaType::Translation(
             TranslationRnaType::MRNA,
         ))),
@@ -363,9 +366,51 @@ fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
             RegulatoryRnaType::SgRNA,
         ))),
         "promoter" => Ok(EncodingType::GRN(GrnType::Promoter)),
+        "enhancer" => Ok(EncodingType::GRN(GrnType::Enhancer)),
+        "piwi" => Ok(EncodingType::GRN(GrnType::PIWI)),
+        "spacers" => Ok(EncodingType::GRN(GrnType::Spacers)),
         "telomere" => Ok(EncodingType::GRN(GrnType::Telomere)),
         "centromere" => Ok(EncodingType::GRN(GrnType::Centromere)),
         "silencer" => Ok(EncodingType::GRN(GrnType::Silencer)),
+        "intron" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::Intron,
+        ))),
+        "snrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::SnRNA,
+        ))),
+        "scarna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::ScaRNA,
+        ))),
+        "sirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::SiRNA,
+        ))),
+        "tmrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::TmRNA,
+        ))),
+        "grna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::GRNA,
+        ))),
+        "mirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::MiRNA,
+        ))),
+        "pirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::PiRNA,
+        ))),
+        "snorna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::SnoRNA,
+        ))),
+        "crrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::CrRNA,
+        ))),
+        "tracrrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::TracrRNA,
+        ))),
+        "lncrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::LncRNA,
+        ))),
+        "circrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
+            RegulatoryRnaType::CircRNA,
+        ))),
         _ => Err(CliError::Usage(format!("unsupported encoding `{value}`"))),
     }
 }
@@ -569,6 +614,104 @@ mod tests {
         let error = dispatch(&mut state, words("translate checkout"))
             .expect_err("translate requires exons");
         assert!(matches!(error, CliError::Dnap(DnapError::ExonsNotFound)));
+    }
+
+    #[test]
+    fn parses_current_encoding_taxonomy_aliases() {
+        let cases = [
+            ("promoter", EncodingType::GRN(GrnType::Promoter)),
+            ("enhancer", EncodingType::GRN(GrnType::Enhancer)),
+            ("piwi", EncodingType::GRN(GrnType::PIWI)),
+            ("spacers", EncodingType::GRN(GrnType::Spacers)),
+            ("telomere", EncodingType::GRN(GrnType::Telomere)),
+            ("centromere", EncodingType::GRN(GrnType::Centromere)),
+            ("silencer", EncodingType::GRN(GrnType::Silencer)),
+            (
+                "eRNA",
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+            ),
+            (
+                "mRNA",
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+            ),
+            (
+                "rRNA",
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
+            ),
+            (
+                "tRNA",
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRNA)),
+            ),
+            (
+                "intron",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
+            ),
+            (
+                "snRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnRNA)),
+            ),
+            (
+                "scaRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::ScaRNA)),
+            ),
+            (
+                "siRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SiRNA)),
+            ),
+            (
+                "tmRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TmRNA)),
+            ),
+            (
+                "gRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::GRNA)),
+            ),
+            (
+                "miRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::MiRNA)),
+            ),
+            (
+                "piRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::PiRNA)),
+            ),
+            (
+                "snoRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnoRNA)),
+            ),
+            (
+                "crRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CrRNA)),
+            ),
+            (
+                "tracrRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TracrRNA)),
+            ),
+            (
+                "lncRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::LncRNA)),
+            ),
+            (
+                "circRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CircRNA)),
+            ),
+            (
+                "sgRNA",
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SgRNA)),
+            ),
+        ];
+
+        for (alias, expected) in cases {
+            assert_eq!(parse_encoding(alias).expect("supported encoding"), expected);
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_encoding_aliases() {
+        let error = parse_encoding("not-a-real-encoding").expect_err("unknown encoding");
+
+        assert!(
+            matches!(error, CliError::Usage(message) if message.contains("unsupported encoding"))
+        );
     }
 
     fn bootstrapped_state() -> LocalState {
