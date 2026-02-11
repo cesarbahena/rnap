@@ -1,10 +1,8 @@
 # DNAp Encoding Taxonomy
 
-DNAp means Document Normalization and Alignment Platform.
-
 Every GeneFamily has an `EncodingType`. Encoding is required because it controls document handling and is core product value.
 
-RNA means Request for Normalization and Alignment.
+Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
 
 ```rust
 enum EncodingType {

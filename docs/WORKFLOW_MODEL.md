@@ -1,0 +1,111 @@
+# DNAp Workflow Model
+
+This document defines approved interaction rules among DNAp concepts. It does not define build order.
+
+## General Rule
+
+Code should persist only concrete records and typed relationships with a defined workflow purpose.
+
+`TfComplex` does not define Gene schemas, does not own workflow rules, and does not replace GeneFamily or EncodingType. Application behavior interprets workflow rules over concrete records and relationship edges.
+
+TfComplex targets must be constrained per use case. DNAp must not add unrestricted links between arbitrary Genes.
+
+## PreInitiationComplex
+
+PreInitiationComplex uses existing Promoter, Enhancer, and eRNA controlled documents.
+
+### Promoter And Enhancer
+
+Enhancers associate to a Promoter through an Enhancer property, not a separate link object.
+
+The Promoter association on an Enhancer points to the stable Promoter Locus, not a specific Promoter Allele.
+
+Enhancer is an EncodingType, so the exact research schema comes from the Enhancer GeneFamily.
+
+### Promoter And Exploration Graphs
+
+A Promoter may have many named exploration graphs.
+
+Each ExplorationGraph belongs to exactly one Promoter and is owned by the stable Promoter Locus, not a specific Promoter Allele.
+
+ExplorationGraph is a Promoter-owned workflow artifact, not a controlled Gene.
+
+`Promoter -> eRNA` is represented through exploration graph containment, not a direct graph edge.
+
+### eRNA Graphs
+
+eRNA owns controlled document content.
+
+ExplorationGraph owns graph topology.
+
+An eRNA may serve as a root node inside an exploration graph.
+
+ExplorationNode is graph-local placement/presentation for a reusable eRNA Locus.
+
+ExplorationNode points to the stable eRNA Locus, not directly to an Allele.
+
+Whiteboard rendering resolves an eRNA Locus to the current active Allele unless a future snapshot/export feature requires historical resolution.
+
+ExplorationEdge belongs to one ExplorationGraph and connects graph-local ExplorationNodes, not reusable eRNA documents directly.
+
+eRNA exploration graphs may be cyclic.
+
+Exploration graphs are intended to render as collaborative React whiteboards.
+
+Exploration graph nodes and edges need presentation metadata such as position, size, labels, and style.
+
+Exploration graph edges keep semantic relationship data separate from graph-local presentation state such as label, route, color, and stroke.
+
+Real-time collaboration will need operation-friendly changes such as creating, moving, resizing, labeling, and linking nodes. CRDT/OT semantics are deferred.
+
+Do not add direct `Enhancer <-> eRNA` edges until a concrete workflow requires them.
+
+### eRNA Reuse And Canonization
+
+The same eRNA controlled document may be reused across graphs.
+
+Reused eRNA keeps one controlled document identity, while each graph node has graph-local presentation state.
+
+eRNA work may be canonized or transformed into another RNA document type.
+
+Canonizing eRNA creates a new target Transposon and Allele with provenance back to the source eRNA.
+
+Canonization does not change the source eRNA type or erase exploration history.
+
+## RepressorsComplex
+
+RepressorsComplex uses piRNA or miRNA open issues and may emit siRNA.
+
+Authoritative siRNA issues may also be roots.
+
+## MediatorComplex
+
+MediatorComplex uses Intron open issues with Intron follow-ups.
+
+MediatorComplex may use snRNA follow-ups as task modification suggestions for mRNA.
+
+MediatorComplex may use scaRNA as requirement modification suggestions from implementation reality.
+
+snoRNA is an ADR and can be used as an issue discussion about rRNA.
+
+These items may be follow-ups to Introns or root issues linking to another mRNA or rRNA Gene as appropriate.
+
+tmRNA is an unblocker mediation request. It is no longer required by default and is not tied to siRNA.
+
+## CRISPR
+
+CRISPR uses proto-spacer emergent issues or crRNA incident reports.
+
+crRNA may be linked to a risk.
+
+CRISPR may follow up with PAM exploratory evidence and tracrRNA root cause analysis.
+
+Cas actions are analogous to Exons and can be suggested changes through sgRNA.
+
+sgRNA is repurposed for suggested CRISPR action changes.
+
+## Structural Maintenance
+
+Structural maintenance is a deployment discussion channel for Centromeres and microtubule tasks.
+
+More structural maintenance granularity is intentionally open.

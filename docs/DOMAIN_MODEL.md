@@ -347,15 +347,7 @@ Exons attached to an Allele organize as a DAG through `depends_on`, not a positi
 
 `Intron` is a Regulatory RNA encoding for chainable disambiguation items. Unlike Exons, Introns are controlled document items modeled through normal GeneFamily and GeneFamilyGeneration configuration.
 
-`Cas` is a CRISPR action concept, not an EncodingType.
-
-`TfComplex` names the discussion and alignment subsystem around Genes, Alleles, and internal work items such as Exons. It is not automatically a persisted container object. Code should persist only concrete discussion records and typed relationships that have a defined workflow purpose.
-
-TfComplex does not define Gene schemas, does not own workflow rules, and does not replace GeneFamily or EncodingType. Workflow rules are interpreted by application behavior over concrete discussion records and relationship edges.
-
-TfComplex discussions may involve both canonical Genes and in-progress Alleles. Many discussions target work items inside Genes or Alleles rather than the whole document. Those targets must be constrained by the specific discussion use case instead of using unrestricted links between arbitrary Genes.
-
-`eRNA` work may be canonized or transformed into another RNA document type. Canonization creates a new target Transposon and Allele with provenance back to the source eRNA. The source eRNA remains unchanged as exploration history.
+Workflow interactions among Intron, eRNA, TfComplex, Cas, and related communication concepts are defined in [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md). Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
 
 ## Authorization And Context
 

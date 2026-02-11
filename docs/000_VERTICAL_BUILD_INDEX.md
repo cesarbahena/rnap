@@ -4,6 +4,8 @@ DNAp is an enterprise multitenant SDLC platform for configurable document types 
 
 ## Core Documents
 
+- [ONTOLOGY.md](ONTOLOGY.md): canonical DNAp terms and meanings.
+- [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md): approved workflow interactions among DNAp concepts.
 - [DOMAIN_MODEL.md](DOMAIN_MODEL.md): current product/domain model.
 - [ENCODING_TAXONOMY.md](ENCODING_TAXONOMY.md): system-fixed SDLC document encodings.
 - [DEFERRED_DOMAIN_LEDGER.md](DEFERRED_DOMAIN_LEDGER.md): domain obligations intentionally not implemented yet.
