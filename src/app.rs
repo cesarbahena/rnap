@@ -45,6 +45,15 @@ pub struct TranscriptomeId(u64);
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ExonId(u64);
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ExplorationGraphId(u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ExplorationNodeId(u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ExplorationEdgeId(u64);
+
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Insulator {
     pub id: InsulatorId,
@@ -246,6 +255,40 @@ pub struct Exon {
     pub created_at: SystemTime,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct ExplorationGraph {
+    pub id: ExplorationGraphId,
+    pub promoter_locus_id: LocusId,
+    pub name: String,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+    pub updated_at: SystemTime,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct ExplorationNode {
+    pub id: ExplorationNodeId,
+    pub graph_id: ExplorationGraphId,
+    pub erna_locus_id: LocusId,
+    pub label: String,
+    pub position_x: i64,
+    pub position_y: i64,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+    pub updated_at: SystemTime,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct ExplorationEdge {
+    pub id: ExplorationEdgeId,
+    pub graph_id: ExplorationGraphId,
+    pub from_node_id: ExplorationNodeId,
+    pub to_node_id: ExplorationNodeId,
+    pub label: Option<String>,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SequenceType {
     String,
@@ -436,6 +479,52 @@ pub struct TranslatedAllele {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreateExplorationGraph {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub promoter_gene_fqn: String,
+    pub name: String,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreatedExplorationGraph {
+    pub graph: ExplorationGraph,
+    pub promoter_locus: Locus,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct AddExplorationNode {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub graph_id: ExplorationGraphId,
+    pub erna_locus_name: String,
+    pub erna_family_abbreviation: Option<String>,
+    pub label: Option<String>,
+    pub position_x: i64,
+    pub position_y: i64,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AddedExplorationNode {
+    pub node: ExplorationNode,
+    pub erna_locus: Locus,
+    pub created_erna: Option<MutatedAllele>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct AddExplorationEdge {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub graph_id: ExplorationGraphId,
+    pub from_node_id: ExplorationNodeId,
+    pub to_node_id: ExplorationNodeId,
+    pub label: Option<String>,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProvisionedInsulator {
     pub insulator: Insulator,
     pub placement: InsulatorPlacement,
@@ -468,6 +557,15 @@ pub enum DnapError {
     AlleleCannotMutate,
     LgtmRequiresUnexpressedMutation,
     ExonsNotFound,
+    BlankExplorationGraphName,
+    BlankExplorationNodeName,
+    BlankExplorationEdgeLabel,
+    ExplorationGraphNotFound,
+    ExplorationNodeNotFound,
+    ExplorationGraphPromoterRequired,
+    ExplorationNodeErnaRequired,
+    ExplorationNodeErnaFamilyRequired,
+    ExplorationEdgeCrossGraph,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -490,6 +588,9 @@ pub struct Dnap {
     next_chromosome_id: u64,
     next_transcriptome_id: u64,
     next_exon_id: u64,
+    next_exploration_graph_id: u64,
+    next_exploration_node_id: u64,
+    next_exploration_edge_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
@@ -503,6 +604,9 @@ pub struct Dnap {
     chromosomes: BTreeMap<LocusId, Chromosome>,
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
     exons: BTreeMap<ExonId, Exon>,
+    exploration_graphs: BTreeMap<ExplorationGraphId, ExplorationGraph>,
+    exploration_nodes: BTreeMap<ExplorationNodeId, ExplorationNode>,
+    exploration_edges: BTreeMap<ExplorationEdgeId, ExplorationEdge>,
 }
 
 impl Dnap {
@@ -978,6 +1082,177 @@ impl Dnap {
         Ok(TranslatedAllele { allele, exons })
     }
 
+    pub fn create_exploration_graph(
+        &mut self,
+        input: CreateExplorationGraph,
+    ) -> Result<CreatedExplorationGraph, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.created_by,
+            &input.promoter_gene_fqn,
+        )?;
+        let allele = self
+            .alleles
+            .get(&allele_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        self.require_locus_encoding(allele.locus_id, EncodingKind::Promoter)?;
+        let promoter_locus = self
+            .loci
+            .get(&allele.locus_id)
+            .cloned()
+            .ok_or(DnapError::AlleleNotFound)?;
+        let name = require_text(input.name, DnapError::BlankExplorationGraphName)?;
+        let now = SystemTime::now();
+        let graph = ExplorationGraph {
+            id: self.allocate_exploration_graph_id(),
+            promoter_locus_id: promoter_locus.id,
+            name,
+            created_by: input.created_by,
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.exploration_graphs.insert(graph.id, graph.clone());
+
+        Ok(CreatedExplorationGraph {
+            graph,
+            promoter_locus,
+        })
+    }
+
+    pub fn add_exploration_node(
+        &mut self,
+        input: AddExplorationNode,
+    ) -> Result<AddedExplorationNode, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+        let graph = self
+            .exploration_graphs
+            .get(&input.graph_id)
+            .cloned()
+            .ok_or(DnapError::ExplorationGraphNotFound)?;
+        let promoter_locus = self
+            .loci
+            .get(&graph.promoter_locus_id)
+            .ok_or(DnapError::ExplorationGraphNotFound)?;
+        if promoter_locus.insulator_id != input.insulator_id
+            || promoter_locus.genome_id != input.genome_id
+        {
+            return Err(DnapError::ExplorationGraphNotFound);
+        }
+
+        let erna_locus_name =
+            require_text(input.erna_locus_name, DnapError::BlankExplorationNodeName)?;
+        let mut created_erna = None;
+        let erna_locus = match self.find_locus_by_encoding(
+            input.insulator_id,
+            input.genome_id,
+            EncodingKind::ERNA,
+            &erna_locus_name,
+        ) {
+            Some(locus) => locus.clone(),
+            None => {
+                let family_abbreviation = input
+                    .erna_family_abbreviation
+                    .clone()
+                    .ok_or(DnapError::ExplorationNodeErnaFamilyRequired)?;
+                let mutated = self.mutate_new(MutateNew {
+                    insulator_id: input.insulator_id,
+                    genome_id: input.genome_id,
+                    gene_family_abbreviation: family_abbreviation,
+                    locus_name: erna_locus_name.clone(),
+                    mutations: Vec::new(),
+                    created_by: input.created_by,
+                })?;
+                self.require_locus_encoding(mutated.locus.id, EncodingKind::ERNA)?;
+                let locus = mutated.locus.clone();
+                created_erna = Some(mutated);
+                locus
+            }
+        };
+        self.require_locus_encoding(erna_locus.id, EncodingKind::ERNA)?;
+        let label = match input.label {
+            Some(label) => require_text(label, DnapError::BlankExplorationNodeName)?,
+            None => erna_locus.name.clone(),
+        };
+        let now = SystemTime::now();
+        let node = ExplorationNode {
+            id: self.allocate_exploration_node_id(),
+            graph_id: input.graph_id,
+            erna_locus_id: erna_locus.id,
+            label,
+            position_x: input.position_x,
+            position_y: input.position_y,
+            created_by: input.created_by,
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.exploration_nodes.insert(node.id, node.clone());
+
+        Ok(AddedExplorationNode {
+            node,
+            erna_locus,
+            created_erna,
+        })
+    }
+
+    pub fn add_exploration_edge(
+        &mut self,
+        input: AddExplorationEdge,
+    ) -> Result<ExplorationEdge, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+        let graph = self
+            .exploration_graphs
+            .get(&input.graph_id)
+            .ok_or(DnapError::ExplorationGraphNotFound)?;
+        let promoter_locus = self
+            .loci
+            .get(&graph.promoter_locus_id)
+            .ok_or(DnapError::ExplorationGraphNotFound)?;
+        if promoter_locus.insulator_id != input.insulator_id
+            || promoter_locus.genome_id != input.genome_id
+        {
+            return Err(DnapError::ExplorationGraphNotFound);
+        }
+        let from = self
+            .exploration_nodes
+            .get(&input.from_node_id)
+            .ok_or(DnapError::ExplorationNodeNotFound)?;
+        let to = self
+            .exploration_nodes
+            .get(&input.to_node_id)
+            .ok_or(DnapError::ExplorationNodeNotFound)?;
+        if from.graph_id != input.graph_id || to.graph_id != input.graph_id {
+            return Err(DnapError::ExplorationEdgeCrossGraph);
+        }
+        let label = input
+            .label
+            .map(|label| require_text(label, DnapError::BlankExplorationEdgeLabel))
+            .transpose()?;
+        let now = SystemTime::now();
+        let edge = ExplorationEdge {
+            id: self.allocate_exploration_edge_id(),
+            graph_id: input.graph_id,
+            from_node_id: input.from_node_id,
+            to_node_id: input.to_node_id,
+            label,
+            created_by: input.created_by,
+            created_at: now,
+        };
+
+        self.exploration_edges.insert(edge.id, edge.clone());
+        Ok(edge)
+    }
+
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
         let allele = self
             .alleles
@@ -1019,6 +1294,24 @@ impl Dnap {
 
     pub fn transcriptome(&self, allele_id: AlleleId) -> Option<&Transcriptome> {
         self.transcriptomes.get(&allele_id)
+    }
+
+    pub fn exploration_graph(&self, id: ExplorationGraphId) -> Option<&ExplorationGraph> {
+        self.exploration_graphs.get(&id)
+    }
+
+    pub fn exploration_nodes(&self, graph_id: ExplorationGraphId) -> Vec<&ExplorationNode> {
+        self.exploration_nodes
+            .values()
+            .filter(|node| node.graph_id == graph_id)
+            .collect()
+    }
+
+    pub fn exploration_edges(&self, graph_id: ExplorationGraphId) -> Vec<&ExplorationEdge> {
+        self.exploration_edges
+            .values()
+            .filter(|edge| edge.graph_id == graph_id)
+            .collect()
     }
 
     pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
@@ -1152,6 +1445,54 @@ impl Dnap {
                 && locus.family_id == family_id
                 && normalize_match_text(&locus.name) == normalized
         })
+    }
+
+    fn find_locus_by_encoding(
+        &self,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        encoding: EncodingKind,
+        name: &str,
+    ) -> Option<&Locus> {
+        let normalized = normalize_match_text(name);
+        self.loci.values().find(|locus| {
+            locus.insulator_id == insulator_id
+                && locus.genome_id == genome_id
+                && normalize_match_text(&locus.name) == normalized
+                && self.locus_has_encoding(locus.id, encoding)
+        })
+    }
+
+    fn require_locus_encoding(
+        &self,
+        locus_id: LocusId,
+        encoding: EncodingKind,
+    ) -> Result<(), DnapError> {
+        if self.locus_has_encoding(locus_id, encoding) {
+            Ok(())
+        } else {
+            match encoding {
+                EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
+                EncodingKind::ERNA => Err(DnapError::ExplorationNodeErnaRequired),
+            }
+        }
+    }
+
+    fn locus_has_encoding(&self, locus_id: LocusId, encoding: EncodingKind) -> bool {
+        let Some(locus) = self.loci.get(&locus_id) else {
+            return false;
+        };
+        let Some(family) = self.gene_families.get(&locus.family_id) else {
+            return false;
+        };
+        match (family.encodes, encoding) {
+            (EncodingType::GRN(GrnType::Promoter), EncodingKind::Promoter) => true,
+            (
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+                EncodingKind::ERNA,
+            ) => true,
+            _ => false,
+        }
     }
 
     fn build_mutations(
@@ -1413,6 +1754,27 @@ impl Dnap {
         self.next_exon_id += 1;
         ExonId(self.next_exon_id)
     }
+
+    fn allocate_exploration_graph_id(&mut self) -> ExplorationGraphId {
+        self.next_exploration_graph_id += 1;
+        ExplorationGraphId(self.next_exploration_graph_id)
+    }
+
+    fn allocate_exploration_node_id(&mut self) -> ExplorationNodeId {
+        self.next_exploration_node_id += 1;
+        ExplorationNodeId(self.next_exploration_node_id)
+    }
+
+    fn allocate_exploration_edge_id(&mut self) -> ExplorationEdgeId {
+        self.next_exploration_edge_id += 1;
+        ExplorationEdgeId(self.next_exploration_edge_id)
+    }
+}
+
+#[derive(Clone, Copy)]
+enum EncodingKind {
+    Promoter,
+    ERNA,
 }
 
 fn require_text(value: String, error: DnapError) -> Result<String, DnapError> {
@@ -2174,6 +2536,150 @@ mod tests {
     }
 
     #[test]
+    fn creates_promoter_owned_exploration_graph_with_auto_created_erna_node() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Story",
+            "STR",
+            EncodingType::GRN(GrnType::Promoter),
+        );
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Exploration",
+            "EXP",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+        );
+        dnap.mutate_new(MutateNew {
+            insulator_id,
+            genome_id,
+            gene_family_abbreviation: "STR".to_owned(),
+            locus_name: "Checkout flow".to_owned(),
+            mutations: Vec::new(),
+            created_by: tf_id,
+        })
+        .expect("promoter");
+
+        let graph = dnap
+            .create_exploration_graph(CreateExplorationGraph {
+                insulator_id,
+                genome_id,
+                promoter_gene_fqn: "checkout-flow".to_owned(),
+                name: "Event storm".to_owned(),
+                created_by: tf_id,
+            })
+            .expect("graph");
+        let added = dnap
+            .add_exploration_node(AddExplorationNode {
+                insulator_id,
+                genome_id,
+                graph_id: graph.graph.id,
+                erna_locus_name: "Payment authorized".to_owned(),
+                erna_family_abbreviation: Some("EXP".to_owned()),
+                label: None,
+                position_x: 120,
+                position_y: 80,
+                created_by: tf_id,
+            })
+            .expect("node");
+
+        assert_eq!(graph.promoter_locus.name, "Checkout flow");
+        assert_eq!(added.erna_locus.name, "Payment authorized");
+        assert!(added.created_erna.is_some());
+        assert_eq!(added.node.label, "Payment authorized");
+        assert_eq!(added.node.position_x, 120);
+        assert_eq!(dnap.exploration_nodes(graph.graph.id).len(), 1);
+    }
+
+    #[test]
+    fn exploration_edges_connect_nodes_inside_one_graph_and_allow_cycles() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Story",
+            "STR",
+            EncodingType::GRN(GrnType::Promoter),
+        );
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Exploration",
+            "EXP",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+        );
+        dnap.mutate_new(MutateNew {
+            insulator_id,
+            genome_id,
+            gene_family_abbreviation: "STR".to_owned(),
+            locus_name: "Checkout flow".to_owned(),
+            mutations: Vec::new(),
+            created_by: tf_id,
+        })
+        .expect("promoter");
+        let graph = dnap
+            .create_exploration_graph(CreateExplorationGraph {
+                insulator_id,
+                genome_id,
+                promoter_gene_fqn: "checkout-flow".to_owned(),
+                name: "Process map".to_owned(),
+                created_by: tf_id,
+            })
+            .expect("graph");
+        let first = add_erna_node(
+            &mut dnap,
+            insulator_id,
+            genome_id,
+            tf_id,
+            graph.graph.id,
+            "A",
+        );
+        let second = add_erna_node(
+            &mut dnap,
+            insulator_id,
+            genome_id,
+            tf_id,
+            graph.graph.id,
+            "B",
+        );
+
+        dnap.add_exploration_edge(AddExplorationEdge {
+            insulator_id,
+            genome_id,
+            graph_id: graph.graph.id,
+            from_node_id: first.node.id,
+            to_node_id: second.node.id,
+            label: Some("leads to".to_owned()),
+            created_by: tf_id,
+        })
+        .expect("edge");
+        dnap.add_exploration_edge(AddExplorationEdge {
+            insulator_id,
+            genome_id,
+            graph_id: graph.graph.id,
+            from_node_id: second.node.id,
+            to_node_id: first.node.id,
+            label: Some("loops".to_owned()),
+            created_by: tf_id,
+        })
+        .expect("cycle edge");
+
+        assert_eq!(dnap.exploration_edges(graph.graph.id).len(), 2);
+    }
+
+    #[test]
     fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
@@ -2313,6 +2819,49 @@ mod tests {
             created_by,
         })
         .expect("valid gene family")
+    }
+
+    fn define_gene_family_with_encoding(
+        dnap: &mut Dnap,
+        insulator_id: InsulatorId,
+        genome_id: Option<GenomeId>,
+        created_by: TfId,
+        name: &str,
+        abbreviation: &str,
+        encodes: EncodingType,
+    ) -> DefinedGeneFamily {
+        dnap.define_gene_family(DefineGeneFamily {
+            insulator_id,
+            genome_id,
+            name: name.to_owned(),
+            abbreviation: abbreviation.to_owned(),
+            encodes: Some(encodes),
+            sequences: vec![sequence("Some Section")],
+            created_by,
+        })
+        .expect("valid gene family")
+    }
+
+    fn add_erna_node(
+        dnap: &mut Dnap,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        tf_id: TfId,
+        graph_id: ExplorationGraphId,
+        name: &str,
+    ) -> AddedExplorationNode {
+        dnap.add_exploration_node(AddExplorationNode {
+            insulator_id,
+            genome_id,
+            graph_id,
+            erna_locus_name: name.to_owned(),
+            erna_family_abbreviation: Some("EXP".to_owned()),
+            label: None,
+            position_x: 0,
+            position_y: 0,
+            created_by: tf_id,
+        })
+        .expect("erna node")
     }
 
     fn sequence(name: &str) -> DefineSequence {
