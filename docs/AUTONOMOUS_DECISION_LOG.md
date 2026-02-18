@@ -99,3 +99,14 @@ This roadmap defines the order and assumptions for continued autonomous work on 
 - Reason: current CLI resolution is scoped through active Alleles and Tf identity; later selection/canonical lookup can expand this.
 - Decision: updating the property overwrites the previous Promoter reference.
 - Reason: this is a property on the Enhancer, not an event/link collection.
+
+## 2026-02-18: eRNA Canonization
+
+- Decision: canonizing eRNA creates a new target Transposon and Allele through normal `mutate_new` behavior.
+- Reason: canonization should not invent a parallel document creation path.
+- Decision: store a provenance record from source eRNA Locus to target Locus.
+- Reason: the source remains exploration history while the target becomes controlled work in another GeneFamily.
+- Decision: do not copy Sequence values from source eRNA to the target in this first pass.
+- Reason: target GeneFamily schemas may differ; content transformation needs explicit mapping rules later.
+- Decision: allow any target GeneFamily for now.
+- Reason: the user said eRNA can canonize into other RNA; enforcing a subset before concrete workflows risks blocking useful experiments.
