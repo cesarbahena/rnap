@@ -3,10 +3,11 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType, GrnType,
-    MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation,
-    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
-    TranslationRnaType,
+    AddExplorationEdge, AddExplorationNode, CreateExplorationGraph, CreateGenome, CreateTf,
+    DefineGeneFamily, DefineSequence, DnapError, EncodingType, ExplorationGraphId,
+    ExplorationNodeId, GrnType, MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType,
+    RnaType, SequenceMutation, SequenceType, SequenceValue, SpliceAllele, TranscribeAllele,
+    TranslateAllele, TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -49,6 +50,7 @@ fn dispatch(state: &mut LocalState, args: Vec<String>) -> Result<String, CliErro
         "transcribe" => transcribe(state, &args[1..]),
         "splice" => splice(state, &args[1..]),
         "translate" => translate(state, &args[1..]),
+        "explore" => explore(state, &args[1..]),
         _ => Err(CliError::Usage(format!("unknown command `{command}`"))),
     }
 }
@@ -323,6 +325,129 @@ fn translate(state: &mut LocalState, args: &[String]) -> Result<String, CliError
     Ok(output)
 }
 
+fn explore(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let Some(command) = args.first().map(String::as_str) else {
+        return Err(CliError::Usage("expected explore subcommand".to_owned()));
+    };
+
+    match command {
+        "graph" => explore_graph(state, args),
+        "node" => explore_node(state, args),
+        "edge" => explore_edge(state, args),
+        "show" => explore_show(state, args),
+        _ => Err(CliError::Usage(format!(
+            "unknown explore subcommand `{command}`"
+        ))),
+    }
+}
+
+fn explore_graph(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let promoter_gene_fqn = positional(args, 1, "promoter gene fqn")?;
+    let name = positional(args, 2, "graph name")?;
+    let created = state
+        .dnap
+        .create_exploration_graph(CreateExplorationGraph {
+            insulator_id: session.scope.insulator_id,
+            genome_id: session.scope.genome_id,
+            promoter_gene_fqn,
+            name,
+            created_by: session.actor.tf_id,
+        })?;
+
+    Ok(format!(
+        "created exploration graph {} for `{}`",
+        created.graph.id.raw(),
+        created.promoter_locus.name
+    ))
+}
+
+fn explore_node(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
+    let erna_locus_name = positional(args, 2, "erna name")?;
+    let erna_family_abbreviation = option_value(args, "--family");
+    let label = option_value(args, "--label");
+    let position_x = option_value(args, "--x")
+        .map(|value| parse_i64(&value, "--x"))
+        .transpose()?
+        .unwrap_or(0);
+    let position_y = option_value(args, "--y")
+        .map(|value| parse_i64(&value, "--y"))
+        .transpose()?
+        .unwrap_or(0);
+    let added = state.dnap.add_exploration_node(AddExplorationNode {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        graph_id,
+        erna_locus_name,
+        erna_family_abbreviation,
+        label,
+        position_x,
+        position_y,
+        created_by: session.actor.tf_id,
+    })?;
+    let created = if added.created_erna.is_some() {
+        "created"
+    } else {
+        "reused"
+    };
+
+    Ok(format!(
+        "added exploration node {} ({created} eRNA `{}`)",
+        added.node.id.raw(),
+        added.erna_locus.name
+    ))
+}
+
+fn explore_edge(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
+    let from_node_id = parse_node_id(&positional(args, 2, "from node id")?)?;
+    let to_node_id = parse_node_id(&positional(args, 3, "to node id")?)?;
+    let edge = state.dnap.add_exploration_edge(AddExplorationEdge {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        graph_id,
+        from_node_id,
+        to_node_id,
+        label: option_value(args, "--label"),
+        created_by: session.actor.tf_id,
+    })?;
+
+    Ok(format!("added exploration edge {}", edge.id.raw()))
+}
+
+fn explore_show(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
+    let graph = state
+        .dnap
+        .exploration_graph(graph_id)
+        .ok_or_else(|| CliError::NotFound(format!("exploration graph {}", graph_id.raw())))?;
+    let mut output = format!("exploration graph {}: {}", graph.id.raw(), graph.name);
+    for node in state.dnap.exploration_nodes(graph_id) {
+        output.push_str(&format!(
+            "\nnode {}: {} @ {},{}",
+            node.id.raw(),
+            node.label,
+            node.position_x,
+            node.position_y
+        ));
+    }
+    for edge in state.dnap.exploration_edges(graph_id) {
+        output.push_str(&format!(
+            "\nedge {}: {} -> {}",
+            edge.id.raw(),
+            edge.from_node_id.raw(),
+            edge.to_node_id.raw()
+        ));
+        if let Some(label) = &edge.label {
+            output.push_str(&format!(" ({label})"));
+        }
+    }
+    Ok(output)
+}
+
 fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, CliError> {
     let mut mutations = Vec::new();
     let mut index = 0;
@@ -427,6 +552,26 @@ fn positional(args: &[String], index: usize, name: &str) -> Result<String, CliEr
         .filter(|value| !value.starts_with("--"))
         .cloned()
         .ok_or_else(|| CliError::Usage(format!("missing {name}")))
+}
+
+fn parse_graph_id(value: &str) -> Result<ExplorationGraphId, CliError> {
+    value
+        .parse::<u64>()
+        .map(ExplorationGraphId::from_raw)
+        .map_err(|_| CliError::Usage(format!("invalid graph id `{value}`")))
+}
+
+fn parse_node_id(value: &str) -> Result<ExplorationNodeId, CliError> {
+    value
+        .parse::<u64>()
+        .map(ExplorationNodeId::from_raw)
+        .map_err(|_| CliError::Usage(format!("invalid node id `{value}`")))
+}
+
+fn parse_i64(value: &str, flag: &str) -> Result<i64, CliError> {
+    value
+        .parse::<i64>()
+        .map_err(|_| CliError::Usage(format!("invalid value for {flag}: `{value}`")))
 }
 
 fn required_option(args: &[String], flag: &str) -> Result<String, CliError> {
@@ -614,6 +759,53 @@ mod tests {
         let error = dispatch(&mut state, words("translate checkout"))
             .expect_err("translate requires exons");
         assert!(matches!(error, CliError::Dnap(DnapError::ExonsNotFound)));
+    }
+
+    #[test]
+    fn explore_cli_creates_graph_nodes_and_edges() {
+        let mut state = bootstrapped_state();
+        dispatch(
+            &mut state,
+            words("epigenetics define-family STR Story --encoding promoter --sequence Summary"),
+        )
+        .expect("promoter family");
+        dispatch(
+            &mut state,
+            words("epigenetics define-family EXP Exploration --encoding eRNA --sequence Summary"),
+        )
+        .expect("erna family");
+        dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
+
+        let graph = dispatch(
+            &mut state,
+            words("explore graph checkout CheckoutDiscovery"),
+        )
+        .expect("graph");
+        assert!(graph.contains("created exploration graph 1"));
+
+        let first = dispatch(
+            &mut state,
+            words("explore node 1 PaymentAuthorized --family EXP --x 10 --y 20"),
+        )
+        .expect("first node");
+        assert!(first.contains("added exploration node 1"));
+        assert!(first.contains("created eRNA"));
+
+        let second = dispatch(
+            &mut state,
+            words("explore node 1 ReceiptSent --family EXP --label Receipt"),
+        )
+        .expect("second node");
+        assert!(second.contains("added exploration node 2"));
+
+        let edge = dispatch(&mut state, words("explore edge 1 1 2 --label emits")).expect("edge");
+        assert!(edge.contains("added exploration edge 1"));
+
+        let shown = dispatch(&mut state, words("explore show 1")).expect("show graph");
+        assert!(shown.contains("exploration graph 1: CheckoutDiscovery"));
+        assert!(shown.contains("node 1: PaymentAuthorized @ 10,20"));
+        assert!(shown.contains("node 2: Receipt @ 0,0"));
+        assert!(shown.contains("edge 1: 1 -> 2 (emits)"));
     }
 
     #[test]
