@@ -54,6 +54,9 @@ pub struct ExplorationNodeId(u64);
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ExplorationEdgeId(u64);
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ErnaCanonizationId(u64);
+
 impl ExplorationGraphId {
     pub fn from_raw(value: u64) -> Self {
         Self(value)
@@ -323,6 +326,15 @@ pub struct EnhancerContext {
     pub updated_at: SystemTime,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct ErnaCanonization {
+    pub id: ErnaCanonizationId,
+    pub source_erna_locus_id: LocusId,
+    pub target_locus_id: LocusId,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SequenceType {
     String,
@@ -568,6 +580,22 @@ pub struct AttachEnhancerPromoter {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CanonizeErna {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub source_erna_gene_fqn: String,
+    pub target_gene_family_abbreviation: String,
+    pub target_locus_name: String,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CanonizedErna {
+    pub canonization: ErnaCanonization,
+    pub target: MutatedAllele,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProvisionedInsulator {
     pub insulator: Insulator,
     pub placement: InsulatorPlacement,
@@ -611,6 +639,7 @@ pub enum DnapError {
     ExplorationEdgeCrossGraph,
     EnhancerContextEnhancerRequired,
     EnhancerContextPromoterRequired,
+    ErnaCanonizationSourceRequired,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -636,6 +665,7 @@ pub struct Dnap {
     next_exploration_graph_id: u64,
     next_exploration_node_id: u64,
     next_exploration_edge_id: u64,
+    next_erna_canonization_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
@@ -653,6 +683,7 @@ pub struct Dnap {
     exploration_nodes: BTreeMap<ExplorationNodeId, ExplorationNode>,
     exploration_edges: BTreeMap<ExplorationEdgeId, ExplorationEdge>,
     enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
+    erna_canonizations: BTreeMap<ErnaCanonizationId, ErnaCanonization>,
 }
 
 impl Dnap {
@@ -1347,6 +1378,50 @@ impl Dnap {
         Ok(context)
     }
 
+    pub fn canonize_erna(&mut self, input: CanonizeErna) -> Result<CanonizedErna, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let source_allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.created_by,
+            &input.source_erna_gene_fqn,
+        )?;
+        let source_locus_id = self
+            .alleles
+            .get(&source_allele_id)
+            .map(|allele| allele.locus_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        if !self.locus_has_encoding(source_locus_id, EncodingKind::ERNA) {
+            return Err(DnapError::ErnaCanonizationSourceRequired);
+        }
+
+        let target = self.mutate_new(MutateNew {
+            insulator_id: input.insulator_id,
+            genome_id: input.genome_id,
+            gene_family_abbreviation: input.target_gene_family_abbreviation,
+            locus_name: input.target_locus_name,
+            mutations: Vec::new(),
+            created_by: input.created_by,
+        })?;
+        let canonization = ErnaCanonization {
+            id: self.allocate_erna_canonization_id(),
+            source_erna_locus_id: source_locus_id,
+            target_locus_id: target.locus.id,
+            created_by: input.created_by,
+            created_at: SystemTime::now(),
+        };
+        self.erna_canonizations
+            .insert(canonization.id, canonization.clone());
+
+        Ok(CanonizedErna {
+            canonization,
+            target,
+        })
+    }
+
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
         let allele = self
             .alleles
@@ -1410,6 +1485,13 @@ impl Dnap {
 
     pub fn enhancer_context(&self, enhancer_locus_id: LocusId) -> Option<&EnhancerContext> {
         self.enhancer_contexts.get(&enhancer_locus_id)
+    }
+
+    pub fn erna_canonizations_from(&self, source_erna_locus_id: LocusId) -> Vec<&ErnaCanonization> {
+        self.erna_canonizations
+            .values()
+            .filter(|canonization| canonization.source_erna_locus_id == source_erna_locus_id)
+            .collect()
     }
 
     pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
@@ -1868,6 +1950,11 @@ impl Dnap {
     fn allocate_exploration_edge_id(&mut self) -> ExplorationEdgeId {
         self.next_exploration_edge_id += 1;
         ExplorationEdgeId(self.next_exploration_edge_id)
+    }
+
+    fn allocate_erna_canonization_id(&mut self) -> ErnaCanonizationId {
+        self.next_erna_canonization_id += 1;
+        ErnaCanonizationId(self.next_erna_canonization_id)
     }
 }
 
@@ -2841,6 +2928,60 @@ mod tests {
                 .promoter_locus_id,
             promoter.locus.id
         );
+    }
+
+    #[test]
+    fn canonizing_erna_creates_target_allele_and_provenance() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Exploration",
+            "EXP",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+        );
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Requirement",
+            "REQ",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+        );
+        let source = dnap
+            .mutate_new(MutateNew {
+                insulator_id,
+                genome_id,
+                gene_family_abbreviation: "EXP".to_owned(),
+                locus_name: "Account recovery sketch".to_owned(),
+                mutations: Vec::new(),
+                created_by: tf_id,
+            })
+            .expect("erna");
+
+        let canonized = dnap
+            .canonize_erna(CanonizeErna {
+                insulator_id,
+                genome_id,
+                source_erna_gene_fqn: "account-recovery-sketch".to_owned(),
+                target_gene_family_abbreviation: "REQ".to_owned(),
+                target_locus_name: "Account recovery requirement".to_owned(),
+                created_by: tf_id,
+            })
+            .expect("canonized");
+
+        assert_eq!(canonized.canonization.source_erna_locus_id, source.locus.id);
+        assert_eq!(
+            canonized.canonization.target_locus_id,
+            canonized.target.locus.id
+        );
+        assert_eq!(canonized.target.locus.name, "Account recovery requirement");
+        assert_eq!(canonized.target.mutations.len(), 0);
+        assert_eq!(dnap.erna_canonizations_from(source.locus.id).len(), 1);
     }
 
     #[test]
