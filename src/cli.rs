@@ -3,11 +3,11 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AddExplorationEdge, AddExplorationNode, CreateExplorationGraph, CreateGenome, CreateTf,
-    DefineGeneFamily, DefineSequence, DnapError, EncodingType, ExplorationGraphId,
-    ExplorationNodeId, GrnType, MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType,
-    RnaType, SequenceMutation, SequenceType, SequenceValue, SpliceAllele, TranscribeAllele,
-    TranslateAllele, TranslationRnaType,
+    AddExplorationEdge, AddExplorationNode, AttachEnhancerPromoter, CreateExplorationGraph,
+    CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType,
+    ExplorationGraphId, ExplorationNodeId, GrnType, MutateExisting, MutateNew, ProvisionInsulator,
+    RegulatoryRnaType, RnaType, SequenceMutation, SequenceType, SequenceValue, SpliceAllele,
+    TranscribeAllele, TranslateAllele, TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -335,6 +335,7 @@ fn explore(state: &mut LocalState, args: &[String]) -> Result<String, CliError> 
         "node" => explore_node(state, args),
         "edge" => explore_edge(state, args),
         "show" => explore_show(state, args),
+        "enhancer" => explore_enhancer(state, args),
         _ => Err(CliError::Usage(format!(
             "unknown explore subcommand `{command}`"
         ))),
@@ -446,6 +447,25 @@ fn explore_show(state: &mut LocalState, args: &[String]) -> Result<String, CliEr
         }
     }
     Ok(output)
+}
+
+fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let enhancer_gene_fqn = positional(args, 1, "enhancer gene fqn")?;
+    let promoter_gene_fqn = required_option(args, "--promoter")?;
+    state
+        .dnap
+        .attach_enhancer_promoter(AttachEnhancerPromoter {
+            insulator_id: session.scope.insulator_id,
+            genome_id: session.scope.genome_id,
+            enhancer_gene_fqn: enhancer_gene_fqn.clone(),
+            promoter_gene_fqn: promoter_gene_fqn.clone(),
+            updated_by: session.actor.tf_id,
+        })?;
+
+    Ok(format!(
+        "attached enhancer `{enhancer_gene_fqn}` to promoter `{promoter_gene_fqn}`"
+    ))
 }
 
 fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, CliError> {
@@ -806,6 +826,31 @@ mod tests {
         assert!(shown.contains("node 1: PaymentAuthorized @ 10,20"));
         assert!(shown.contains("node 2: Receipt @ 0,0"));
         assert!(shown.contains("edge 1: 1 -> 2 (emits)"));
+    }
+
+    #[test]
+    fn explore_cli_attaches_enhancer_to_promoter_property() {
+        let mut state = bootstrapped_state();
+        dispatch(
+            &mut state,
+            words("epigenetics define-family STR Story --encoding promoter --sequence Summary"),
+        )
+        .expect("promoter family");
+        dispatch(
+            &mut state,
+            words("epigenetics define-family RSH Research --encoding enhancer --sequence Summary"),
+        )
+        .expect("enhancer family");
+        dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
+        dispatch(&mut state, words("mutate --new RSH PaymentResearch")).expect("enhancer");
+
+        let output = dispatch(
+            &mut state,
+            words("explore enhancer PaymentResearch --promoter Checkout"),
+        )
+        .expect("attach enhancer");
+
+        assert!(output.contains("attached enhancer `PaymentResearch` to promoter `Checkout`"));
     }
 
     #[test]

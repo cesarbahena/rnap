@@ -315,6 +315,14 @@ pub struct ExplorationEdge {
     pub created_at: SystemTime,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct EnhancerContext {
+    pub enhancer_locus_id: LocusId,
+    pub promoter_locus_id: LocusId,
+    pub updated_by: TfId,
+    pub updated_at: SystemTime,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SequenceType {
     String,
@@ -551,6 +559,15 @@ pub struct AddExplorationEdge {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct AttachEnhancerPromoter {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub enhancer_gene_fqn: String,
+    pub promoter_gene_fqn: String,
+    pub updated_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProvisionedInsulator {
     pub insulator: Insulator,
     pub placement: InsulatorPlacement,
@@ -592,6 +609,8 @@ pub enum DnapError {
     ExplorationNodeErnaRequired,
     ExplorationNodeErnaFamilyRequired,
     ExplorationEdgeCrossGraph,
+    EnhancerContextEnhancerRequired,
+    EnhancerContextPromoterRequired,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -633,6 +652,7 @@ pub struct Dnap {
     exploration_graphs: BTreeMap<ExplorationGraphId, ExplorationGraph>,
     exploration_nodes: BTreeMap<ExplorationNodeId, ExplorationNode>,
     exploration_edges: BTreeMap<ExplorationEdgeId, ExplorationEdge>,
+    enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
 }
 
 impl Dnap {
@@ -1279,6 +1299,54 @@ impl Dnap {
         Ok(edge)
     }
 
+    pub fn attach_enhancer_promoter(
+        &mut self,
+        input: AttachEnhancerPromoter,
+    ) -> Result<EnhancerContext, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.updated_by, input.insulator_id)?;
+
+        let enhancer_allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.updated_by,
+            &input.enhancer_gene_fqn,
+        )?;
+        let promoter_allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.updated_by,
+            &input.promoter_gene_fqn,
+        )?;
+        let enhancer_locus_id = self
+            .alleles
+            .get(&enhancer_allele_id)
+            .map(|allele| allele.locus_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        let promoter_locus_id = self
+            .alleles
+            .get(&promoter_allele_id)
+            .map(|allele| allele.locus_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        if !self.locus_has_encoding(enhancer_locus_id, EncodingKind::Enhancer) {
+            return Err(DnapError::EnhancerContextEnhancerRequired);
+        }
+        if !self.locus_has_encoding(promoter_locus_id, EncodingKind::Promoter) {
+            return Err(DnapError::EnhancerContextPromoterRequired);
+        }
+
+        let context = EnhancerContext {
+            enhancer_locus_id,
+            promoter_locus_id,
+            updated_by: input.updated_by,
+            updated_at: SystemTime::now(),
+        };
+        self.enhancer_contexts
+            .insert(enhancer_locus_id, context.clone());
+        Ok(context)
+    }
+
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
         let allele = self
             .alleles
@@ -1338,6 +1406,10 @@ impl Dnap {
             .values()
             .filter(|edge| edge.graph_id == graph_id)
             .collect()
+    }
+
+    pub fn enhancer_context(&self, enhancer_locus_id: LocusId) -> Option<&EnhancerContext> {
+        self.enhancer_contexts.get(&enhancer_locus_id)
     }
 
     pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
@@ -1500,6 +1572,7 @@ impl Dnap {
             match encoding {
                 EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
                 EncodingKind::ERNA => Err(DnapError::ExplorationNodeErnaRequired),
+                EncodingKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
             }
         }
     }
@@ -1513,6 +1586,7 @@ impl Dnap {
         };
         match (family.encodes, encoding) {
             (EncodingType::GRN(GrnType::Promoter), EncodingKind::Promoter) => true,
+            (EncodingType::GRN(GrnType::Enhancer), EncodingKind::Enhancer) => true,
             (
                 EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
                 EncodingKind::ERNA,
@@ -1800,6 +1874,7 @@ impl Dnap {
 #[derive(Clone, Copy)]
 enum EncodingKind {
     Promoter,
+    Enhancer,
     ERNA,
 }
 
@@ -2703,6 +2778,69 @@ mod tests {
         .expect("cycle edge");
 
         assert_eq!(dnap.exploration_edges(graph.graph.id).len(), 2);
+    }
+
+    #[test]
+    fn enhancer_context_stores_promoter_property_on_enhancer_locus() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Story",
+            "STR",
+            EncodingType::GRN(GrnType::Promoter),
+        );
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Research",
+            "RSH",
+            EncodingType::GRN(GrnType::Enhancer),
+        );
+        let promoter = dnap
+            .mutate_new(MutateNew {
+                insulator_id,
+                genome_id,
+                gene_family_abbreviation: "STR".to_owned(),
+                locus_name: "Checkout flow".to_owned(),
+                mutations: Vec::new(),
+                created_by: tf_id,
+            })
+            .expect("promoter");
+        let enhancer = dnap
+            .mutate_new(MutateNew {
+                insulator_id,
+                genome_id,
+                gene_family_abbreviation: "RSH".to_owned(),
+                locus_name: "Payment provider research".to_owned(),
+                mutations: Vec::new(),
+                created_by: tf_id,
+            })
+            .expect("enhancer");
+
+        let context = dnap
+            .attach_enhancer_promoter(AttachEnhancerPromoter {
+                insulator_id,
+                genome_id,
+                enhancer_gene_fqn: "payment-provider-research".to_owned(),
+                promoter_gene_fqn: "checkout-flow".to_owned(),
+                updated_by: tf_id,
+            })
+            .expect("context");
+
+        assert_eq!(context.enhancer_locus_id, enhancer.locus.id);
+        assert_eq!(context.promoter_locus_id, promoter.locus.id);
+        assert_eq!(
+            dnap.enhancer_context(enhancer.locus.id)
+                .expect("enhancer context")
+                .promoter_locus_id,
+            promoter.locus.id
+        );
     }
 
     #[test]
