@@ -88,3 +88,14 @@ This roadmap defines the order and assumptions for continued autonomous work on 
 - CRDT/OT semantics remain deferred.
 - SSO/SCIM remains deferred.
 - Legal hold, retention, export/delete, and regional residency remain documented enterprise needs, not local CLI implementation.
+
+## 2026-02-18: Enhancer Promoter Property
+
+- Decision: represent the approved Enhancer-to-Promoter association as `EnhancerContext` keyed by Enhancer Locus.
+- Reason: the user explicitly rejected a separate link object; the association behaves like workflow metadata/property on the Enhancer.
+- Decision: the property points from Enhancer Locus to Promoter Locus.
+- Reason: both documents can evolve through Alleles while the workflow relationship stays stable.
+- Decision: attaching this property requires an active Enhancer Allele and an active Promoter Allele in the current session scope.
+- Reason: current CLI resolution is scoped through active Alleles and Tf identity; later selection/canonical lookup can expand this.
+- Decision: updating the property overwrites the previous Promoter reference.
+- Reason: this is a property on the Enhancer, not an event/link collection.
