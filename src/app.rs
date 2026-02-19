@@ -398,28 +398,27 @@ pub enum RnaType {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TranslationRnaType {
-    ERNA,
-    MRNA,
-    RRNA,
-    TRNA,
+    ERna,
+    MRna,
+    RRna,
+    TRna,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegulatoryRnaType {
     Intron,
-    SnRNA,
-    ScaRNA,
-    SiRNA,
-    TmRNA,
-    GRNA,
-    MiRNA,
-    PiRNA,
-    SnoRNA,
-    CrRNA,
-    TracrRNA,
-    LncRNA,
-    CircRNA,
-    SgRNA,
+    SnRna,
+    ScaRna,
+    SiRna,
+    TmRna,
+    MiRna,
+    PiRna,
+    SnoRna,
+    CrRna,
+    TracrRna,
+    LncRna,
+    CircRna,
+    SgRna,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -1292,7 +1291,7 @@ impl Dnap {
         let erna_locus = match self.find_locus_by_encoding(
             input.insulator_id,
             input.genome_id,
-            EncodingKind::ERNA,
+            EncodingKind::ERna,
             &erna_locus_name,
         ) {
             Some(locus) => locus.clone(),
@@ -1309,13 +1308,13 @@ impl Dnap {
                     mutations: Vec::new(),
                     created_by: input.created_by,
                 })?;
-                self.require_locus_encoding(mutated.locus.id, EncodingKind::ERNA)?;
+                self.require_locus_encoding(mutated.locus.id, EncodingKind::ERna)?;
                 let locus = mutated.locus.clone();
                 created_erna = Some(mutated);
                 locus
             }
         };
-        self.require_locus_encoding(erna_locus.id, EncodingKind::ERNA)?;
+        self.require_locus_encoding(erna_locus.id, EncodingKind::ERna)?;
         let label = match input.label {
             Some(label) => require_text(label, DnapError::BlankExplorationNodeName)?,
             None => erna_locus.name.clone(),
@@ -1456,7 +1455,7 @@ impl Dnap {
             .get(&source_allele_id)
             .map(|allele| allele.locus_id)
             .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(source_locus_id, EncodingKind::ERNA) {
+        if !self.locus_has_encoding(source_locus_id, EncodingKind::ERna) {
             return Err(DnapError::ErnaCanonizationSourceRequired);
         }
 
@@ -1500,7 +1499,7 @@ impl Dnap {
             .get(&target_allele_id)
             .map(|allele| allele.locus_id)
             .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(target_locus_id, EncodingKind::MRNA) {
+        if !self.locus_has_encoding(target_locus_id, EncodingKind::MRna) {
             return Err(DnapError::IntronMediationTargetRequired);
         }
 
@@ -1820,9 +1819,9 @@ impl Dnap {
         } else {
             match encoding {
                 EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
-                EncodingKind::ERNA => Err(DnapError::ExplorationNodeErnaRequired),
+                EncodingKind::ERna => Err(DnapError::ExplorationNodeErnaRequired),
                 EncodingKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
-                EncodingKind::MRNA => Err(DnapError::IntronMediationTargetRequired),
+                EncodingKind::MRna => Err(DnapError::IntronMediationTargetRequired),
                 EncodingKind::Intron => Err(DnapError::IntronMediationIntronRequired),
             }
         }
@@ -1839,12 +1838,12 @@ impl Dnap {
             (EncodingType::GRN(GrnType::Promoter), EncodingKind::Promoter) => true,
             (EncodingType::GRN(GrnType::Enhancer), EncodingKind::Enhancer) => true,
             (
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
-                EncodingKind::ERNA,
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
+                EncodingKind::ERna,
             ) => true,
             (
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
-                EncodingKind::MRNA,
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
+                EncodingKind::MRna,
             ) => true,
             (
                 EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
@@ -2149,8 +2148,8 @@ impl Dnap {
 enum EncodingKind {
     Promoter,
     Enhancer,
-    ERNA,
-    MRNA,
+    ERna,
+    MRna,
     Intron,
 }
 
@@ -2932,7 +2931,7 @@ mod tests {
             tf_id,
             "Exploration",
             "EXP",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
         );
         dnap.mutate_new(MutateNew {
             insulator_id,
@@ -2995,7 +2994,7 @@ mod tests {
             tf_id,
             "Exploration",
             "EXP",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
         );
         dnap.mutate_new(MutateNew {
             insulator_id,
@@ -3130,7 +3129,7 @@ mod tests {
             tf_id,
             "Exploration",
             "EXP",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
         );
         define_gene_family_with_encoding(
             &mut dnap,
@@ -3139,7 +3138,7 @@ mod tests {
             tf_id,
             "Requirement",
             "REQ",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
         );
         let source = dnap
             .mutate_new(MutateNew {
@@ -3184,7 +3183,7 @@ mod tests {
             tf_id,
             "Requirement",
             "REQ",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
         );
         define_gene_family_with_encoding(
             &mut dnap,
@@ -3259,7 +3258,7 @@ mod tests {
             tf_id,
             "Design",
             "DSN",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRna)),
         );
         define_gene_family_with_encoding(
             &mut dnap,
@@ -3493,6 +3492,6 @@ mod tests {
     }
 
     fn prd_encoding() -> EncodingType {
-        EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA))
+        EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna))
     }
 }

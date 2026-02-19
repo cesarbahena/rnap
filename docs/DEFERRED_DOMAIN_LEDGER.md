@@ -56,7 +56,6 @@ The ledger contains implementation obligations and open decisions that are inten
 - Implement CRISPR behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md).
 - Implement structural maintenance behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md).
 - Whether mutation proposals must pass through SgRNA or direct Mutation remains valid.
-- GRNA generation snapshots, model/config metadata, and provenance.
 
 ## Implementation Evaluation
 

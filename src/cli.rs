@@ -156,7 +156,7 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
                 .map(|value| parse_encoding(&value))
                 .transpose()?
                 .unwrap_or(EncodingType::RNA(RnaType::Translation(
-                    TranslationRnaType::MRNA,
+                    TranslationRnaType::MRna,
                 )));
             let sequence_names = repeated_option(args, "--sequence");
             if sequence_names.is_empty() {
@@ -571,19 +571,19 @@ fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, Cl
 fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
     match normalize(value).as_str() {
         "erna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::ERNA,
+            TranslationRnaType::ERna,
         ))),
         "mrna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::MRNA,
+            TranslationRnaType::MRna,
         ))),
         "rrna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::RRNA,
+            TranslationRnaType::RRna,
         ))),
         "trna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::TRNA,
+            TranslationRnaType::TRna,
         ))),
         "sgrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SgRNA,
+            RegulatoryRnaType::SgRna,
         ))),
         "promoter" => Ok(EncodingType::GRN(GrnType::Promoter)),
         "enhancer" => Ok(EncodingType::GRN(GrnType::Enhancer)),
@@ -596,40 +596,37 @@ fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
             RegulatoryRnaType::Intron,
         ))),
         "snrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SnRNA,
+            RegulatoryRnaType::SnRna,
         ))),
         "scarna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::ScaRNA,
+            RegulatoryRnaType::ScaRna,
         ))),
         "sirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SiRNA,
+            RegulatoryRnaType::SiRna,
         ))),
         "tmrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::TmRNA,
-        ))),
-        "grna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::GRNA,
+            RegulatoryRnaType::TmRna,
         ))),
         "mirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::MiRNA,
+            RegulatoryRnaType::MiRna,
         ))),
         "pirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::PiRNA,
+            RegulatoryRnaType::PiRna,
         ))),
         "snorna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SnoRNA,
+            RegulatoryRnaType::SnoRna,
         ))),
         "crrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::CrRNA,
+            RegulatoryRnaType::CrRna,
         ))),
         "tracrrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::TracrRNA,
+            RegulatoryRnaType::TracrRna,
         ))),
         "lncrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::LncRNA,
+            RegulatoryRnaType::LncRna,
         ))),
         "circrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::CircRNA,
+            RegulatoryRnaType::CircRna,
         ))),
         _ => Err(CliError::Usage(format!("unsupported encoding `{value}`"))),
     }
@@ -994,19 +991,19 @@ mod tests {
             ("silencer", EncodingType::GRN(GrnType::Silencer)),
             (
                 "eRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
             ),
             (
                 "mRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
             ),
             (
                 "rRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRna)),
             ),
             (
                 "tRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRna)),
             ),
             (
                 "intron",
@@ -1014,55 +1011,51 @@ mod tests {
             ),
             (
                 "snRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnRna)),
             ),
             (
                 "scaRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::ScaRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::ScaRna)),
             ),
             (
                 "siRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SiRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SiRna)),
             ),
             (
                 "tmRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TmRNA)),
-            ),
-            (
-                "gRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::GRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TmRna)),
             ),
             (
                 "miRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::MiRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::MiRna)),
             ),
             (
                 "piRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::PiRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::PiRna)),
             ),
             (
                 "snoRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnoRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnoRna)),
             ),
             (
                 "crRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CrRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CrRna)),
             ),
             (
                 "tracrRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TracrRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TracrRna)),
             ),
             (
                 "lncRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::LncRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::LncRna)),
             ),
             (
                 "circRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CircRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CircRna)),
             ),
             (
                 "sgRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SgRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SgRna)),
             ),
         ];
 

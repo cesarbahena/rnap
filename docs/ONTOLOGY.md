@@ -56,7 +56,6 @@ RNA means Request for Normalization and Alignment.
 - `scaRNA`: requirement modification suggestion from implementation reality.
 - `siRNA`: authoritative out-of-scope order.
 - `tmRNA`: unblocker mediation request.
-- `gRNA`: general message.
 - `miRNA`: emergent scope reduction discussion.
 - `piRNA`: explicit out-of-scope discussion.
 - `snoRNA`: ADR.
