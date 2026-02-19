@@ -1500,9 +1500,7 @@ impl Dnap {
             .get(&target_allele_id)
             .map(|allele| allele.locus_id)
             .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(target_locus_id, EncodingKind::MRNA)
-            && !self.locus_has_encoding(target_locus_id, EncodingKind::RRNA)
-        {
+        if !self.locus_has_encoding(target_locus_id, EncodingKind::MRNA) {
             return Err(DnapError::IntronMediationTargetRequired);
         }
 
@@ -1824,9 +1822,7 @@ impl Dnap {
                 EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
                 EncodingKind::ERNA => Err(DnapError::ExplorationNodeErnaRequired),
                 EncodingKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
-                EncodingKind::MRNA | EncodingKind::RRNA => {
-                    Err(DnapError::IntronMediationTargetRequired)
-                }
+                EncodingKind::MRNA => Err(DnapError::IntronMediationTargetRequired),
                 EncodingKind::Intron => Err(DnapError::IntronMediationIntronRequired),
             }
         }
@@ -1849,10 +1845,6 @@ impl Dnap {
             (
                 EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
                 EncodingKind::MRNA,
-            ) => true,
-            (
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
-                EncodingKind::RRNA,
             ) => true,
             (
                 EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
@@ -2159,7 +2151,6 @@ enum EncodingKind {
     Enhancer,
     ERNA,
     MRNA,
-    RRNA,
     Intron,
 }
 
@@ -3254,6 +3245,51 @@ mod tests {
                 .expect("follow up")
                 .child_intron_locus_id,
             follow_up.intron.locus.id
+        );
+    }
+
+    #[test]
+    fn intron_mediation_rejects_rrna_targets() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Design",
+            "DSN",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
+        );
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Question",
+            "QST",
+            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
+        );
+        dnap.mutate_new(MutateNew {
+            insulator_id,
+            genome_id,
+            gene_family_abbreviation: "DSN".to_owned(),
+            locus_name: "Checkout design".to_owned(),
+            mutations: Vec::new(),
+            created_by: tf_id,
+        })
+        .expect("design");
+
+        assert_eq!(
+            dnap.open_intron(OpenIntron {
+                insulator_id,
+                genome_id,
+                target_gene_fqn: "checkout-design".to_owned(),
+                intron_gene_family_abbreviation: "QST".to_owned(),
+                intron_locus_name: "Clarify component boundary".to_owned(),
+                created_by: tf_id,
+            }),
+            Err(DnapError::IntronMediationTargetRequired)
         );
     }
 

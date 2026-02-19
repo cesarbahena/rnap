@@ -110,6 +110,8 @@ This roadmap defines the order and assumptions for continued autonomous work on 
 - Reason: target GeneFamily schemas may differ; content transformation needs explicit mapping rules later.
 - Decision: allow any target GeneFamily for now.
 - Reason: the user said eRNA can canonize into other RNA; enforcing a subset before concrete workflows risks blocking useful experiments.
+- Review note: the exact product meaning of "canonizing" is still unclear.
+- Follow-up: keep the current provenance-only implementation on this branch, but do not commit to further canonization mechanics until the use case is clearer.
 
 ## 2026-02-19: Intron Mediation
 
@@ -119,5 +121,5 @@ This roadmap defines the order and assumptions for continued autonomous work on 
 - Reason: both the disambiguation item and the target work can evolve through Alleles.
 - Decision: follow-up Introns form a parent-child chain between Intron Loci.
 - Reason: this captures "Introns may be chained" without imposing broader issue-thread semantics yet.
-- Decision: initial target validation allows mRNA and rRNA targets.
-- Reason: the workflow model explicitly mentions mRNA/rRNA targets for mediator items; wider targets should wait for concrete use cases.
+- Decision: initial target validation allows only mRNA targets.
+- Reason: Introns are requirement ambiguity questions. rRNA discussions should start a snoRNA instead.
