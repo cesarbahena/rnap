@@ -110,3 +110,14 @@ This roadmap defines the order and assumptions for continued autonomous work on 
 - Reason: target GeneFamily schemas may differ; content transformation needs explicit mapping rules later.
 - Decision: allow any target GeneFamily for now.
 - Reason: the user said eRNA can canonize into other RNA; enforcing a subset before concrete workflows risks blocking useful experiments.
+
+## 2026-02-19: Intron Mediation
+
+- Decision: implement Intron mediation as concrete target and chain records, not a generic TfComplex object.
+- Reason: the approved workflow says MediatorComplex uses Intron open issues with Intron follow-ups, while TfComplex itself should not be persisted.
+- Decision: an Intron mediation target points from an Intron Locus to the target Locus being disambiguated.
+- Reason: both the disambiguation item and the target work can evolve through Alleles.
+- Decision: follow-up Introns form a parent-child chain between Intron Loci.
+- Reason: this captures "Introns may be chained" without imposing broader issue-thread semantics yet.
+- Decision: initial target validation allows mRNA and rRNA targets.
+- Reason: the workflow model explicitly mentions mRNA/rRNA targets for mediator items; wider targets should wait for concrete use cases.
