@@ -5,9 +5,10 @@ use std::time::SystemTime;
 use crate::app::{
     AddExplorationEdge, AddExplorationNode, AttachEnhancerPromoter, CanonizeErna,
     CreateExplorationGraph, CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError,
-    EncodingType, ExplorationGraphId, ExplorationNodeId, GrnType, MutateExisting, MutateNew,
-    ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation, SequenceType, SequenceValue,
-    SpliceAllele, TranscribeAllele, TranslateAllele, TranslationRnaType,
+    EncodingType, ExplorationGraphId, ExplorationNodeId, FollowUpIntron, GrnType, MutateExisting,
+    MutateNew, OpenIntron, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation,
+    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
+    TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -51,6 +52,7 @@ fn dispatch(state: &mut LocalState, args: Vec<String>) -> Result<String, CliErro
         "splice" => splice(state, &args[1..]),
         "translate" => translate(state, &args[1..]),
         "explore" => explore(state, &args[1..]),
+        "mediate" => mediate(state, &args[1..]),
         _ => Err(CliError::Usage(format!("unknown command `{command}`"))),
     }
 }
@@ -489,6 +491,58 @@ fn explore_canonize(state: &mut LocalState, args: &[String]) -> Result<String, C
     ))
 }
 
+fn mediate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let Some(command) = args.first().map(String::as_str) else {
+        return Err(CliError::Usage("expected mediate subcommand".to_owned()));
+    };
+
+    match command {
+        "intron" => mediate_intron(state, args),
+        "follow-up" => mediate_follow_up(state, args),
+        _ => Err(CliError::Usage(format!(
+            "unknown mediate subcommand `{command}`"
+        ))),
+    }
+}
+
+fn mediate_intron(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let target_gene_fqn = positional(args, 1, "target gene fqn")?;
+    let intron_locus_name = positional(args, 2, "intron name")?;
+    let opened = state.dnap.open_intron(OpenIntron {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        target_gene_fqn: target_gene_fqn.clone(),
+        intron_gene_family_abbreviation: required_option(args, "--family")?,
+        intron_locus_name,
+        created_by: session.actor.tf_id,
+    })?;
+
+    Ok(format!(
+        "opened intron `{}` for `{target_gene_fqn}`",
+        opened.intron.gene_fqn
+    ))
+}
+
+fn mediate_follow_up(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let parent_intron_gene_fqn = positional(args, 1, "parent intron gene fqn")?;
+    let intron_locus_name = positional(args, 2, "intron name")?;
+    let followed = state.dnap.follow_up_intron(FollowUpIntron {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        parent_intron_gene_fqn: parent_intron_gene_fqn.clone(),
+        intron_gene_family_abbreviation: required_option(args, "--family")?,
+        intron_locus_name,
+        created_by: session.actor.tf_id,
+    })?;
+
+    Ok(format!(
+        "opened intron follow-up `{}` for `{parent_intron_gene_fqn}`",
+        followed.intron.gene_fqn
+    ))
+}
+
 fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, CliError> {
     let mut mutations = Vec::new();
     let mut index = 0;
@@ -896,6 +950,36 @@ mod tests {
         .expect("canonize");
 
         assert!(output.contains("canonized eRNA into `REQ-accountrecoveryrequirement-0001`"));
+    }
+
+    #[test]
+    fn mediate_cli_opens_and_chains_introns() {
+        let mut state = bootstrapped_state();
+        dispatch(
+            &mut state,
+            words("epigenetics define-family REQ Requirement --encoding mRNA --sequence Summary"),
+        )
+        .expect("requirement family");
+        dispatch(
+            &mut state,
+            words("epigenetics define-family QST Question --encoding intron --sequence Summary"),
+        )
+        .expect("intron family");
+        dispatch(&mut state, words("mutate --new REQ Checkout")).expect("target");
+
+        let opened = dispatch(
+            &mut state,
+            words("mediate intron Checkout ClarifyRetries --family QST"),
+        )
+        .expect("open intron");
+        assert!(opened.contains("opened intron `QST-clarifyretries-0001`"));
+
+        let follow_up = dispatch(
+            &mut state,
+            words("mediate follow-up ClarifyRetries ClarifyCeiling --family QST"),
+        )
+        .expect("follow up");
+        assert!(follow_up.contains("opened intron follow-up `QST-clarifyceiling-0001`"));
     }
 
     #[test]

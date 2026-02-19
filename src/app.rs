@@ -57,6 +57,12 @@ pub struct ExplorationEdgeId(u64);
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ErnaCanonizationId(u64);
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct IntronMediationId(u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct IntronFollowUpId(u64);
+
 impl ExplorationGraphId {
     pub fn from_raw(value: u64) -> Self {
         Self(value)
@@ -335,6 +341,24 @@ pub struct ErnaCanonization {
     pub created_at: SystemTime,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct IntronMediation {
+    pub id: IntronMediationId,
+    pub intron_locus_id: LocusId,
+    pub target_locus_id: LocusId,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct IntronFollowUp {
+    pub id: IntronFollowUpId,
+    pub parent_intron_locus_id: LocusId,
+    pub child_intron_locus_id: LocusId,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SequenceType {
     String,
@@ -596,6 +620,38 @@ pub struct CanonizedErna {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct OpenIntron {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub target_gene_fqn: String,
+    pub intron_gene_family_abbreviation: String,
+    pub intron_locus_name: String,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct OpenedIntron {
+    pub mediation: IntronMediation,
+    pub intron: MutatedAllele,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct FollowUpIntron {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub parent_intron_gene_fqn: String,
+    pub intron_gene_family_abbreviation: String,
+    pub intron_locus_name: String,
+    pub created_by: TfId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct FollowedUpIntron {
+    pub follow_up: IntronFollowUp,
+    pub intron: MutatedAllele,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProvisionedInsulator {
     pub insulator: Insulator,
     pub placement: InsulatorPlacement,
@@ -640,6 +696,8 @@ pub enum DnapError {
     EnhancerContextEnhancerRequired,
     EnhancerContextPromoterRequired,
     ErnaCanonizationSourceRequired,
+    IntronMediationIntronRequired,
+    IntronMediationTargetRequired,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -666,6 +724,8 @@ pub struct Dnap {
     next_exploration_node_id: u64,
     next_exploration_edge_id: u64,
     next_erna_canonization_id: u64,
+    next_intron_mediation_id: u64,
+    next_intron_follow_up_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
@@ -684,6 +744,8 @@ pub struct Dnap {
     exploration_edges: BTreeMap<ExplorationEdgeId, ExplorationEdge>,
     enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
     erna_canonizations: BTreeMap<ErnaCanonizationId, ErnaCanonization>,
+    intron_mediations: BTreeMap<IntronMediationId, IntronMediation>,
+    intron_follow_ups: BTreeMap<IntronFollowUpId, IntronFollowUp>,
 }
 
 impl Dnap {
@@ -1422,6 +1484,99 @@ impl Dnap {
         })
     }
 
+    pub fn open_intron(&mut self, input: OpenIntron) -> Result<OpenedIntron, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let target_allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.created_by,
+            &input.target_gene_fqn,
+        )?;
+        let target_locus_id = self
+            .alleles
+            .get(&target_allele_id)
+            .map(|allele| allele.locus_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        if !self.locus_has_encoding(target_locus_id, EncodingKind::MRNA)
+            && !self.locus_has_encoding(target_locus_id, EncodingKind::RRNA)
+        {
+            return Err(DnapError::IntronMediationTargetRequired);
+        }
+
+        let intron = self.mutate_new(MutateNew {
+            insulator_id: input.insulator_id,
+            genome_id: input.genome_id,
+            gene_family_abbreviation: input.intron_gene_family_abbreviation,
+            locus_name: input.intron_locus_name,
+            mutations: Vec::new(),
+            created_by: input.created_by,
+        })?;
+        if !self.locus_has_encoding(intron.locus.id, EncodingKind::Intron) {
+            return Err(DnapError::IntronMediationIntronRequired);
+        }
+        let mediation = IntronMediation {
+            id: self.allocate_intron_mediation_id(),
+            intron_locus_id: intron.locus.id,
+            target_locus_id,
+            created_by: input.created_by,
+            created_at: SystemTime::now(),
+        };
+        self.intron_mediations
+            .insert(mediation.id, mediation.clone());
+
+        Ok(OpenedIntron { mediation, intron })
+    }
+
+    pub fn follow_up_intron(
+        &mut self,
+        input: FollowUpIntron,
+    ) -> Result<FollowedUpIntron, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let parent_allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.created_by,
+            &input.parent_intron_gene_fqn,
+        )?;
+        let parent_intron_locus_id = self
+            .alleles
+            .get(&parent_allele_id)
+            .map(|allele| allele.locus_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        if !self.locus_has_encoding(parent_intron_locus_id, EncodingKind::Intron) {
+            return Err(DnapError::IntronMediationIntronRequired);
+        }
+
+        let intron = self.mutate_new(MutateNew {
+            insulator_id: input.insulator_id,
+            genome_id: input.genome_id,
+            gene_family_abbreviation: input.intron_gene_family_abbreviation,
+            locus_name: input.intron_locus_name,
+            mutations: Vec::new(),
+            created_by: input.created_by,
+        })?;
+        if !self.locus_has_encoding(intron.locus.id, EncodingKind::Intron) {
+            return Err(DnapError::IntronMediationIntronRequired);
+        }
+        let follow_up = IntronFollowUp {
+            id: self.allocate_intron_follow_up_id(),
+            parent_intron_locus_id,
+            child_intron_locus_id: intron.locus.id,
+            created_by: input.created_by,
+            created_at: SystemTime::now(),
+        };
+        self.intron_follow_ups
+            .insert(follow_up.id, follow_up.clone());
+
+        Ok(FollowedUpIntron { follow_up, intron })
+    }
+
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
         let allele = self
             .alleles
@@ -1491,6 +1646,20 @@ impl Dnap {
         self.erna_canonizations
             .values()
             .filter(|canonization| canonization.source_erna_locus_id == source_erna_locus_id)
+            .collect()
+    }
+
+    pub fn intron_mediations_for(&self, target_locus_id: LocusId) -> Vec<&IntronMediation> {
+        self.intron_mediations
+            .values()
+            .filter(|mediation| mediation.target_locus_id == target_locus_id)
+            .collect()
+    }
+
+    pub fn intron_follow_ups_for(&self, parent_intron_locus_id: LocusId) -> Vec<&IntronFollowUp> {
+        self.intron_follow_ups
+            .values()
+            .filter(|follow_up| follow_up.parent_intron_locus_id == parent_intron_locus_id)
             .collect()
     }
 
@@ -1655,6 +1824,10 @@ impl Dnap {
                 EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
                 EncodingKind::ERNA => Err(DnapError::ExplorationNodeErnaRequired),
                 EncodingKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
+                EncodingKind::MRNA | EncodingKind::RRNA => {
+                    Err(DnapError::IntronMediationTargetRequired)
+                }
+                EncodingKind::Intron => Err(DnapError::IntronMediationIntronRequired),
             }
         }
     }
@@ -1672,6 +1845,18 @@ impl Dnap {
             (
                 EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
                 EncodingKind::ERNA,
+            ) => true,
+            (
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+                EncodingKind::MRNA,
+            ) => true,
+            (
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
+                EncodingKind::RRNA,
+            ) => true,
+            (
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
+                EncodingKind::Intron,
             ) => true,
             _ => false,
         }
@@ -1956,6 +2141,16 @@ impl Dnap {
         self.next_erna_canonization_id += 1;
         ErnaCanonizationId(self.next_erna_canonization_id)
     }
+
+    fn allocate_intron_mediation_id(&mut self) -> IntronMediationId {
+        self.next_intron_mediation_id += 1;
+        IntronMediationId(self.next_intron_mediation_id)
+    }
+
+    fn allocate_intron_follow_up_id(&mut self) -> IntronFollowUpId {
+        self.next_intron_follow_up_id += 1;
+        IntronFollowUpId(self.next_intron_follow_up_id)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1963,6 +2158,9 @@ enum EncodingKind {
     Promoter,
     Enhancer,
     ERNA,
+    MRNA,
+    RRNA,
+    Intron,
 }
 
 fn require_text(value: String, error: DnapError) -> Result<String, DnapError> {
@@ -2982,6 +3180,81 @@ mod tests {
         assert_eq!(canonized.target.locus.name, "Account recovery requirement");
         assert_eq!(canonized.target.mutations.len(), 0);
         assert_eq!(dnap.erna_canonizations_from(source.locus.id).len(), 1);
+    }
+
+    #[test]
+    fn intron_mediation_targets_mrna_and_can_chain_follow_ups() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Requirement",
+            "REQ",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+        );
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Question",
+            "QST",
+            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
+        );
+        let target = dnap
+            .mutate_new(MutateNew {
+                insulator_id,
+                genome_id,
+                gene_family_abbreviation: "REQ".to_owned(),
+                locus_name: "Checkout requirements".to_owned(),
+                mutations: Vec::new(),
+                created_by: tf_id,
+            })
+            .expect("target");
+
+        let opened = dnap
+            .open_intron(OpenIntron {
+                insulator_id,
+                genome_id,
+                target_gene_fqn: "checkout-requirements".to_owned(),
+                intron_gene_family_abbreviation: "QST".to_owned(),
+                intron_locus_name: "Clarify payment retries".to_owned(),
+                created_by: tf_id,
+            })
+            .expect("intron");
+        let follow_up = dnap
+            .follow_up_intron(FollowUpIntron {
+                insulator_id,
+                genome_id,
+                parent_intron_gene_fqn: "clarify-payment-retries".to_owned(),
+                intron_gene_family_abbreviation: "QST".to_owned(),
+                intron_locus_name: "Clarify retry ceiling".to_owned(),
+                created_by: tf_id,
+            })
+            .expect("follow up");
+
+        assert_eq!(opened.mediation.target_locus_id, target.locus.id);
+        assert_eq!(
+            dnap.intron_mediations_for(target.locus.id)
+                .first()
+                .expect("mediation")
+                .intron_locus_id,
+            opened.intron.locus.id
+        );
+        assert_eq!(
+            follow_up.follow_up.parent_intron_locus_id,
+            opened.intron.locus.id
+        );
+        assert_eq!(
+            dnap.intron_follow_ups_for(opened.intron.locus.id)
+                .first()
+                .expect("follow up")
+                .child_intron_locus_id,
+            follow_up.intron.locus.id
+        );
     }
 
     #[test]
