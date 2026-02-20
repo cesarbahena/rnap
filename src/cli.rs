@@ -3,12 +3,11 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AddExplorationEdge, AddExplorationNode, AttachEnhancerPromoter, CanonizeErna,
-    CreateExplorationGraph, CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError,
-    EncodingType, ExplorationGraphId, ExplorationNodeId, FollowUpIntron, GrnType, MutateExisting,
-    MutateNew, OpenIntron, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation,
-    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
-    TranslationRnaType,
+    AddExplorationEdge, AddExplorationNode, AttachEnhancerPromoter, CreateExplorationGraph,
+    CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType,
+    ExplorationGraphId, ExplorationNodeId, FollowUpIntron, GrnType, MutateExisting, MutateNew,
+    OpenIntron, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation, SequenceType,
+    SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele, TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -338,7 +337,6 @@ fn explore(state: &mut LocalState, args: &[String]) -> Result<String, CliError> 
         "edge" => explore_edge(state, args),
         "show" => explore_show(state, args),
         "enhancer" => explore_enhancer(state, args),
-        "canonize" => explore_canonize(state, args),
         _ => Err(CliError::Usage(format!(
             "unknown explore subcommand `{command}`"
         ))),
@@ -468,26 +466,6 @@ fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, C
 
     Ok(format!(
         "attached enhancer `{enhancer_gene_fqn}` to promoter `{promoter_gene_fqn}`"
-    ))
-}
-
-fn explore_canonize(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let session = current_session(state)?;
-    let source_erna_gene_fqn = positional(args, 1, "source erna gene fqn")?;
-    let target_gene_family_abbreviation = required_option(args, "--family")?;
-    let target_locus_name = positional(args, 2, "target document name")?;
-    let canonized = state.dnap.canonize_erna(CanonizeErna {
-        insulator_id: session.scope.insulator_id,
-        genome_id: session.scope.genome_id,
-        source_erna_gene_fqn,
-        target_gene_family_abbreviation,
-        target_locus_name,
-        created_by: session.actor.tf_id,
-    })?;
-
-    Ok(format!(
-        "canonized eRNA into `{}`",
-        canonized.target.gene_fqn
     ))
 }
 
@@ -923,30 +901,6 @@ mod tests {
         .expect("attach enhancer");
 
         assert!(output.contains("attached enhancer `PaymentResearch` to promoter `Checkout`"));
-    }
-
-    #[test]
-    fn explore_cli_canonizes_erna_into_target_family() {
-        let mut state = bootstrapped_state();
-        dispatch(
-            &mut state,
-            words("epigenetics define-family EXP Exploration --encoding eRNA --sequence Summary"),
-        )
-        .expect("erna family");
-        dispatch(
-            &mut state,
-            words("epigenetics define-family REQ Requirement --encoding mRNA --sequence Summary"),
-        )
-        .expect("requirement family");
-        dispatch(&mut state, words("mutate --new EXP AccountRecoverySketch")).expect("erna");
-
-        let output = dispatch(
-            &mut state,
-            words("explore canonize AccountRecoverySketch AccountRecoveryRequirement --family REQ"),
-        )
-        .expect("canonize");
-
-        assert!(output.contains("canonized eRNA into `REQ-accountrecoveryrequirement-0001`"));
     }
 
     #[test]

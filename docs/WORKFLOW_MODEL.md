@@ -60,17 +60,11 @@ Real-time collaboration will need operation-friendly changes such as creating, m
 
 Do not add direct `Enhancer <-> eRNA` edges until a concrete workflow requires them.
 
-### eRNA Reuse And Canonization
+### eRNA Reuse
 
 The same eRNA controlled document may be reused across graphs.
 
 Reused eRNA keeps one controlled document identity, while each graph node has graph-local presentation state.
-
-eRNA work may be canonized or transformed into another RNA document type.
-
-Canonizing eRNA creates a new target Transposon and Allele with provenance back to the source eRNA.
-
-Canonization does not change the source eRNA type or erase exploration history.
 
 ## RepressorsComplex
 

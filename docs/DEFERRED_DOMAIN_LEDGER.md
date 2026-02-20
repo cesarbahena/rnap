@@ -50,7 +50,6 @@ The ledger contains implementation obligations and open decisions that are inten
 - Implement PreInitiationComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md), including Promoter-owned exploration graphs and Enhancer Promoter properties.
 - Implement ExplorationGraph, ExplorationNode, and ExplorationEdge as workflow artifacts for collaborative whiteboards.
 - Decide and implement operation/revision semantics for real-time graph collaboration. CRDT/OT semantics are deferred.
-- Implement eRNA canonization into target RNA Transposon and Allele with provenance.
 - Implement RepressorsComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md).
 - Implement MediatorComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md).
 - Implement CRISPR behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md).

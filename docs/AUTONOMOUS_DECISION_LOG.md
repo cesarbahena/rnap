@@ -18,7 +18,7 @@ Each entry is provisional until reviewed and merged.
 - Reason: whiteboard workflows should not require pre-creating every eRNA document before placing a node; the auto-created record still uses normal Locus, Transposon, and Allele structures.
 - Decision: keep edge semantics as free text for now instead of a fixed enum.
 - Reason: the user rejected constraining relationship semantics as product value; structural graph rules matter now, semantic ontology can emerge from tenant schemas and later workflow needs.
-- Decision: do not implement realtime CRDT/OT, React UI, canonization, or Promoter/Enhancer relationships in this vertical.
+- Decision: do not implement realtime CRDT/OT, React UI, or Promoter/Enhancer relationships in this vertical.
 - Reason: those are approved future workflow areas but are larger than the first backend/CLI path.
 
 ## Autonomous Remaining-Feature Roadmap
@@ -48,36 +48,31 @@ This roadmap defines the order and assumptions for continued autonomous work on 
    - Keep the exact Enhancer schema tenant-configurable through GeneFamily Sequences.
    - Reject attaching non-Enhancer documents as Enhancers and non-Promoter documents as Promoter targets.
 
-3. eRNA canonization.
-   - Add an application operation that creates a new target Transposon and Allele from an existing eRNA Locus.
-   - Preserve source eRNA unchanged and store provenance from source eRNA Locus to target Locus.
-   - Do not implement `dna select` as part of canonization.
-
-4. MediatorComplex concrete workflows.
+3. MediatorComplex concrete workflows.
    - Start with `Intron` as chainable disambiguation items.
    - Add targeted follow-up records for `snRNA` and `scaRNA` only after there is a concrete mRNA target.
    - Keep `snoRNA` ADR behavior linked to rRNA.
 
-5. RepressorsComplex concrete workflows.
+4. RepressorsComplex concrete workflows.
    - Model piRNA and miRNA as open scope-control discussions.
    - Model siRNA as authoritative out-of-scope order.
    - Do not implement broad arbitrary Gene links; use constrained target types per workflow.
 
-6. CRISPR concrete workflows.
+5. CRISPR concrete workflows.
    - Add incident/open-issue flow around `crRNA`, `tracrRNA`, and `sgRNA`.
    - Keep `Cas` as an action concept, not EncodingType.
    - Defer PAM evidence shape until at least one useful CLI workflow exists.
 
-7. Structural maintenance.
+6. Structural maintenance.
    - Keep Centromere deployment documents as current controlled documents.
    - Defer microtubule/task granularity until deployment workflows are clearer.
 
-8. Authorization with Histones.
+7. Authorization with Histones.
    - Add Histone and HistoneMark models before production-like authorization.
    - Keep current local session bootstrap as temporary superadmin/demo path.
    - Do not add SSO/SCIM implementation yet; preserve identity adapter boundaries.
 
-9. Persistence hardening.
+8. Persistence hardening.
    - Split current god-file pressure by moving domain areas into modules once another feature lands.
    - Keep serialization compatibility in mind but do not over-design migration before real storage exists.
 
@@ -99,19 +94,6 @@ This roadmap defines the order and assumptions for continued autonomous work on 
 - Reason: current CLI resolution is scoped through active Alleles and Tf identity; later selection/canonical lookup can expand this.
 - Decision: updating the property overwrites the previous Promoter reference.
 - Reason: this is a property on the Enhancer, not an event/link collection.
-
-## 2026-02-18: eRNA Canonization
-
-- Decision: canonizing eRNA creates a new target Transposon and Allele through normal `mutate_new` behavior.
-- Reason: canonization should not invent a parallel document creation path.
-- Decision: store a provenance record from source eRNA Locus to target Locus.
-- Reason: the source remains exploration history while the target becomes controlled work in another GeneFamily.
-- Decision: do not copy Sequence values from source eRNA to the target in this first pass.
-- Reason: target GeneFamily schemas may differ; content transformation needs explicit mapping rules later.
-- Decision: allow any target GeneFamily for now.
-- Reason: the user said eRNA can canonize into other RNA; enforcing a subset before concrete workflows risks blocking useful experiments.
-- Review note: the exact product meaning of "canonizing" is still unclear.
-- Follow-up: keep the current provenance-only implementation on this branch, but do not commit to further canonization mechanics until the use case is clearer.
 
 ## 2026-02-19: Intron Mediation
 

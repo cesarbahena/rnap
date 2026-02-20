@@ -59,10 +59,10 @@ enum TranslationRnaType {
 }
 ```
 
-- `ERna`: flexible typed exploration graph node. Tenant-facing name: `eRNA`.
-- `MRna`: requirements analysis document. Tenant-facing name: `mRNA`.
-- `RRna`: architecture/design document. Tenant-facing name: `rRNA`.
-- `TRna`: agentic skills. Tenant-facing name: `tRNA`.
+- `ERna`: flexible typed exploration graph node.
+- `MRna`: requirements analysis document.
+- `RRna`: architecture/design document.
+- `TRna`: agentic skills.
 
 ## Regulatory RNA
 
@@ -87,18 +87,18 @@ enum RegulatoryRnaType {
 ```
 
 - `Intron`: disambiguation item. Introns may be chained.
-- `SnRna`: task modification suggestion for an mRNA. Tenant-facing name: `snRNA`.
-- `ScaRna`: requirement modification suggestion from implementation reality. Tenant-facing name: `scaRNA`.
-- `SiRna`: authoritative out-of-scope order. Tenant-facing name: `siRNA`.
-- `TmRna`: unblocker mediation request. Tenant-facing name: `tmRNA`.
-- `MiRna`: emergent scope reduction discussion. Tenant-facing name: `miRNA`.
-- `PiRna`: explicit out-of-scope discussion. Tenant-facing name: `piRNA`.
-- `SnoRna`: ADR. Tenant-facing name: `snoRNA`.
-- `CrRna`: incident report, possibly linked to a risk. Tenant-facing name: `crRNA`.
-- `TracrRna`: root cause analysis. Tenant-facing name: `tracrRNA`.
-- `LncRna`: research document. Tenant-facing name: `lncRNA`.
-- `CircRna`: onboarding particularities. Tenant-facing name: `circRNA`.
-- `SgRna`: suggested CRISPR action change. Tenant-facing name: `sgRNA`.
+- `SnRna`: task modification suggestion for an mRNA.
+- `ScaRna`: requirement modification suggestion from implementation reality.
+- `SiRna`: authoritative out-of-scope order.
+- `TmRna`: unblocker mediation request.
+- `MiRna`: emergent scope reduction discussion.
+- `PiRna`: explicit out-of-scope discussion.
+- `SnoRna`: ADR.
+- `CrRna`: incident report, possibly linked to a risk.
+- `TracrRna`: root cause analysis.
+- `LncRna`: research document.
+- `CircRna`: onboarding particularities.
+- `SgRna`: suggested CRISPR action change.
 
 ## Non-Encoding Workflow Terms
 
