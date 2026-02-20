@@ -10,12 +10,29 @@ DNAp should start work from ambiguity, not commitment.
 
 The generic "Intent" idea maps to DNAp's existing `Promoter` concept. We should not add an `Intent` object unless later use cases prove `Promoter` cannot carry that role.
 
-Proposed root model:
+Proposed root model revision:
 
-- `Promoter`: first durable root for a possible change, opportunity, issue, or initiative.
-- `Promoter` starts as raw capture and only later becomes scoped/activated.
+- `PreInitiationComplex`: root assembly for a possible change, opportunity, issue, or initiative.
+- `PreInitiationComplex` contains exactly one `Promoter`.
+- `Promoter` is a Gene and carries the initiating idea/story/intent.
+- `Promoter` starts as raw capture and only later becomes scoped/activated through the PreInitiationComplex.
 - `Promoter` does not initially require delivery team, milestones, implementation plan, final requirements, or task breakdown.
-- `Promoter` should be broadly discoverable, with mutation and authority controlled separately.
+- `PreInitiationComplex` should be broadly discoverable, with mutation and authority controlled separately.
+
+Proposed shape:
+
+```rust
+struct PreInitiationComplex {
+    id: PreInitiationComplexId,
+    promoter_locus_id: LocusId,
+    state: PreInitiationComplexState,
+    grn_id: Option<GrnId>,
+}
+```
+
+`promoter_locus_id` must point to a GeneFamily whose EncodingType is `Promoter`.
+
+`grn_id` is empty during early capture/triage and is set once the initiative is approved.
 
 ## Activation Pipeline
 
@@ -38,19 +55,103 @@ Enterprise translation:
 - MediatorComplex is not generic chat; it is the organizational signal-integration layer.
 - Promoter activation should be earned through research, discussion, authority, scope, and suppression signals.
 
-## Promoter
+## GRN, PreInitiationComplex, And Promoter
 
-Proposed meaning:
+Approved direction to explore:
+
+- Use the same Gene/Locus/Allele/Gene systems for Promoter instead of introducing a special non-Gene record type.
+- Genes are created and edited through the unified `dna mutate` path.
+- Promoters are created with `dna mutate`, not a special `dna promote` command.
+- `dna select <promoter> <args>` commits the Promoter and creates or resolves the `PreInitiationComplex`.
+- `PreInitiationComplex` points to exactly one Promoter Locus.
+- A Promoter Locus may have exactly one active PreInitiationComplex.
+- `GRN` is created only after the initiative is approved.
+- `GRN` is created with the resolved `PreInitiationComplex`, a `MediatorComplex`, and required Tfs.
+- Alleles for downstream initiative work belong to a `GRN`.
+- Mutations record `promoted_by: GeneId`.
+- Each Gene likely has exactly one `Activator`, meaning owner. This still needs explicit confirmation.
+- `Cofactors` are the Tfs involved in the PreInitiationComplex and declared in `dna select <promoter> <args>`.
+- Signers are separate from cofactors. Signers are Tfs with the Histones required to review and approve Enhancer documents.
+- Every Gene may have optional fixed authorization/signature metadata.
+- Each GeneFamilyGeneration may define required authorizers/signers.
+- Enhancer schemas commonly require explicit authorizations, but the mechanism should be generic to Genes.
+- Final authorizations/signatures attach only to selected immutable Genes, not mutable Alleles.
+- Detailed Histone evidence shape is deferred until Histones are better defined.
+- All required Enhancer documents must be selected Genes and have all required authorizations before GRN creation.
+- Missing required Enhancer authorizations block GRN creation.
+- Authorizations are optional for non-Enhancer Genes unless their GeneFamilyGeneration requires them.
+- Required Enhancer investigation and authorization policy is tenant-enforced through the Enhancer GeneFamilyGeneration.
+- Required Enhancers are not ad hoc PreInitiationComplex fields.
+- A PreInitiationComplex may use multiple Enhancer GeneFamilies.
+- Enhancer GeneFamilyGenerations have `required_for_grn: bool`.
+- To create a GRN, every active GeneFamilyGeneration in scope with `EncodingType::GRN(Enhancer)` and `required_for_grn = true` must have a corresponding Enhancer Gene created, selected, and authorized.
+- Each required Enhancer Gene must be authorized by all Tf ids defined by that Enhancer GeneFamilyGeneration.
+- Enhancer GeneFamilyGenerations with `required_for_grn = false` can create contextual research documents without blocking GRN creation.
+- Enhancer Genes are scoped to the PreInitiationComplex they support.
+- Enhancers are documents used to validate the initiating idea.
+- If `required_for_grn = true`, there should be at most one selected Enhancer Gene per Promoter/PreInitiationComplex for that Enhancer GeneFamilyGeneration.
+
+Proposed PreInitiationComplex meaning:
+
+- Early assembly inside a GRN around the initiating Promoter.
+- Coordinates early activation before mRNA/rRNA/task production.
+- Can hold product-side Tfs and route into MediatorComplex.
+- References the Promoter Locus, while committed Promoter Genes provide the visible/selected versions most of the team sees.
+
+Proposed Promoter meaning:
 
 - Latent initiative/intention.
-- Root of exploration and triage.
-- Owns or anchors exploration graphs, Enhancer evidence, scope discussions, risks, requirements, and later implementation artifacts.
+- GeneFamily/Locus/Allele/Gene document that carries the initiating idea/story/intent.
+- Anchors the "why" inside the PreInitiationComplex.
+- Does not itself become the whole container.
+
+Proposed shape:
+
+```rust
+struct Grn {
+    id: GrnId,
+    preinitiation_complex_id: PreInitiationComplexId,
+    mediator_complex_id: MediatorComplexId,
+}
+
+struct PreInitiationComplex {
+    id: PreInitiationComplexId,
+    promoter_locus_id: LocusId,
+    selected_promoter_gene_id: GeneId,
+    activator: TfId,
+    cofactors: Vec<TfId>,
+}
+
+struct Allele {
+    grn_id: GrnId,
+    // existing Allele fields
+}
+
+struct Mutation {
+    promoted_by: GeneId,
+    // existing Mutation fields
+}
+
+struct GeneAuthorization {
+    gene_id: GeneId,
+    authorized_by: TfId,
+    authorized_at: Timestamp,
+}
+```
+
+`promoted_by` points to the committed Gene version that promoted/justified the Mutation. For Promoter-driven work, that Gene must be a committed Promoter Gene from the GRN's resolved PreInitiationComplex Promoter Locus.
 
 Open design questions:
 
-- What exact lifecycle stages should Promoter have?
-- What fields are required at raw capture versus activation?
-- Does Promoter activation create a separate object, state transition, or Chromosome/chromatid working set?
+- What arguments does `dna select <promoter> <args>` need to create or resolve the PreInitiationComplex?
+- What exact approval event creates the GRN from a resolved PreInitiationComplex?
+- Which Tfs are required when creating the GRN: product Tfs, requirements Tfs, both, or separate recruitment steps?
+- Can a GRN ever change its resolved PreInitiationComplex, or is that immutable?
+- Does every Gene have exactly one Activator?
+- Are cofactors mutable after PreInitiationComplex creation, or do changes require a new selected Promoter/PreInitiationComplex revision?
+- Where are required signer sets defined: Histones on Enhancer GeneFamily, Histones on PreInitiationComplex, or GRN creation policy?
+- Should GeneFamilyGeneration signer requirements name specific Tf ids, TfClass/role ids, required Histones, or a combination? Deferred until Histones are better defined.
+- Should `authorized_by` store only the Tf, or also the HistoneMarks/permission evidence used at signing time? Deferred until Histones are better defined.
 
 Possible stages:
 
@@ -65,6 +166,82 @@ Validation
 Reconciled
 Archived
 ```
+
+State note:
+
+- PreInitiationComplex lifecycle state is provisional.
+- It is not yet clear which concrete use cases require state beyond existence, selected Promoter, scoped Enhancers, authorizations, and GRN creation.
+- Keep state as a possible model tool, but do not implement until a workflow needs it.
+
+Select CLI direction:
+
+Gene creation/mutation CLI direction:
+
+```sh
+dna mutate "Title for my idea" --new US --some-user-story-field "Value" --some-other-field "Other thing"
+```
+
+- `dna mutate` always requires at least one Sequence mutation flag.
+- `--new <gene-family-abbreviation>` appears after the first positional argument and may appear anywhere after it.
+- The first positional argument is the candidate Gene title/name when `--new` is present.
+- Without `--new`, the first positional argument must fuzzy match an existing current Gene.
+- If the first positional argument does not match an existing Gene, the command errors unless `--new` is present.
+- This uniform path applies to Promoters, Enhancers, mRNAs, rRNAs, and other Genes.
+- Existing Genes are modified with the same command, for example:
+
+```sh
+dna mutate my-idea --some-field "Value"
+```
+
+- Workflow scoping can use explicit special keyword flags.
+- For now, Enhancers are scoped with:
+
+```sh
+dna mutate "Payment provider research" --new TECH --promoter my-idea --summary "..."
+```
+
+- `--promoter <fuzzy-slug-for-promoter>` resolves the selected Promoter Gene.
+- `--promoter` may be omitted when the Tf is assigned to exactly one active PreInitiationComplex.
+- If the Tf is assigned to several active PreInitiationComplexes, the user must pass `--promoter` or configure the active PreInitiationComplex in Tf state.
+- The Enhancer is scoped to the PreInitiationComplex that Promoter belongs to.
+- Mutations created in that scoped operation record `promoted_by: GeneId` using the selected Promoter Gene at that time.
+- Enhancer creation/editing is not limited to Activator and Cofactors by default.
+- Edit rights should be resolved through the authorization model, not inferred from PreInitiationComplex role.
+
+PreInitiationComplex creation CLI direction:
+
+```sh
+dna select <promoter> --tf <cofactor> --tf <cofactor>
+```
+
+- The selecting Tf is the default Activator.
+- Repeated `--tf` arguments declare Cofactors.
+- Explicit `--activator <tf>` may be considered later, but should require authority.
+
+Proposed lifecycle ownership:
+
+- Promoter uses normal Gene/Allele selection mechanics for content.
+- PreInitiationComplex owns product-side early recruitment/coordination around the selected Promoter.
+- Activator and cofactors create Enhancer documents as official documented investigation.
+- Enhancer documents are protocolary investigation artifacts.
+- Activator and Cofactors may create Enhancers scoped to the PreInitiationComplex.
+- Signers are separate and authorize selected Enhancer Genes.
+- Required signatures on Enhancer documents are collected from signer Tfs with appropriate Histones.
+- Required authorizers are defined by the Enhancer GeneFamilyGeneration schema.
+- Required Enhancer documents/policies are defined by the Enhancer GeneFamilyGeneration so tenants can enforce the activation protocol.
+- GRN creation scans active in-scope Enhancer GeneFamilyGenerations and requires one selected, fully authorized Enhancer Gene for each generation marked `required_for_grn = true`.
+- Non-required Enhancer generations remain available for contextual research.
+- Required Enhancers are resolved through explicit PreInitiationComplex attachment, not inferred globally from all Enhancer Genes.
+- Optional Enhancers are also scoped to the PreInitiationComplex; they provide contextual validation but do not block GRN creation.
+- The same authorization mechanism should be available to other Gene types, even if Enhancers use it most often.
+- Authorization is finalized against selected Genes only.
+- GRN creation requires all required Enhancer Genes to be selected and fully authorized.
+- GRN owns the approved shared regulatory context after initiative approval.
+- An activator can call the GRN creation CLI command only after required signatures are collected.
+- GRN creation is allowed for the Activator by default.
+- GRN creation can later be delegated through Histones.
+- MediatorComplex is introduced when the initiative is approved and the GRN is created.
+- Most team visibility can default to committed Promoter Genes, while participants in later GRN work can see working Alleles.
 
 ## Enhancer
 
@@ -82,7 +259,7 @@ Biology alignment:
 Proposed DNAp rule:
 
 - Enhancer should not directly "turn into work."
-- Enhancer should help recruit Tfs and feed MediatorComplex discussions that determine whether/how a Promoter activates.
+- Enhancer should help recruit Tfs and feed PreInitiationComplex/MediatorComplex discussions that determine whether/how a Promoter activates.
 
 Existing implementation concern:
 
