@@ -3,10 +3,11 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType, GrnType,
-    MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation,
-    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
-    TranslationRnaType,
+    AddExplorationEdge, AddExplorationNode, AttachEnhancerPromoter, CreateExplorationGraph,
+    CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType,
+    ExplorationGraphId, ExplorationNodeId, FollowUpIntron, GrnType, MutateExisting, MutateNew,
+    OpenIntron, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation, SequenceType,
+    SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele, TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -49,6 +50,8 @@ fn dispatch(state: &mut LocalState, args: Vec<String>) -> Result<String, CliErro
         "transcribe" => transcribe(state, &args[1..]),
         "splice" => splice(state, &args[1..]),
         "translate" => translate(state, &args[1..]),
+        "explore" => explore(state, &args[1..]),
+        "mediate" => mediate(state, &args[1..]),
         _ => Err(CliError::Usage(format!("unknown command `{command}`"))),
     }
 }
@@ -152,7 +155,7 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
                 .map(|value| parse_encoding(&value))
                 .transpose()?
                 .unwrap_or(EncodingType::RNA(RnaType::Translation(
-                    TranslationRnaType::MRNA,
+                    TranslationRnaType::MRna,
                 )));
             let sequence_names = repeated_option(args, "--sequence");
             if sequence_names.is_empty() {
@@ -323,6 +326,201 @@ fn translate(state: &mut LocalState, args: &[String]) -> Result<String, CliError
     Ok(output)
 }
 
+fn explore(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let Some(command) = args.first().map(String::as_str) else {
+        return Err(CliError::Usage("expected explore subcommand".to_owned()));
+    };
+
+    match command {
+        "graph" => explore_graph(state, args),
+        "node" => explore_node(state, args),
+        "edge" => explore_edge(state, args),
+        "show" => explore_show(state, args),
+        "enhancer" => explore_enhancer(state, args),
+        _ => Err(CliError::Usage(format!(
+            "unknown explore subcommand `{command}`"
+        ))),
+    }
+}
+
+fn explore_graph(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let promoter_gene_fqn = positional(args, 1, "promoter gene fqn")?;
+    let name = positional(args, 2, "graph name")?;
+    let created = state
+        .dnap
+        .create_exploration_graph(CreateExplorationGraph {
+            insulator_id: session.scope.insulator_id,
+            genome_id: session.scope.genome_id,
+            promoter_gene_fqn,
+            name,
+            created_by: session.actor.tf_id,
+        })?;
+
+    Ok(format!(
+        "created exploration graph {} for `{}`",
+        created.graph.id.raw(),
+        created.promoter_locus.name
+    ))
+}
+
+fn explore_node(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
+    let erna_locus_name = positional(args, 2, "erna name")?;
+    let erna_family_abbreviation = option_value(args, "--family");
+    let label = option_value(args, "--label");
+    let position_x = option_value(args, "--x")
+        .map(|value| parse_i64(&value, "--x"))
+        .transpose()?
+        .unwrap_or(0);
+    let position_y = option_value(args, "--y")
+        .map(|value| parse_i64(&value, "--y"))
+        .transpose()?
+        .unwrap_or(0);
+    let added = state.dnap.add_exploration_node(AddExplorationNode {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        graph_id,
+        erna_locus_name,
+        erna_family_abbreviation,
+        label,
+        position_x,
+        position_y,
+        created_by: session.actor.tf_id,
+    })?;
+    let created = if added.created_erna.is_some() {
+        "created"
+    } else {
+        "reused"
+    };
+
+    Ok(format!(
+        "added exploration node {} ({created} eRNA `{}`)",
+        added.node.id.raw(),
+        added.erna_locus.name
+    ))
+}
+
+fn explore_edge(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
+    let from_node_id = parse_node_id(&positional(args, 2, "from node id")?)?;
+    let to_node_id = parse_node_id(&positional(args, 3, "to node id")?)?;
+    let edge = state.dnap.add_exploration_edge(AddExplorationEdge {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        graph_id,
+        from_node_id,
+        to_node_id,
+        label: option_value(args, "--label"),
+        created_by: session.actor.tf_id,
+    })?;
+
+    Ok(format!("added exploration edge {}", edge.id.raw()))
+}
+
+fn explore_show(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
+    let graph = state
+        .dnap
+        .exploration_graph(graph_id)
+        .ok_or_else(|| CliError::NotFound(format!("exploration graph {}", graph_id.raw())))?;
+    let mut output = format!("exploration graph {}: {}", graph.id.raw(), graph.name);
+    for node in state.dnap.exploration_nodes(graph_id) {
+        output.push_str(&format!(
+            "\nnode {}: {} @ {},{}",
+            node.id.raw(),
+            node.label,
+            node.position_x,
+            node.position_y
+        ));
+    }
+    for edge in state.dnap.exploration_edges(graph_id) {
+        output.push_str(&format!(
+            "\nedge {}: {} -> {}",
+            edge.id.raw(),
+            edge.from_node_id.raw(),
+            edge.to_node_id.raw()
+        ));
+        if let Some(label) = &edge.label {
+            output.push_str(&format!(" ({label})"));
+        }
+    }
+    Ok(output)
+}
+
+fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let enhancer_gene_fqn = positional(args, 1, "enhancer gene fqn")?;
+    let promoter_gene_fqn = required_option(args, "--promoter")?;
+    state
+        .dnap
+        .attach_enhancer_promoter(AttachEnhancerPromoter {
+            insulator_id: session.scope.insulator_id,
+            genome_id: session.scope.genome_id,
+            enhancer_gene_fqn: enhancer_gene_fqn.clone(),
+            promoter_gene_fqn: promoter_gene_fqn.clone(),
+            updated_by: session.actor.tf_id,
+        })?;
+
+    Ok(format!(
+        "attached enhancer `{enhancer_gene_fqn}` to promoter `{promoter_gene_fqn}`"
+    ))
+}
+
+fn mediate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let Some(command) = args.first().map(String::as_str) else {
+        return Err(CliError::Usage("expected mediate subcommand".to_owned()));
+    };
+
+    match command {
+        "intron" => mediate_intron(state, args),
+        "follow-up" => mediate_follow_up(state, args),
+        _ => Err(CliError::Usage(format!(
+            "unknown mediate subcommand `{command}`"
+        ))),
+    }
+}
+
+fn mediate_intron(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let target_gene_fqn = positional(args, 1, "target gene fqn")?;
+    let intron_locus_name = positional(args, 2, "intron name")?;
+    let opened = state.dnap.open_intron(OpenIntron {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        target_gene_fqn: target_gene_fqn.clone(),
+        intron_gene_family_abbreviation: required_option(args, "--family")?,
+        intron_locus_name,
+        created_by: session.actor.tf_id,
+    })?;
+
+    Ok(format!(
+        "opened intron `{}` for `{target_gene_fqn}`",
+        opened.intron.gene_fqn
+    ))
+}
+
+fn mediate_follow_up(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let parent_intron_gene_fqn = positional(args, 1, "parent intron gene fqn")?;
+    let intron_locus_name = positional(args, 2, "intron name")?;
+    let followed = state.dnap.follow_up_intron(FollowUpIntron {
+        insulator_id: session.scope.insulator_id,
+        genome_id: session.scope.genome_id,
+        parent_intron_gene_fqn: parent_intron_gene_fqn.clone(),
+        intron_gene_family_abbreviation: required_option(args, "--family")?,
+        intron_locus_name,
+        created_by: session.actor.tf_id,
+    })?;
+
+    Ok(format!(
+        "opened intron follow-up `{}` for `{parent_intron_gene_fqn}`",
+        followed.intron.gene_fqn
+    ))
+}
+
 fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, CliError> {
     let mut mutations = Vec::new();
     let mut index = 0;
@@ -351,19 +549,19 @@ fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, Cl
 fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
     match normalize(value).as_str() {
         "erna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::ERNA,
+            TranslationRnaType::ERna,
         ))),
         "mrna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::MRNA,
+            TranslationRnaType::MRna,
         ))),
         "rrna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::RRNA,
+            TranslationRnaType::RRna,
         ))),
         "trna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::TRNA,
+            TranslationRnaType::TRna,
         ))),
         "sgrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SgRNA,
+            RegulatoryRnaType::SgRna,
         ))),
         "promoter" => Ok(EncodingType::GRN(GrnType::Promoter)),
         "enhancer" => Ok(EncodingType::GRN(GrnType::Enhancer)),
@@ -376,40 +574,37 @@ fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
             RegulatoryRnaType::Intron,
         ))),
         "snrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SnRNA,
+            RegulatoryRnaType::SnRna,
         ))),
         "scarna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::ScaRNA,
+            RegulatoryRnaType::ScaRna,
         ))),
         "sirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SiRNA,
+            RegulatoryRnaType::SiRna,
         ))),
         "tmrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::TmRNA,
-        ))),
-        "grna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::GRNA,
+            RegulatoryRnaType::TmRna,
         ))),
         "mirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::MiRNA,
+            RegulatoryRnaType::MiRna,
         ))),
         "pirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::PiRNA,
+            RegulatoryRnaType::PiRna,
         ))),
         "snorna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SnoRNA,
+            RegulatoryRnaType::SnoRna,
         ))),
         "crrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::CrRNA,
+            RegulatoryRnaType::CrRna,
         ))),
         "tracrrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::TracrRNA,
+            RegulatoryRnaType::TracrRna,
         ))),
         "lncrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::LncRNA,
+            RegulatoryRnaType::LncRna,
         ))),
         "circrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::CircRNA,
+            RegulatoryRnaType::CircRna,
         ))),
         _ => Err(CliError::Usage(format!("unsupported encoding `{value}`"))),
     }
@@ -427,6 +622,26 @@ fn positional(args: &[String], index: usize, name: &str) -> Result<String, CliEr
         .filter(|value| !value.starts_with("--"))
         .cloned()
         .ok_or_else(|| CliError::Usage(format!("missing {name}")))
+}
+
+fn parse_graph_id(value: &str) -> Result<ExplorationGraphId, CliError> {
+    value
+        .parse::<u64>()
+        .map(ExplorationGraphId::from_raw)
+        .map_err(|_| CliError::Usage(format!("invalid graph id `{value}`")))
+}
+
+fn parse_node_id(value: &str) -> Result<ExplorationNodeId, CliError> {
+    value
+        .parse::<u64>()
+        .map(ExplorationNodeId::from_raw)
+        .map_err(|_| CliError::Usage(format!("invalid node id `{value}`")))
+}
+
+fn parse_i64(value: &str, flag: &str) -> Result<i64, CliError> {
+    value
+        .parse::<i64>()
+        .map_err(|_| CliError::Usage(format!("invalid value for {flag}: `{value}`")))
 }
 
 fn required_option(args: &[String], flag: &str) -> Result<String, CliError> {
@@ -617,6 +832,108 @@ mod tests {
     }
 
     #[test]
+    fn explore_cli_creates_graph_nodes_and_edges() {
+        let mut state = bootstrapped_state();
+        dispatch(
+            &mut state,
+            words("epigenetics define-family STR Story --encoding promoter --sequence Summary"),
+        )
+        .expect("promoter family");
+        dispatch(
+            &mut state,
+            words("epigenetics define-family EXP Exploration --encoding eRNA --sequence Summary"),
+        )
+        .expect("erna family");
+        dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
+
+        let graph = dispatch(
+            &mut state,
+            words("explore graph checkout CheckoutDiscovery"),
+        )
+        .expect("graph");
+        assert!(graph.contains("created exploration graph 1"));
+
+        let first = dispatch(
+            &mut state,
+            words("explore node 1 PaymentAuthorized --family EXP --x 10 --y 20"),
+        )
+        .expect("first node");
+        assert!(first.contains("added exploration node 1"));
+        assert!(first.contains("created eRNA"));
+
+        let second = dispatch(
+            &mut state,
+            words("explore node 1 ReceiptSent --family EXP --label Receipt"),
+        )
+        .expect("second node");
+        assert!(second.contains("added exploration node 2"));
+
+        let edge = dispatch(&mut state, words("explore edge 1 1 2 --label emits")).expect("edge");
+        assert!(edge.contains("added exploration edge 1"));
+
+        let shown = dispatch(&mut state, words("explore show 1")).expect("show graph");
+        assert!(shown.contains("exploration graph 1: CheckoutDiscovery"));
+        assert!(shown.contains("node 1: PaymentAuthorized @ 10,20"));
+        assert!(shown.contains("node 2: Receipt @ 0,0"));
+        assert!(shown.contains("edge 1: 1 -> 2 (emits)"));
+    }
+
+    #[test]
+    fn explore_cli_attaches_enhancer_to_promoter_property() {
+        let mut state = bootstrapped_state();
+        dispatch(
+            &mut state,
+            words("epigenetics define-family STR Story --encoding promoter --sequence Summary"),
+        )
+        .expect("promoter family");
+        dispatch(
+            &mut state,
+            words("epigenetics define-family RSH Research --encoding enhancer --sequence Summary"),
+        )
+        .expect("enhancer family");
+        dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
+        dispatch(&mut state, words("mutate --new RSH PaymentResearch")).expect("enhancer");
+
+        let output = dispatch(
+            &mut state,
+            words("explore enhancer PaymentResearch --promoter Checkout"),
+        )
+        .expect("attach enhancer");
+
+        assert!(output.contains("attached enhancer `PaymentResearch` to promoter `Checkout`"));
+    }
+
+    #[test]
+    fn mediate_cli_opens_and_chains_introns() {
+        let mut state = bootstrapped_state();
+        dispatch(
+            &mut state,
+            words("epigenetics define-family REQ Requirement --encoding mRNA --sequence Summary"),
+        )
+        .expect("requirement family");
+        dispatch(
+            &mut state,
+            words("epigenetics define-family QST Question --encoding intron --sequence Summary"),
+        )
+        .expect("intron family");
+        dispatch(&mut state, words("mutate --new REQ Checkout")).expect("target");
+
+        let opened = dispatch(
+            &mut state,
+            words("mediate intron Checkout ClarifyRetries --family QST"),
+        )
+        .expect("open intron");
+        assert!(opened.contains("opened intron `QST-clarifyretries-0001`"));
+
+        let follow_up = dispatch(
+            &mut state,
+            words("mediate follow-up ClarifyRetries ClarifyCeiling --family QST"),
+        )
+        .expect("follow up");
+        assert!(follow_up.contains("opened intron follow-up `QST-clarifyceiling-0001`"));
+    }
+
+    #[test]
     fn parses_current_encoding_taxonomy_aliases() {
         let cases = [
             ("promoter", EncodingType::GRN(GrnType::Promoter)),
@@ -628,19 +945,19 @@ mod tests {
             ("silencer", EncodingType::GRN(GrnType::Silencer)),
             (
                 "eRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
             ),
             (
                 "mRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
             ),
             (
                 "rRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRna)),
             ),
             (
                 "tRNA",
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRNA)),
+                EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRna)),
             ),
             (
                 "intron",
@@ -648,55 +965,51 @@ mod tests {
             ),
             (
                 "snRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnRna)),
             ),
             (
                 "scaRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::ScaRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::ScaRna)),
             ),
             (
                 "siRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SiRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SiRna)),
             ),
             (
                 "tmRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TmRNA)),
-            ),
-            (
-                "gRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::GRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TmRna)),
             ),
             (
                 "miRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::MiRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::MiRna)),
             ),
             (
                 "piRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::PiRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::PiRna)),
             ),
             (
                 "snoRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnoRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnoRna)),
             ),
             (
                 "crRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CrRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CrRna)),
             ),
             (
                 "tracrRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TracrRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TracrRna)),
             ),
             (
                 "lncRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::LncRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::LncRna)),
             ),
             (
                 "circRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CircRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CircRna)),
             ),
             (
                 "sgRNA",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SgRNA)),
+                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SgRna)),
             ),
         ];
 

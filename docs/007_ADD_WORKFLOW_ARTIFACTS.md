@@ -16,7 +16,7 @@ Slice 007 implements selected workflow records and concrete TfComplex relationsh
 - Code should persist only concrete records and typed relationships with a defined workflow purpose.
 - TfComplex is not automatically a persisted container object.
 - Allowed targets are constrained by each use case.
-- Initial implementation candidates are ExplorationGraph, ExplorationNode, ExplorationEdge, Enhancer Promoter property, and eRNA canonization.
+- Initial implementation candidates are ExplorationGraph, ExplorationNode, ExplorationEdge, and Enhancer Promoter property.
 
 ## Implementation Contract
 

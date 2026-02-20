@@ -52,17 +52,17 @@ Translation RNA encodings are core production and implementation documents.
 
 ```rust
 enum TranslationRnaType {
-    ERNA,
-    MRNA,
-    RRNA,
-    TRNA,
+    ERna,
+    MRna,
+    RRna,
+    TRna,
 }
 ```
 
-- `ERNA`: flexible typed exploration graph node. Examples include event storming, draft diagrams, and follow-up exploration.
-- `MRNA`: requirements analysis document.
-- `RRNA`: architecture/design document.
-- `TRNA`: agentic skills.
+- `ERna`: flexible typed exploration graph node.
+- `MRna`: requirements analysis document.
+- `RRna`: architecture/design document.
+- `TRna`: agentic skills.
 
 ## Regulatory RNA
 
@@ -71,36 +71,34 @@ Regulatory RNA encodings are DNAp workflow/control documents.
 ```rust
 enum RegulatoryRnaType {
     Intron,
-    SnRNA,
-    ScaRNA,
-    SiRNA,
-    TmRNA,
-    GRNA,
-    MiRNA,
-    PiRNA,
-    SnoRNA,
-    CrRNA,
-    TracrRNA,
-    LncRNA,
-    CircRNA,
-    SgRNA,
+    SnRna,
+    ScaRna,
+    SiRna,
+    TmRna,
+    MiRna,
+    PiRna,
+    SnoRna,
+    CrRna,
+    TracrRna,
+    LncRna,
+    CircRna,
+    SgRna,
 }
 ```
 
 - `Intron`: disambiguation item. Introns may be chained.
-- `SnRNA`: task modification suggestion for an mRNA.
-- `ScaRNA`: requirement modification suggestion from implementation reality.
-- `SiRNA`: authoritative out-of-scope order.
-- `TmRNA`: unblocker mediation request.
-- `GRNA`: general message.
-- `MiRNA`: emergent scope reduction discussion.
-- `PiRNA`: explicit out-of-scope discussion.
-- `SnoRNA`: ADR.
-- `CrRNA`: incident report, possibly linked to a risk.
-- `TracrRNA`: root cause analysis.
-- `LncRNA`: research document.
-- `CircRNA`: onboarding particularities.
-- `SgRNA`: suggested CRISPR action change.
+- `SnRna`: task modification suggestion for an mRNA.
+- `ScaRna`: requirement modification suggestion from implementation reality.
+- `SiRna`: authoritative out-of-scope order.
+- `TmRna`: unblocker mediation request.
+- `MiRna`: emergent scope reduction discussion.
+- `PiRna`: explicit out-of-scope discussion.
+- `SnoRna`: ADR.
+- `CrRna`: incident report, possibly linked to a risk.
+- `TracrRna`: root cause analysis.
+- `LncRna`: research document.
+- `CircRna`: onboarding particularities.
+- `SgRna`: suggested CRISPR action change.
 
 ## Non-Encoding Workflow Terms
 
