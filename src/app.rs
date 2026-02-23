@@ -37,6 +37,12 @@ pub struct MutationId(u64);
 pub struct GeneId(u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct IntronId(u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct IntronSequenceId(u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ChromosomeId(u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -53,12 +59,6 @@ pub struct ExplorationNodeId(u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ExplorationEdgeId(u64);
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct IntronMediationId(u64);
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct IntronFollowUpId(u64);
 
 impl ExplorationGraphId {
     pub fn from_raw(value: u64) -> Self {
@@ -235,10 +235,18 @@ pub struct Mutation {
     pub allele_id: AlleleId,
     pub sequence_definition_id: SequenceDefinitionId,
     pub value: SequenceValue,
+    pub context: Vec<MutationContext>,
     pub state: MutationState,
     pub created_by: TfId,
     pub created_at: SystemTime,
     pub updated_at: SystemTime,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub enum MutationContext {
+    Cause(IntronId, IntronSequenceId),
+    AnsweredContext(IntronId, IntronSequenceId),
+    UnansweredContext(IntronId),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -330,19 +338,24 @@ pub struct EnhancerContext {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct IntronMediation {
-    pub id: IntronMediationId,
-    pub intron_locus_id: LocusId,
-    pub target_locus_id: LocusId,
+pub struct Intron {
+    pub id: IntronId,
+    pub target_mrna_locus_id: LocusId,
+    pub target_sequence_definition_id: Option<SequenceDefinitionId>,
+    pub precursor: Option<IntronId>,
+    pub title: String,
+    pub body: Option<String>,
+    pub normalized_title: String,
+    pub title_scope_hash: String,
     pub created_by: TfId,
     pub created_at: SystemTime,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct IntronFollowUp {
-    pub id: IntronFollowUpId,
-    pub parent_intron_locus_id: LocusId,
-    pub child_intron_locus_id: LocusId,
+pub struct IntronSequence {
+    pub id: IntronSequenceId,
+    pub intron_id: IntronId,
+    pub body: String,
     pub created_by: TfId,
     pub created_at: SystemTime,
 }
@@ -394,7 +407,6 @@ pub enum TranslationRnaType {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegulatoryRnaType {
-    Intron,
     SnRna,
     ScaRna,
     SiRna,
@@ -460,6 +472,7 @@ pub struct MutateNew {
     pub gene_family_abbreviation: String,
     pub locus_name: String,
     pub mutations: Vec<SequenceMutation>,
+    pub causes: Vec<String>,
     pub created_by: TfId,
 }
 
@@ -469,6 +482,7 @@ pub struct MutateExisting {
     pub genome_id: GenomeId,
     pub gene_fqn: String,
     pub mutations: Vec<SequenceMutation>,
+    pub causes: Vec<String>,
     pub created_by: TfId,
 }
 
@@ -591,35 +605,51 @@ pub struct AttachEnhancerPromoter {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct OpenIntron {
+pub struct CreateIntron {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
-    pub target_gene_fqn: String,
-    pub intron_gene_family_abbreviation: String,
-    pub intron_locus_name: String,
+    pub target_mrna_fqn: String,
+    pub target_sequence_name: Option<String>,
+    pub title: String,
+    pub body: Option<String>,
+    pub precursor: Option<IntronId>,
     pub created_by: TfId,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct OpenedIntron {
-    pub mediation: IntronMediation,
-    pub intron: MutatedAllele,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct FollowUpIntron {
+pub struct AppendIntronSequence {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
-    pub parent_intron_gene_fqn: String,
-    pub intron_gene_family_abbreviation: String,
-    pub intron_locus_name: String,
+    pub target_mrna_fqn: Option<String>,
+    pub target_sequence_name: Option<String>,
+    pub intron_title: String,
+    pub body: Option<String>,
+    pub follow_up_title: Option<String>,
+    pub follow_up_body: Option<String>,
     pub created_by: TfId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct FollowedUpIntron {
-    pub follow_up: IntronFollowUp,
-    pub intron: MutatedAllele,
+pub struct AppendedIntronSequence {
+    pub intron: Intron,
+    pub sequence: Option<IntronSequence>,
+    pub follow_up: Option<Intron>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct IntronSummary {
+    pub intron: Intron,
+    pub latest_sequence: Option<IntronSequence>,
+    pub has_precursor: bool,
+    pub child_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct IntronThread {
+    pub intron: Intron,
+    pub sequences: Vec<IntronSequence>,
+    pub precursors: Vec<IntronSummary>,
+    pub children: Vec<IntronSummary>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -666,8 +696,13 @@ pub enum DnapError {
     ExplorationEdgeCrossGraph,
     EnhancerContextEnhancerRequired,
     EnhancerContextPromoterRequired,
-    IntronMediationIntronRequired,
-    IntronMediationTargetRequired,
+    IntronTargetRequired,
+    BlankIntronTitle,
+    BlankIntronAnswer,
+    IntronNotFound,
+    AmbiguousIntron,
+    DuplicateIntronTitle,
+    IntronCauseRequiresAnswer,
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
@@ -693,8 +728,8 @@ pub struct Dnap {
     next_exploration_graph_id: u64,
     next_exploration_node_id: u64,
     next_exploration_edge_id: u64,
-    next_intron_mediation_id: u64,
-    next_intron_follow_up_id: u64,
+    next_intron_id: u64,
+    next_intron_sequence_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
@@ -712,8 +747,8 @@ pub struct Dnap {
     exploration_nodes: BTreeMap<ExplorationNodeId, ExplorationNode>,
     exploration_edges: BTreeMap<ExplorationEdgeId, ExplorationEdge>,
     enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
-    intron_mediations: BTreeMap<IntronMediationId, IntronMediation>,
-    intron_follow_ups: BTreeMap<IntronFollowUpId, IntronFollowUp>,
+    introns: BTreeMap<IntronId, Intron>,
+    intron_sequences: BTreeMap<IntronSequenceId, IntronSequence>,
 }
 
 impl Dnap {
@@ -935,8 +970,12 @@ impl Dnap {
 
         let mutations = self.build_mutations(
             allele.id,
+            input.insulator_id,
+            input.genome_id,
+            locus.id,
             generation.id,
             input.mutations,
+            input.causes,
             input.created_by,
             now,
         )?;
@@ -982,8 +1021,12 @@ impl Dnap {
         let now = SystemTime::now();
         let mutations = self.build_mutations(
             allele.id,
+            input.insulator_id,
+            input.genome_id,
+            allele.locus_id,
             allele.gene_family_generation_id,
             input.mutations,
+            input.causes,
             input.created_by,
             now,
         )?;
@@ -1275,6 +1318,7 @@ impl Dnap {
                     gene_family_abbreviation: family_abbreviation,
                     locus_name: erna_locus_name.clone(),
                     mutations: Vec::new(),
+                    causes: Vec::new(),
                     created_by: input.created_by,
                 })?;
                 self.require_locus_encoding(mutated.locus.id, EncodingKind::ERna)?;
@@ -1408,95 +1452,238 @@ impl Dnap {
         Ok(context)
     }
 
-    pub fn open_intron(&mut self, input: OpenIntron) -> Result<OpenedIntron, DnapError> {
+    pub fn create_intron(&mut self, input: CreateIntron) -> Result<Intron, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
-        let target_allele_id = self.resolve_active_allele_id(
+        let (target_mrna_locus_id, target_sequence_definition_id) = self.resolve_intron_target(
             input.insulator_id,
             input.genome_id,
             input.created_by,
-            &input.target_gene_fqn,
+            &input.target_mrna_fqn,
+            input.target_sequence_name.as_deref(),
         )?;
-        let target_locus_id = self
-            .alleles
-            .get(&target_allele_id)
-            .map(|allele| allele.locus_id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(target_locus_id, EncodingKind::MRna) {
-            return Err(DnapError::IntronMediationTargetRequired);
+        if let Some(precursor) = input.precursor {
+            let precursor = self
+                .introns
+                .get(&precursor)
+                .ok_or(DnapError::IntronNotFound)?;
+            if precursor.target_mrna_locus_id != target_mrna_locus_id
+                || precursor.target_sequence_definition_id != target_sequence_definition_id
+            {
+                return Err(DnapError::IntronNotFound);
+            }
+        }
+        let title = require_text(input.title, DnapError::BlankIntronTitle)?;
+        let body = input
+            .body
+            .map(|body| require_text(body, DnapError::BlankIntronTitle))
+            .transpose()?;
+        let normalized_title = normalize_match_text(&title);
+        if self.introns.values().any(|intron| {
+            intron.target_mrna_locus_id == target_mrna_locus_id
+                && intron.target_sequence_definition_id == target_sequence_definition_id
+                && intron.precursor == input.precursor
+                && intron.normalized_title == normalized_title
+        }) {
+            return Err(DnapError::DuplicateIntronTitle);
         }
 
-        let intron = self.mutate_new(MutateNew {
-            insulator_id: input.insulator_id,
-            genome_id: input.genome_id,
-            gene_family_abbreviation: input.intron_gene_family_abbreviation,
-            locus_name: input.intron_locus_name,
-            mutations: Vec::new(),
-            created_by: input.created_by,
-        })?;
-        if !self.locus_has_encoding(intron.locus.id, EncodingKind::Intron) {
-            return Err(DnapError::IntronMediationIntronRequired);
-        }
-        let mediation = IntronMediation {
-            id: self.allocate_intron_mediation_id(),
-            intron_locus_id: intron.locus.id,
-            target_locus_id,
+        let title_scope_hash = intron_title_scope_hash(
+            target_mrna_locus_id,
+            target_sequence_definition_id,
+            input.precursor,
+            &normalized_title,
+        );
+        let intron = Intron {
+            id: self.allocate_intron_id(),
+            target_mrna_locus_id,
+            target_sequence_definition_id,
+            precursor: input.precursor,
+            title,
+            body,
+            normalized_title,
+            title_scope_hash,
             created_by: input.created_by,
             created_at: SystemTime::now(),
         };
-        self.intron_mediations
-            .insert(mediation.id, mediation.clone());
+        self.introns.insert(intron.id, intron.clone());
 
-        Ok(OpenedIntron { mediation, intron })
+        Ok(intron)
     }
 
-    pub fn follow_up_intron(
+    pub fn append_intron_sequence(
         &mut self,
-        input: FollowUpIntron,
-    ) -> Result<FollowedUpIntron, DnapError> {
+        input: AppendIntronSequence,
+    ) -> Result<AppendedIntronSequence, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
-        let parent_allele_id = self.resolve_active_allele_id(
+        let target = match input.target_mrna_fqn.as_deref() {
+            Some(target_mrna_fqn) => Some(self.resolve_intron_target(
+                input.insulator_id,
+                input.genome_id,
+                input.created_by,
+                target_mrna_fqn,
+                input.target_sequence_name.as_deref(),
+            )?),
+            None => None,
+        };
+        let intron = self.resolve_intron(
             input.insulator_id,
             input.genome_id,
             input.created_by,
-            &input.parent_intron_gene_fqn,
+            input.intron_title.as_str(),
+            target,
         )?;
-        let parent_intron_locus_id = self
-            .alleles
-            .get(&parent_allele_id)
-            .map(|allele| allele.locus_id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(parent_intron_locus_id, EncodingKind::Intron) {
-            return Err(DnapError::IntronMediationIntronRequired);
-        }
-
-        let intron = self.mutate_new(MutateNew {
-            insulator_id: input.insulator_id,
-            genome_id: input.genome_id,
-            gene_family_abbreviation: input.intron_gene_family_abbreviation,
-            locus_name: input.intron_locus_name,
-            mutations: Vec::new(),
-            created_by: input.created_by,
-        })?;
-        if !self.locus_has_encoding(intron.locus.id, EncodingKind::Intron) {
-            return Err(DnapError::IntronMediationIntronRequired);
-        }
-        let follow_up = IntronFollowUp {
-            id: self.allocate_intron_follow_up_id(),
-            parent_intron_locus_id,
-            child_intron_locus_id: intron.locus.id,
-            created_by: input.created_by,
-            created_at: SystemTime::now(),
+        let sequence = input
+            .body
+            .map(|body| {
+                let body = require_text(body, DnapError::BlankIntronAnswer)?;
+                let sequence = IntronSequence {
+                    id: self.allocate_intron_sequence_id(),
+                    intron_id: intron.id,
+                    body,
+                    created_by: input.created_by,
+                    created_at: SystemTime::now(),
+                };
+                self.intron_sequences.insert(sequence.id, sequence.clone());
+                Ok(sequence)
+            })
+            .transpose()?;
+        let follow_up = match input.follow_up_title {
+            Some(title) => Some(
+                self.create_intron(CreateIntron {
+                    insulator_id: input.insulator_id,
+                    genome_id: input.genome_id,
+                    target_mrna_fqn: self
+                        .loci
+                        .get(&intron.target_mrna_locus_id)
+                        .map(|locus| locus.name.clone())
+                        .ok_or(DnapError::IntronNotFound)?,
+                    target_sequence_name: intron.target_sequence_definition_id.and_then(|id| {
+                        self.sequence_definition_name(intron.target_mrna_locus_id, id)
+                    }),
+                    title,
+                    body: input.follow_up_body,
+                    precursor: Some(intron.id),
+                    created_by: input.created_by,
+                })?,
+            ),
+            None => None,
         };
-        self.intron_follow_ups
-            .insert(follow_up.id, follow_up.clone());
 
-        Ok(FollowedUpIntron { follow_up, intron })
+        Ok(AppendedIntronSequence {
+            intron,
+            sequence,
+            follow_up,
+        })
+    }
+
+    pub fn intron_summaries_for(
+        &self,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        created_by: TfId,
+        target_mrna_fqn: &str,
+        target_sequence_name: Option<&str>,
+    ) -> Result<Vec<IntronSummary>, DnapError> {
+        self.require_insulator(insulator_id)?;
+        self.require_genome_in_insulator(genome_id, insulator_id)?;
+        self.require_tf_in_insulator(created_by, insulator_id)?;
+        let (target_mrna_locus_id, target_sequence_definition_id) = self.resolve_intron_target(
+            insulator_id,
+            genome_id,
+            created_by,
+            target_mrna_fqn,
+            target_sequence_name,
+        )?;
+        Ok(self
+            .introns
+            .values()
+            .filter(|intron| {
+                intron.target_mrna_locus_id == target_mrna_locus_id
+                    && intron.target_sequence_definition_id == target_sequence_definition_id
+            })
+            .filter(|intron| intron.precursor.is_none())
+            .map(|intron| self.intron_summary(intron))
+            .collect())
+    }
+
+    pub fn intron_thread(
+        &self,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        created_by: TfId,
+        intron_title: &str,
+        target: Option<(&str, Option<&str>)>,
+    ) -> Result<IntronThread, DnapError> {
+        self.require_insulator(insulator_id)?;
+        self.require_genome_in_insulator(genome_id, insulator_id)?;
+        self.require_tf_in_insulator(created_by, insulator_id)?;
+        let target = target
+            .map(|(target_mrna_fqn, target_sequence_name)| {
+                self.resolve_intron_target(
+                    insulator_id,
+                    genome_id,
+                    created_by,
+                    target_mrna_fqn,
+                    target_sequence_name,
+                )
+            })
+            .transpose()?;
+        let intron =
+            self.resolve_intron(insulator_id, genome_id, created_by, intron_title, target)?;
+        let sequences = self.intron_sequences_for(intron.id);
+        let mut precursors = Vec::new();
+        if let Some(precursor_id) = intron.precursor {
+            if let Some(precursor) = self.introns.get(&precursor_id) {
+                precursors.push(self.intron_summary(precursor));
+            }
+        }
+        let children = self
+            .introns
+            .values()
+            .filter(|candidate| candidate.precursor == Some(intron.id))
+            .map(|child| self.intron_summary(child))
+            .collect();
+
+        Ok(IntronThread {
+            intron,
+            sequences,
+            precursors,
+            children,
+        })
+    }
+
+    pub fn intron_thread_by_id(&self, intron_id: IntronId) -> Result<IntronThread, DnapError> {
+        let intron = self
+            .introns
+            .get(&intron_id)
+            .cloned()
+            .ok_or(DnapError::IntronNotFound)?;
+        let sequences = self.intron_sequences_for(intron.id);
+        let mut precursors = Vec::new();
+        if let Some(precursor_id) = intron.precursor {
+            if let Some(precursor) = self.introns.get(&precursor_id) {
+                precursors.push(self.intron_summary(precursor));
+            }
+        }
+        let children = self
+            .introns
+            .values()
+            .filter(|candidate| candidate.precursor == Some(intron.id))
+            .map(|child| self.intron_summary(child))
+            .collect();
+
+        Ok(IntronThread {
+            intron,
+            sequences,
+            precursors,
+            children,
+        })
     }
 
     pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
@@ -1562,20 +1749,6 @@ impl Dnap {
 
     pub fn enhancer_context(&self, enhancer_locus_id: LocusId) -> Option<&EnhancerContext> {
         self.enhancer_contexts.get(&enhancer_locus_id)
-    }
-
-    pub fn intron_mediations_for(&self, target_locus_id: LocusId) -> Vec<&IntronMediation> {
-        self.intron_mediations
-            .values()
-            .filter(|mediation| mediation.target_locus_id == target_locus_id)
-            .collect()
-    }
-
-    pub fn intron_follow_ups_for(&self, parent_intron_locus_id: LocusId) -> Vec<&IntronFollowUp> {
-        self.intron_follow_ups
-            .values()
-            .filter(|follow_up| follow_up.parent_intron_locus_id == parent_intron_locus_id)
-            .collect()
     }
 
     pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
@@ -1739,8 +1912,7 @@ impl Dnap {
                 EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
                 EncodingKind::ERna => Err(DnapError::ExplorationNodeErnaRequired),
                 EncodingKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
-                EncodingKind::MRna => Err(DnapError::IntronMediationTargetRequired),
-                EncodingKind::Intron => Err(DnapError::IntronMediationIntronRequired),
+                EncodingKind::MRna => Err(DnapError::IntronTargetRequired),
             }
         }
     }
@@ -1763,19 +1935,189 @@ impl Dnap {
                 EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
                 EncodingKind::MRna,
             ) => true,
-            (
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
-                EncodingKind::Intron,
-            ) => true,
             _ => false,
         }
+    }
+
+    fn resolve_intron_target(
+        &self,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        created_by: TfId,
+        target_mrna_fqn: &str,
+        target_sequence_name: Option<&str>,
+    ) -> Result<(LocusId, Option<SequenceDefinitionId>), DnapError> {
+        let allele_id =
+            self.resolve_active_allele_id(insulator_id, genome_id, created_by, target_mrna_fqn)?;
+        let allele = self
+            .alleles
+            .get(&allele_id)
+            .ok_or(DnapError::AlleleNotFound)?;
+        if !self.locus_has_encoding(allele.locus_id, EncodingKind::MRna) {
+            return Err(DnapError::IntronTargetRequired);
+        }
+        let sequence_definition_id = target_sequence_name
+            .map(|sequence_name| {
+                let generation = self
+                    .gene_family_generations
+                    .get(&allele.gene_family_generation_id)
+                    .ok_or(DnapError::GeneFamilyNotFound)?;
+                resolve_sequence_definition(generation, sequence_name)
+                    .map(|definition| definition.id)
+            })
+            .transpose()?;
+        Ok((allele.locus_id, sequence_definition_id))
+    }
+
+    fn resolve_intron(
+        &self,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        created_by: TfId,
+        title: &str,
+        target: Option<(LocusId, Option<SequenceDefinitionId>)>,
+    ) -> Result<Intron, DnapError> {
+        let normalized = normalize_match_text(title);
+        let mut matches = self
+            .introns
+            .values()
+            .filter(|intron| {
+                self.loci
+                    .get(&intron.target_mrna_locus_id)
+                    .is_some_and(|locus| {
+                        locus.insulator_id == insulator_id && locus.genome_id == genome_id
+                    })
+            })
+            .filter(|intron| {
+                target
+                    .map(|(target_mrna_locus_id, target_sequence_definition_id)| {
+                        intron.target_mrna_locus_id == target_mrna_locus_id
+                            && intron.target_sequence_definition_id == target_sequence_definition_id
+                    })
+                    .unwrap_or(true)
+            })
+            .filter(|intron| intron.normalized_title == normalized)
+            .cloned()
+            .collect::<Vec<_>>();
+        if matches.is_empty() {
+            matches = self
+                .introns
+                .values()
+                .filter(|intron| {
+                    self.loci
+                        .get(&intron.target_mrna_locus_id)
+                        .is_some_and(|locus| {
+                            locus.insulator_id == insulator_id && locus.genome_id == genome_id
+                        })
+                })
+                .filter(|intron| {
+                    target
+                        .map(|(target_mrna_locus_id, target_sequence_definition_id)| {
+                            intron.target_mrna_locus_id == target_mrna_locus_id
+                                && intron.target_sequence_definition_id
+                                    == target_sequence_definition_id
+                        })
+                        .unwrap_or(true)
+                })
+                .filter(|intron| intron.normalized_title.starts_with(&normalized))
+                .cloned()
+                .collect();
+        }
+
+        match matches.as_slice() {
+            [intron] => Ok(intron.clone()),
+            [] => {
+                let _ = created_by;
+                Err(DnapError::IntronNotFound)
+            }
+            _ => Err(DnapError::AmbiguousIntron),
+        }
+    }
+
+    fn intron_summary(&self, intron: &Intron) -> IntronSummary {
+        let latest_sequence = self.intron_sequences_for(intron.id).into_iter().last();
+        let child_count = self
+            .introns
+            .values()
+            .filter(|candidate| candidate.precursor == Some(intron.id))
+            .count();
+        IntronSummary {
+            intron: intron.clone(),
+            latest_sequence,
+            has_precursor: intron.precursor.is_some(),
+            child_count,
+        }
+    }
+
+    fn intron_sequences_for(&self, intron_id: IntronId) -> Vec<IntronSequence> {
+        self.intron_sequences
+            .values()
+            .filter(|sequence| sequence.intron_id == intron_id)
+            .cloned()
+            .collect()
+    }
+
+    fn sequence_definition_name(
+        &self,
+        target_mrna_locus_id: LocusId,
+        sequence_definition_id: SequenceDefinitionId,
+    ) -> Option<String> {
+        let locus = self.loci.get(&target_mrna_locus_id)?;
+        let family = self.gene_families.get(&locus.family_id)?;
+        let generation = self
+            .gene_family_generations
+            .get(&family.current_generation_id)?;
+        generation
+            .sequences
+            .iter()
+            .find(|definition| definition.id == sequence_definition_id)
+            .map(|definition| definition.name.clone())
+    }
+
+    fn latest_intron_sequence(&self, intron_id: IntronId) -> Option<IntronSequence> {
+        self.intron_sequences
+            .values()
+            .filter(|sequence| sequence.intron_id == intron_id)
+            .cloned()
+            .last()
+    }
+
+    fn mutation_context(
+        &self,
+        target_mrna_locus_id: LocusId,
+        sequence_definition_id: SequenceDefinitionId,
+        causes: &[IntronId],
+    ) -> Vec<MutationContext> {
+        self.introns
+            .values()
+            .filter(|intron| intron.target_mrna_locus_id == target_mrna_locus_id)
+            .filter(|intron| {
+                intron.target_sequence_definition_id.is_none()
+                    || intron.target_sequence_definition_id == Some(sequence_definition_id)
+            })
+            .filter_map(|intron| {
+                let latest = self.latest_intron_sequence(intron.id);
+                if causes.contains(&intron.id) {
+                    latest.map(|sequence| MutationContext::Cause(intron.id, sequence.id))
+                } else {
+                    Some(match latest {
+                        Some(sequence) => MutationContext::AnsweredContext(intron.id, sequence.id),
+                        None => MutationContext::UnansweredContext(intron.id),
+                    })
+                }
+            })
+            .collect()
     }
 
     fn build_mutations(
         &mut self,
         allele_id: AlleleId,
+        insulator_id: InsulatorId,
+        genome_id: GenomeId,
+        locus_id: LocusId,
         generation_id: GeneFamilyGenerationId,
         mutations: Vec<SequenceMutation>,
+        causes: Vec<String>,
         created_by: TfId,
         created_at: SystemTime,
     ) -> Result<Vec<Mutation>, DnapError> {
@@ -1792,7 +2134,19 @@ impl Dnap {
             })
             .map(|mutation| (mutation.sequence_definition_id, mutation.clone()))
             .collect::<BTreeMap<_, _>>();
+        let resolved_causes = causes
+            .iter()
+            .map(|cause| {
+                let intron =
+                    self.resolve_intron(insulator_id, genome_id, created_by, cause, None)?;
+                if self.latest_intron_sequence(intron.id).is_none() {
+                    return Err(DnapError::IntronCauseRequiresAnswer);
+                }
+                Ok(intron.id)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let mut touched = Vec::<SequenceDefinitionId>::new();
+        let mut requested = Vec::<(SequenceDefinitionId, SequenceValue)>::new();
         for mutation in mutations {
             let sequence_name =
                 require_text(mutation.sequence_name, DnapError::BlankMutationSequenceName)?;
@@ -1800,17 +2154,35 @@ impl Dnap {
             if !value_matches_sequence_type(&mutation.value, definition.sequence_type) {
                 return Err(DnapError::SequenceValueTypeMismatch);
             }
-            if let Some(existing) = open_by_sequence.get_mut(&definition.id) {
-                existing.value = mutation.value;
+            requested.push((definition.id, mutation.value));
+            if !touched.contains(&definition.id) {
+                touched.push(definition.id);
+            }
+        }
+
+        let mut used_causes = Vec::<IntronId>::new();
+        for (definition_id, value) in requested {
+            let context = self.mutation_context(locus_id, definition_id, &resolved_causes);
+            for context_item in &context {
+                if let MutationContext::Cause(intron_id, _) = context_item {
+                    if !used_causes.contains(intron_id) {
+                        used_causes.push(*intron_id);
+                    }
+                }
+            }
+            if let Some(existing) = open_by_sequence.get_mut(&definition_id) {
+                existing.value = value;
+                existing.context = context;
                 existing.updated_at = created_at;
             } else {
                 open_by_sequence.insert(
-                    definition.id,
+                    definition_id,
                     Mutation {
                         id: self.allocate_mutation_id(),
                         allele_id,
-                        sequence_definition_id: definition.id,
-                        value: mutation.value,
+                        sequence_definition_id: definition_id,
+                        value,
+                        context,
                         state: MutationState::Unexpressed,
                         created_by,
                         created_at,
@@ -1818,9 +2190,12 @@ impl Dnap {
                     },
                 );
             }
-            if !touched.contains(&definition.id) {
-                touched.push(definition.id);
-            }
+        }
+        if resolved_causes
+            .iter()
+            .any(|cause| !used_causes.contains(cause))
+        {
+            return Err(DnapError::IntronNotFound);
         }
         Ok(touched
             .into_iter()
@@ -2046,14 +2421,14 @@ impl Dnap {
         ExplorationEdgeId(self.next_exploration_edge_id)
     }
 
-    fn allocate_intron_mediation_id(&mut self) -> IntronMediationId {
-        self.next_intron_mediation_id += 1;
-        IntronMediationId(self.next_intron_mediation_id)
+    fn allocate_intron_id(&mut self) -> IntronId {
+        self.next_intron_id += 1;
+        IntronId(self.next_intron_id)
     }
 
-    fn allocate_intron_follow_up_id(&mut self) -> IntronFollowUpId {
-        self.next_intron_follow_up_id += 1;
-        IntronFollowUpId(self.next_intron_follow_up_id)
+    fn allocate_intron_sequence_id(&mut self) -> IntronSequenceId {
+        self.next_intron_sequence_id += 1;
+        IntronSequenceId(self.next_intron_sequence_id)
     }
 }
 
@@ -2063,7 +2438,6 @@ enum EncodingKind {
     Enhancer,
     ERna,
     MRna,
-    Intron,
 }
 
 fn require_text(value: String, error: DnapError) -> Result<String, DnapError> {
@@ -2165,6 +2539,23 @@ fn sequence_hash(value: &SequenceValue) -> SequenceHash {
         hash = hash.wrapping_mul(0x100000001b3);
     }
     SequenceHash(format!("{hash:016x}"))
+}
+
+fn intron_title_scope_hash(
+    target_mrna_locus_id: LocusId,
+    target_sequence_definition_id: Option<SequenceDefinitionId>,
+    precursor: Option<IntronId>,
+    normalized_title: &str,
+) -> String {
+    let serialized = format!(
+        "{target_mrna_locus_id:?}:{target_sequence_definition_id:?}:{precursor:?}:{normalized_title}"
+    );
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in serialized.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
 }
 
 #[cfg(test)]
@@ -2482,6 +2873,7 @@ mod tests {
                 gene_family_abbreviation: "FRS".to_owned(),
                 locus_name: "Checkout".to_owned(),
                 mutations: Vec::new(),
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("new allele without initial mutations");
@@ -2519,6 +2911,7 @@ mod tests {
                     "Some Section",
                     SequenceValue::String("Draft".to_owned()),
                 )],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("new candidate work");
@@ -2561,6 +2954,7 @@ mod tests {
                     "some-section",
                     SequenceValue::String("Draft".to_owned()),
                 )],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("kebab matched sequence");
@@ -2571,6 +2965,7 @@ mod tests {
                 genome_id,
                 gene_fqn: mutated.gene_fqn,
                 mutations: vec![mutation("some-section", SequenceValue::Bool(true))],
+                causes: Vec::new(),
                 created_by: tf_id,
             }),
             Err(DnapError::SequenceValueTypeMismatch)
@@ -2598,6 +2993,7 @@ mod tests {
                 "Some Section",
                 SequenceValue::String("Draft".to_owned()),
             )],
+            causes: Vec::new(),
             created_by: tf_id,
         })
         .expect("new candidate work");
@@ -2608,6 +3004,7 @@ mod tests {
                 genome_id,
                 gene_fqn: "checkout".to_owned(),
                 mutations: vec![mutation("Prob", SequenceValue::String("Pain".to_owned()))],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("locus name resolves");
@@ -2645,6 +3042,7 @@ mod tests {
                 "Some Section",
                 SequenceValue::String("Draft".to_owned()),
             )],
+            causes: Vec::new(),
             created_by: owner_tf_id,
         })
         .expect("owner candidate work");
@@ -2658,6 +3056,7 @@ mod tests {
                     "Problem",
                     SequenceValue::String("Cross-user edit".to_owned())
                 )],
+                causes: Vec::new(),
                 created_by: other_tf.id,
             }),
             Err(DnapError::GeneFqnNotFound)
@@ -2686,6 +3085,7 @@ mod tests {
                     "Some Section",
                     SequenceValue::String("Draft".to_owned()),
                 )],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("new candidate work");
@@ -2709,6 +3109,7 @@ mod tests {
                     "Some Section",
                     SequenceValue::String("Updated".to_owned()),
                 )],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("mutate spliced work");
@@ -2751,6 +3152,7 @@ mod tests {
                     "Some Section",
                     SequenceValue::String("Draft".to_owned()),
                 )],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("new candidate work");
@@ -2809,6 +3211,7 @@ mod tests {
             gene_family_abbreviation: "FRS".to_owned(),
             locus_name: "Checkout".to_owned(),
             mutations: Vec::new(),
+            causes: Vec::new(),
             created_by: tf_id,
         })
         .expect("new candidate work");
@@ -2852,6 +3255,7 @@ mod tests {
             gene_family_abbreviation: "STR".to_owned(),
             locus_name: "Checkout flow".to_owned(),
             mutations: Vec::new(),
+            causes: Vec::new(),
             created_by: tf_id,
         })
         .expect("promoter");
@@ -2915,6 +3319,7 @@ mod tests {
             gene_family_abbreviation: "STR".to_owned(),
             locus_name: "Checkout flow".to_owned(),
             mutations: Vec::new(),
+            causes: Vec::new(),
             created_by: tf_id,
         })
         .expect("promoter");
@@ -2997,6 +3402,7 @@ mod tests {
                 gene_family_abbreviation: "STR".to_owned(),
                 locus_name: "Checkout flow".to_owned(),
                 mutations: Vec::new(),
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("promoter");
@@ -3007,6 +3413,7 @@ mod tests {
                 gene_family_abbreviation: "RSH".to_owned(),
                 locus_name: "Payment provider research".to_owned(),
                 mutations: Vec::new(),
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("enhancer");
@@ -3032,7 +3439,7 @@ mod tests {
     }
 
     #[test]
-    fn intron_mediation_targets_mrna_and_can_chain_follow_ups() {
+    fn introns_target_mrna_and_can_chain_follow_ups() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
         define_gene_family_with_encoding(
@@ -3044,15 +3451,6 @@ mod tests {
             "REQ",
             EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
         );
-        define_gene_family_with_encoding(
-            &mut dnap,
-            insulator_id,
-            Some(genome_id),
-            tf_id,
-            "Question",
-            "QST",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
-        );
         let target = dnap
             .mutate_new(MutateNew {
                 insulator_id,
@@ -3060,54 +3458,51 @@ mod tests {
                 gene_family_abbreviation: "REQ".to_owned(),
                 locus_name: "Checkout requirements".to_owned(),
                 mutations: Vec::new(),
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("target");
 
-        let opened = dnap
-            .open_intron(OpenIntron {
+        let intron = dnap
+            .create_intron(CreateIntron {
                 insulator_id,
                 genome_id,
-                target_gene_fqn: "checkout-requirements".to_owned(),
-                intron_gene_family_abbreviation: "QST".to_owned(),
-                intron_locus_name: "Clarify payment retries".to_owned(),
+                target_mrna_fqn: "checkout-requirements".to_owned(),
+                target_sequence_name: None,
+                title: "Clarify payment retries".to_owned(),
+                body: None,
+                precursor: None,
                 created_by: tf_id,
             })
             .expect("intron");
-        let follow_up = dnap
-            .follow_up_intron(FollowUpIntron {
+        let answered = dnap
+            .append_intron_sequence(AppendIntronSequence {
                 insulator_id,
                 genome_id,
-                parent_intron_gene_fqn: "clarify-payment-retries".to_owned(),
-                intron_gene_family_abbreviation: "QST".to_owned(),
-                intron_locus_name: "Clarify retry ceiling".to_owned(),
+                target_mrna_fqn: None,
+                target_sequence_name: None,
+                intron_title: "clarify-payment-retries".to_owned(),
+                body: Some("Retry twice".to_owned()),
+                follow_up_title: Some("Clarify retry ceiling".to_owned()),
+                follow_up_body: None,
                 created_by: tf_id,
             })
             .expect("follow up");
 
-        assert_eq!(opened.mediation.target_locus_id, target.locus.id);
+        assert_eq!(intron.target_mrna_locus_id, target.locus.id);
+        assert_eq!(answered.intron.id, intron.id);
         assert_eq!(
-            dnap.intron_mediations_for(target.locus.id)
-                .first()
-                .expect("mediation")
-                .intron_locus_id,
-            opened.intron.locus.id
+            answered.sequence.expect("answer").body,
+            "Retry twice".to_owned()
         );
         assert_eq!(
-            follow_up.follow_up.parent_intron_locus_id,
-            opened.intron.locus.id
-        );
-        assert_eq!(
-            dnap.intron_follow_ups_for(opened.intron.locus.id)
-                .first()
-                .expect("follow up")
-                .child_intron_locus_id,
-            follow_up.intron.locus.id
+            answered.follow_up.expect("follow up").precursor,
+            Some(intron.id)
         );
     }
 
     #[test]
-    fn intron_mediation_rejects_rrna_targets() {
+    fn introns_reject_rrna_targets() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
         define_gene_family_with_encoding(
@@ -3119,36 +3514,118 @@ mod tests {
             "DSN",
             EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRna)),
         );
-        define_gene_family_with_encoding(
-            &mut dnap,
-            insulator_id,
-            Some(genome_id),
-            tf_id,
-            "Question",
-            "QST",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
-        );
         dnap.mutate_new(MutateNew {
             insulator_id,
             genome_id,
             gene_family_abbreviation: "DSN".to_owned(),
             locus_name: "Checkout design".to_owned(),
             mutations: Vec::new(),
+            causes: Vec::new(),
             created_by: tf_id,
         })
         .expect("design");
 
         assert_eq!(
-            dnap.open_intron(OpenIntron {
+            dnap.create_intron(CreateIntron {
                 insulator_id,
                 genome_id,
-                target_gene_fqn: "checkout-design".to_owned(),
-                intron_gene_family_abbreviation: "QST".to_owned(),
-                intron_locus_name: "Clarify component boundary".to_owned(),
+                target_mrna_fqn: "checkout-design".to_owned(),
+                target_sequence_name: None,
+                title: "Clarify component boundary".to_owned(),
+                body: None,
+                precursor: None,
                 created_by: tf_id,
             }),
-            Err(DnapError::IntronMediationTargetRequired)
+            Err(DnapError::IntronTargetRequired)
         );
+    }
+
+    #[test]
+    fn mutation_context_captures_relevant_introns_and_explicit_causes() {
+        let mut dnap = Dnap::default();
+        let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
+        define_gene_family_with_encoding(
+            &mut dnap,
+            insulator_id,
+            Some(genome_id),
+            tf_id,
+            "Requirement",
+            "REQ",
+            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
+        );
+        dnap.mutate_new(MutateNew {
+            insulator_id,
+            genome_id,
+            gene_family_abbreviation: "REQ".to_owned(),
+            locus_name: "Checkout requirements".to_owned(),
+            mutations: vec![mutation(
+                "Some Section",
+                SequenceValue::String("Draft".to_owned()),
+            )],
+            causes: Vec::new(),
+            created_by: tf_id,
+        })
+        .expect("target");
+        let cause = dnap
+            .create_intron(CreateIntron {
+                insulator_id,
+                genome_id,
+                target_mrna_fqn: "checkout-requirements".to_owned(),
+                target_sequence_name: Some("Some Section".to_owned()),
+                title: "How strict is latency".to_owned(),
+                body: None,
+                precursor: None,
+                created_by: tf_id,
+            })
+            .expect("cause intron");
+        let cause_answer = dnap
+            .append_intron_sequence(AppendIntronSequence {
+                insulator_id,
+                genome_id,
+                target_mrna_fqn: None,
+                target_sequence_name: None,
+                intron_title: "how-strict".to_owned(),
+                body: Some("Paid checkout under 100ms".to_owned()),
+                follow_up_title: None,
+                follow_up_body: None,
+                created_by: tf_id,
+            })
+            .expect("cause answer")
+            .sequence
+            .expect("sequence");
+        let unanswered = dnap
+            .create_intron(CreateIntron {
+                insulator_id,
+                genome_id,
+                target_mrna_fqn: "checkout-requirements".to_owned(),
+                target_sequence_name: Some("Some Section".to_owned()),
+                title: "Which users are included".to_owned(),
+                body: None,
+                precursor: None,
+                created_by: tf_id,
+            })
+            .expect("unanswered intron");
+
+        let mutated = dnap
+            .mutate_existing(MutateExisting {
+                insulator_id,
+                genome_id,
+                gene_fqn: "checkout-requirements".to_owned(),
+                mutations: vec![mutation(
+                    "Some Section",
+                    SequenceValue::String("Paid checkout latency < 100ms".to_owned()),
+                )],
+                causes: vec!["how-strict".to_owned()],
+                created_by: tf_id,
+            })
+            .expect("mutate with cause");
+
+        assert!(mutated.mutations[0]
+            .context
+            .contains(&MutationContext::Cause(cause.id, cause_answer.id)));
+        assert!(mutated.mutations[0]
+            .context
+            .contains(&MutationContext::UnansweredContext(unanswered.id)));
     }
 
     #[test]
@@ -3173,6 +3650,7 @@ mod tests {
                     mutation("Some Section", SequenceValue::String("Draft".to_owned())),
                     mutation("Problem", SequenceValue::String("Pain".to_owned())),
                 ],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("new candidate work");
@@ -3214,6 +3692,7 @@ mod tests {
                     "Problem",
                     SequenceValue::String("Sharper pain".to_owned()),
                 )],
+                causes: Vec::new(),
                 created_by: tf_id,
             })
             .expect("change one sequence");

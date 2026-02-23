@@ -51,7 +51,6 @@ RNA means Request for Normalization and Alignment.
 
 ### Regulatory RNA
 
-- `Intron`: disambiguation item. Introns may be chained.
 - `snRNA`: task modification suggestion for an mRNA.
 - `scaRNA`: requirement modification suggestion from implementation reality.
 - `siRNA`: authoritative out-of-scope order.
@@ -67,6 +66,7 @@ RNA means Request for Normalization and Alignment.
 
 ## Non-Encoding Workflow Terms
 
+- `Intron`: requirement ambiguity question. Introns are fixed discussion records, not Genes, and do not have Loci.
 - `Exon`: executable task created by `dna splice`. Exon is not an EncodingType.
 - `Cas`: CRISPR action concept. Cas is not an EncodingType.
 - `TfComplex`: discussion and alignment subsystem. It names the communication model but is not automatically a persisted container object.

@@ -70,7 +70,6 @@ Regulatory RNA encodings are DNAp workflow/control documents.
 
 ```rust
 enum RegulatoryRnaType {
-    Intron,
     SnRna,
     ScaRna,
     SiRna,
@@ -86,7 +85,6 @@ enum RegulatoryRnaType {
 }
 ```
 
-- `Intron`: disambiguation item. Introns may be chained.
 - `SnRna`: task modification suggestion for an mRNA.
 - `ScaRna`: requirement modification suggestion from implementation reality.
 - `SiRna`: authoritative out-of-scope order.

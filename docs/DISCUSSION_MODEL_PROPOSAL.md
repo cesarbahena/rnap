@@ -67,6 +67,7 @@ Approved direction to explore:
 - A Promoter Locus may have exactly one active PreInitiationComplex.
 - `GRN` is created only after the initiative is approved.
 - `GRN` is created with the resolved `PreInitiationComplex`, a `MediatorComplex`, and required Tfs.
+- `GRN` contains `chromosomes: Vec<Chromosome>`.
 - Alleles for downstream initiative work belong to a `GRN`.
 - Mutations record `promoted_by: GeneId`.
 - Each Gene likely has exactly one `Activator`, meaning owner. This still needs explicit confirmation.
@@ -77,19 +78,22 @@ Approved direction to explore:
 - Enhancer schemas commonly require explicit authorizations, but the mechanism should be generic to Genes.
 - Final authorizations/signatures attach only to selected immutable Genes, not mutable Alleles.
 - Detailed Histone evidence shape is deferred until Histones are better defined.
-- All required Enhancer documents must be selected Genes and have all required authorizations before GRN creation.
-- Missing required Enhancer authorizations block GRN creation.
-- Authorizations are optional for non-Enhancer Genes unless their GeneFamilyGeneration requires them.
-- Required Enhancer investigation and authorization policy is tenant-enforced through the Enhancer GeneFamilyGeneration.
-- Required Enhancers are not ad hoc PreInitiationComplex fields.
+- All protocol Enhancer documents must be selected Genes and have all required authorizations before GRN creation.
+- Missing protocol Enhancer authorizations block GRN creation.
+- Authorizations are optional for non-Enhancer Genes unless their GeneFamily requires them.
+- Protocol Enhancer investigation and authorization policy is tenant-enforced through the Enhancer GeneFamily.
+- Protocol Enhancers are not ad hoc PreInitiationComplex fields.
 - A PreInitiationComplex may use multiple Enhancer GeneFamilies.
-- Enhancer GeneFamilyGenerations have `required_for_grn: bool`.
-- To create a GRN, every active GeneFamilyGeneration in scope with `EncodingType::GRN(Enhancer)` and `required_for_grn = true` must have a corresponding Enhancer Gene created, selected, and authorized.
-- Each required Enhancer Gene must be authorized by all Tf ids defined by that Enhancer GeneFamilyGeneration.
-- Enhancer GeneFamilyGenerations with `required_for_grn = false` can create contextual research documents without blocking GRN creation.
+- GeneFamilies have `is_protocol: bool`.
+- A protocol GeneFamily is the durable identity. The latest active GeneFamilyGeneration is assumed unless a workflow explicitly pins an older generation.
+- `is_protocol` means at most one selected Gene from that GeneFamily is allowed in each GRN scope.
+- `is_protocol` also means at least one selected Gene from that GeneFamily, with the required authorizations for that phase, is required before continuing to the next phase.
+- To create a GRN, every active GeneFamily in scope with `EncodingType::GRN(Enhancer)` and `is_protocol = true` must have a corresponding Enhancer Gene created, selected, and authorized.
+- Each protocol Enhancer Gene must be authorized by all Tf ids defined by that Enhancer GeneFamilyGeneration.
+- Enhancer GeneFamilies with `is_protocol = false` can create contextual research documents without blocking GRN creation.
 - Enhancer Genes are scoped to the PreInitiationComplex they support.
 - Enhancers are documents used to validate the initiating idea.
-- If `required_for_grn = true`, there should be at most one selected Enhancer Gene per Promoter/PreInitiationComplex for that Enhancer GeneFamilyGeneration.
+- If `is_protocol = true` on an Enhancer GeneFamily, there should be at most one selected Enhancer Gene per Promoter/PreInitiationComplex for that family.
 
 Proposed PreInitiationComplex meaning:
 
@@ -228,14 +232,14 @@ Proposed lifecycle ownership:
 - Signers are separate and authorize selected Enhancer Genes.
 - Required signatures on Enhancer documents are collected from signer Tfs with appropriate Histones.
 - Required authorizers are defined by the Enhancer GeneFamilyGeneration schema.
-- Required Enhancer documents/policies are defined by the Enhancer GeneFamilyGeneration so tenants can enforce the activation protocol.
-- GRN creation scans active in-scope Enhancer GeneFamilyGenerations and requires one selected, fully authorized Enhancer Gene for each generation marked `required_for_grn = true`.
-- Non-required Enhancer generations remain available for contextual research.
-- Required Enhancers are resolved through explicit PreInitiationComplex attachment, not inferred globally from all Enhancer Genes.
+- Protocol Enhancer documents/policies are defined by the Enhancer GeneFamily through `is_protocol` so tenants can enforce the activation protocol.
+- GRN creation scans active in-scope Enhancer GeneFamilies and requires one selected, fully authorized Enhancer Gene for each family marked `is_protocol = true`.
+- Non-protocol Enhancer families remain available for contextual research.
+- Protocol Enhancers are resolved through explicit PreInitiationComplex attachment, not inferred globally from all Enhancer Genes.
 - Optional Enhancers are also scoped to the PreInitiationComplex; they provide contextual validation but do not block GRN creation.
 - The same authorization mechanism should be available to other Gene types, even if Enhancers use it most often.
 - Authorization is finalized against selected Genes only.
-- GRN creation requires all required Enhancer Genes to be selected and fully authorized.
+- GRN creation requires all protocol Enhancer Genes to be selected and fully authorized.
 - GRN owns the approved shared regulatory context after initiative approval.
 - An activator can call the GRN creation CLI command only after required signatures are collected.
 - GRN creation is allowed for the Activator by default.
@@ -360,28 +364,155 @@ Open design questions:
 Approved correction:
 
 - `Intron` is a requirement ambiguity question.
+- Introns are not Genes and do not have Loci.
+- Introns are fixed discussion records attached to mRNA/Sequence targets.
+- Introns do not use Gene selection, transcription, or Allele lifecycle.
+- Introns have no lifecycle state for current use cases.
+- Append-only IntronSequences and optional mutation provenance are enough for now.
 - `Intron` targets `mRNA` only.
 - rRNA/design discussions should not use Intron.
-
-Current implementation concern:
-
-- Current code adds `IntronMediation` and `IntronFollowUp` relationship records.
-- This may be the wrong domain shape if the RNA artifact itself should own target and chain semantics.
-
-Alternative shape to explore:
+- After GRN creation, requirement Tfs likely begin by creating Introns.
+- Introns do not own visibility rules.
+- Intron visibility is resolved through the target mRNA.
+- Introns are seen in real time by Tfs who can see the target mRNA.
+- Each Intron belongs to a single mRNA.
+- Introns ask questions about the Promoter to fill a specific mRNA.
+- Any team member may answer an Intron.
+- Introns have chat history.
+- IntronSequence history is append-only.
+- Introns may chain into other Introns.
+- Intron answers do not directly mutate the target mRNA.
+- Final mRNA content changes happen through `dna mutate`.
+- `dna mutate` records Intron-derived provenance when applying the resulting mRNA or Sequence change.
+- Mutation context captures provenance for the relevant discussions or signals that informed the edit.
+- For mRNA mutations, MutationContext captures IntronSequence pointers for the relevant answers that informed the edit.
+- The IntronSequence pointer is enough to recover the Intron question because every IntronSequence belongs to exactly one Intron.
+- This allows reconstruction of the discussion context that existed when the edit decision was made.
+- If the Intron question targets the whole mRNA, provenance is recorded at the mRNA change level.
+- If the Intron question targets a specific Sequence, provenance is recorded at the Sequence change level.
+- This preserves the biology-inspired idea that Introns can be processed into other Genes or edits without making Introns Genes themselves.
 
 ```rust
-struct Intron {
-    locus_id: LocusId,
-    target_mrna_locus_id: LocusId,
-    parent_intron_locus_id: Option<LocusId>,
+struct Mutation {
+    context: Vec<MutationContext>,
+}
+
+enum MutationContext {
+    Cause(IntronId, IntronSequenceId),
+    AnsweredContext(IntronId, IntronSequenceId),
+    UnansweredContext(IntronId),
 }
 ```
 
+- `context` contains one `MutationContext` per relevant Intron at mutation time for mRNA changes.
+- `Cause` records an explicit cause from `--because <intron>` plus the latest answer state.
+- `AnsweredContext` records automatic context from a relevant answered Intron that was not explicitly cited as the cause.
+- `UnansweredContext` records relevant unanswered context that was available but not cited as a cause.
+- The enum makes invalid combinations unrepresentable in the application model.
+- `--because <intron>` is invalid when the matched Intron has no answer yet.
+- Reconstruction loads each referenced Intron's sequences up to the stored `IntronSequenceId`, or shows the Intron as unanswered when the sequence id is `None`.
+- `dna mutate awesome-feature --add-nfr "Latency < 100ms" --because how-critical-is-this-operation` cites the most specific/latest relevant Intron in a chain.
+- `--because` is optional provenance, not a required gate.
+- Users should cite the last/specific question in the chain. The system can walk `precursor` backward to reconstruct the full discussion chain.
+- Precursor Introns are not copied as explicit causes; they remain derivable from the Intron graph.
+- Intron discussion uses short CLI commands: `dna q` for questions and `dna a` for answers.
+- There is no active mRNA context. Requirements Tfs may work on several mRNAs at the same time.
+- Introns have a title and optional body.
+- `dna q <mrna> "My question"` creates a new Intron question title for the target mRNA.
+- `dna q <mrna> "My question" "Longer context"` creates a new Intron with title and body.
+- `dna q <mrna>` with no question argument shows the mRNA's Intron questions and latest answer for each.
+- `dna q <mrna>` uses the same default navigation behavior as `dna a`: local/direct questions with indicators for deeper parent/child chains.
+- `dna q <mrna> --all` recursively shows all questions and answers for that mRNA.
+- `dna q <mrna> --my-sequence "My question"` creates a new Intron question title for a specific Sequence in that mRNA.
+- `dna q <mrna> --my-sequence "My question" "Longer context"` creates a Sequence-specific Intron with title and body.
+- `dna q <mrna> --my-sequence` with no question argument shows only questions and latest answers for that Sequence.
+- `dna q <mrna> --my-sequence --all` recursively shows all questions and answers for that Sequence.
+- The body is an optional third positional argument.
+- Sequence targeting uses a dynamic Sequence flag, not a generic `--sequence` keyword.
+- mRNA and Sequence targets use the normal exact-or-unambiguous matching rule. Ambiguous matches error.
+- `dna a --my-question "My answer"` answers the matched Intron.
+- `dna a --my-question` with no answer text shows the full IntronSequence history for the matched Intron.
+- The same view also shows precursor Introns, but only with their latest answer as context.
+- By default, `dna a --my-question` shows direct child Introns only, with an indicator when a child has more descendants.
+- By default, precursor Introns are shown with an indicator when more recursive precursors exist.
+- `dna a --my-question --all` recursively shows all parent/child Introns and all answers.
+- The default view should support navigation through indicators; `--all` is the full context escape hatch.
+- Answers are body-only IntronSequences. They do not have titles.
+- Intron titles exist for question identity and CLI matching.
+- For answers, mRNA and Sequence context are optional if the Intron flag match is unambiguous in the active GRN.
+- If the answer flag is ambiguous, the user must provide enough mRNA/Sequence context to disambiguate.
+- Intron matching uses the same insensitive/fuzzy flag style as Sequence flags.
+- Fuzzy matching is a core CLI usability requirement for humans, not incidental parser behavior.
+- Matching must prefer exact normalized matches, then unambiguous close matches, and error with clear candidates when ambiguous.
+- Matching must be good enough for non-expert users who remember approximate names, casing, or word separators.
+- Multiple users may answer the same Intron, for example `dna a --my-quest "Other user answer"`.
+- A command may answer an Intron and chain a follow-up Intron with `dna a --my-question "Other answer" -q "Follow up question"`.
+- A follow-up question may include an optional body as the second argument after `-q`: `dna a --my-question "Other answer" -q "Follow up title" "Follow up body"`.
+- `dna a --my-question -q "Answer question with another question"` chains a follow-up without a direct textual answer to the parent Intron.
+- A follow-up-only question may also include a body: `dna a --my-question -q "Follow up title" "Follow up body"`.
+- Follow-up Introns created with `dna a --my-question -q "Follow up question"` inherit the same mRNA/Sequence target as the parent Intron by default.
+- Protocol mRNA documents follow the same cardinality rule: at most one selected Gene per mRNA GeneFamily in the GRN, and at least one is required to continue to the next phase.
+- The exact selection and authorization gate for protocol mRNAs is not settled because requirements need implementation backpressure and stress testing before they can be finalized.
+- Unlike protocol Enhancers, protocol mRNA authorization should not be treated as solved at GRN creation time.
+- mRNA Genes are created manually. Creating an Intron must not implicitly create the target mRNA.
+- Genes can be whole controlled documents or embedded controlled items inside another controlled document.
+- Embedded controlled items are not a different identity model; they are Genes rendered inside another Gene.
+- `SequenceType::Gene` and `SequenceType::GeneVec` allow a document Gene to contain embedded controlled Gene items.
+- Larger related documents can be linked through an ordinary `links` field. Linking is not a special domain object by default.
+- The product distinction is flexible composition: a Gene may be a controlled document or a controlled document item.
+- mRNA Genes are a common requirements example, but the scoping rule applies to controlled Genes generally.
+- Genes have scope:
+
+```rust
+enum GeneScope {
+    Chromosome(ChromosomeId),
+    HouseKeeping,
+}
+```
+
+- `HouseKeeping` Genes are not bound to a Chromosome and are part of every GRN.
+- Chromosome-scoped Genes show up only when the GRN contains that Chromosome in `chromosomes: Vec<Chromosome>`.
+- Gene scope is mutable through the normal mutation path.
+- Scope is changed with `dna mutate <gene> --chromosome <chromosome>` or `dna mutate <gene> --chromosome all`.
+- The `all` keyword means `GeneScope::HouseKeeping`.
+- Scope mutation is allowed domain behavior, but only authorized Tfs may perform it.
+- Authorization matters because moving scope changes which GRNs can see the Gene or embedded controlled item.
+- A HouseKeeping document can contain `Vec<Gene>` Sequences with embedded controlled items scoped to different Chromosomes.
+- When working with a HouseKeeping document inside a GRN, embedded Gene items scoped to Chromosomes not present in that GRN are hidden.
+- A GRN view contains HouseKeeping documents/items, documents scoped to the GRN's Chromosomes, and embedded controlled items scoped to those Chromosomes.
+- If two GRNs contain the same Chromosome, those Chromosomes are homologous. It is not yet clear whether this needs a dedicated `HomologousChromosome` object.
+
+Proposed shape:
+
+```rust
+struct Intron {
+    id: IntronId,
+    target_mrna_locus_id: LocusId,
+    target_sequence_definition_id: Option<SequenceDefinitionId>,
+    precursor: Option<IntronId>,
+    title: String,
+    body: Option<String>,
+    normalized_title: String,
+    title_scope_hash: String,
+}
+
+struct IntronSequence {
+    id: IntronSequenceId,
+    intron_id: IntronId,
+    body: String,
+    created_by: TfId,
+    created_at: Timestamp,
+}
+```
+
+- The Intron question title/body are stored on `Intron`, separate from append-only `IntronSequence` answers/history.
+- `created_as` / Histone evidence is deferred until Histones are implemented.
+
 Open design questions:
 
-- Should `Intron` be an actual typed workflow object wrapping a Locus?
-- Should target/parent live as fields on `Intron` rather than separate "mediation/follow-up" records?
+- Should Intron uniqueness use normalized title plus target scope?
+- Intron title uniqueness is enforced among siblings: `(grn_id, target_mrna_locus_id, target_sequence_definition_id, precursor, normalized_title)`.
+- Does homologous Chromosome behavior require a first-class object, or can it be inferred from shared Chromosome identity for now?
 
 ## snoRNA
 
@@ -421,6 +552,9 @@ Open design questions:
 - Should `snRNA` and `tRNA` remain GeneFamily EncodingTypes for documents, or become capability/agent-skill definitions?
 - Are `scaRNA` and `tRF` controlled documents, learned workflow policies, or generated operational patterns?
 - Does `tRF` need to be added to the taxonomy, or stay deferred?
+- Should snRNA be agent-only, human-only, either human or agent, or human-first with an LLM harness adapter?
+- If snRNA is a planning skill protocol, how does a Tf or agent declare that it is using a specific snRNA while gathering requirements?
+- How does an emergent requirements-gathering workflow become shareable and eventually become an official protocol?
 
 ## Suppression And Scope Control
 
@@ -481,13 +615,8 @@ Open design questions:
 
 ## Current Implementation Risk
 
-The current autonomous branch implemented some relationship records from a too-generic pattern:
-
-- `EnhancerContext`
-- `IntronMediation`
-- `IntronFollowUp`
-
-These may be serviceable storage structures, but the domain language may be wrong.
+The current implementation should avoid reintroducing relationship records from a too-generic pattern.
+`EnhancerContext` still exists as a provisional property record. `IntronMediation` and `IntronFollowUp` were rejected for the Intron model.
 
 Review direction:
 

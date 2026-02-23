@@ -3,11 +3,12 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AddExplorationEdge, AddExplorationNode, AttachEnhancerPromoter, CreateExplorationGraph,
-    CreateGenome, CreateTf, DefineGeneFamily, DefineSequence, DnapError, EncodingType,
-    ExplorationGraphId, ExplorationNodeId, FollowUpIntron, GrnType, MutateExisting, MutateNew,
-    OpenIntron, ProvisionInsulator, RegulatoryRnaType, RnaType, SequenceMutation, SequenceType,
-    SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele, TranslationRnaType,
+    AddExplorationEdge, AddExplorationNode, AppendIntronSequence, AttachEnhancerPromoter,
+    CreateExplorationGraph, CreateGenome, CreateIntron, CreateTf, DefineGeneFamily, DefineSequence,
+    Dnap, DnapError, EncodingType, ExplorationGraphId, ExplorationNodeId, GrnType, IntronSummary,
+    IntronThread, MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType, RnaType,
+    SequenceMutation, SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
+    TranslationRnaType,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -51,7 +52,8 @@ fn dispatch(state: &mut LocalState, args: Vec<String>) -> Result<String, CliErro
         "splice" => splice(state, &args[1..]),
         "translate" => translate(state, &args[1..]),
         "explore" => explore(state, &args[1..]),
-        "mediate" => mediate(state, &args[1..]),
+        "q" => question(state, &args[1..]),
+        "a" => answer(state, &args[1..]),
         _ => Err(CliError::Usage(format!("unknown command `{command}`"))),
     }
 }
@@ -195,12 +197,14 @@ fn mutate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
         let family = positional(args, 1, "gene family abbreviation")?;
         let locus_name = positional(args, 2, "document name")?;
         let mutations = parse_sequence_mutations(&args[3..])?;
+        let causes = repeated_option(args, "--because");
         let mutated = state.dnap.mutate_new(MutateNew {
             insulator_id: session.scope.insulator_id,
             genome_id: session.scope.genome_id,
             gene_family_abbreviation: family,
             locus_name,
             mutations,
+            causes,
             created_by: session.actor.tf_id,
         })?;
         return Ok(format!(
@@ -212,11 +216,13 @@ fn mutate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
 
     let gene_fqn = positional(args, 0, "gene fqn")?;
     let mutations = parse_sequence_mutations(&args[1..])?;
+    let causes = repeated_option(args, "--because");
     let mutated = state.dnap.mutate_existing(MutateExisting {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
         gene_fqn,
         mutations,
+        causes,
         created_by: session.actor.tf_id,
     })?;
     Ok(format!(
@@ -469,56 +475,112 @@ fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, C
     ))
 }
 
-fn mediate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let Some(command) = args.first().map(String::as_str) else {
-        return Err(CliError::Usage("expected mediate subcommand".to_owned()));
-    };
+fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+    let session = current_session(state)?;
+    let target_mrna_fqn = positional(args, 0, "mRNA")?;
+    let all = args.iter().any(|arg| arg == "--all");
+    let sequence_name = args
+        .iter()
+        .skip(1)
+        .find(|arg| arg.starts_with("--") && *arg != "--all")
+        .map(|arg| arg.trim_start_matches("--").to_owned());
+    let positional_values = args
+        .iter()
+        .skip(1)
+        .filter(|arg| !arg.starts_with("--"))
+        .cloned()
+        .collect::<Vec<_>>();
 
-    match command {
-        "intron" => mediate_intron(state, args),
-        "follow-up" => mediate_follow_up(state, args),
-        _ => Err(CliError::Usage(format!(
-            "unknown mediate subcommand `{command}`"
-        ))),
+    if positional_values.is_empty() {
+        let summaries = state.dnap.intron_summaries_for(
+            session.scope.insulator_id,
+            session.scope.genome_id,
+            session.actor.tf_id,
+            &target_mrna_fqn,
+            sequence_name.as_deref(),
+        )?;
+        let mut output = "questions".to_owned();
+        for summary in summaries {
+            output.push_str(&format!("\n{}", format_intron_summary(&summary)));
+            if all {
+                let thread = state.dnap.intron_thread_by_id(summary.intron.id)?;
+                output.push_str(&format_intron_children_recursive(&state.dnap, &thread, 1)?);
+            }
+        }
+        return Ok(output);
     }
-}
 
-fn mediate_intron(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let session = current_session(state)?;
-    let target_gene_fqn = positional(args, 1, "target gene fqn")?;
-    let intron_locus_name = positional(args, 2, "intron name")?;
-    let opened = state.dnap.open_intron(OpenIntron {
+    let title = positional_values[0].clone();
+    let body = positional_values.get(1).cloned();
+    let intron = state.dnap.create_intron(CreateIntron {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
-        target_gene_fqn: target_gene_fqn.clone(),
-        intron_gene_family_abbreviation: required_option(args, "--family")?,
-        intron_locus_name,
+        target_mrna_fqn: target_mrna_fqn.clone(),
+        target_sequence_name: sequence_name,
+        title,
+        body,
+        precursor: None,
         created_by: session.actor.tf_id,
     })?;
 
-    Ok(format!(
-        "opened intron `{}` for `{target_gene_fqn}`",
-        opened.intron.gene_fqn
-    ))
+    Ok(format!("asked `{}` for `{target_mrna_fqn}`", intron.title))
 }
 
-fn mediate_follow_up(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
+fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     let session = current_session(state)?;
-    let parent_intron_gene_fqn = positional(args, 1, "parent intron gene fqn")?;
-    let intron_locus_name = positional(args, 2, "intron name")?;
-    let followed = state.dnap.follow_up_intron(FollowUpIntron {
+    let all = args.iter().any(|arg| arg == "--all");
+    let question_index = args
+        .iter()
+        .position(|arg| arg.starts_with("--") && arg != "--all")
+        .ok_or_else(|| CliError::Usage("missing question flag".to_owned()))?;
+    let target_mrna_fqn = (question_index > 0).then(|| args[0].clone());
+    let question_title = args[question_index].trim_start_matches("--").to_owned();
+    let mut answer_body = None;
+    let mut follow_up_title = None;
+    let mut follow_up_body = None;
+    let mut index = question_index + 1;
+    if let Some(value) = args.get(index) {
+        if value != "-q" && !value.starts_with("--") {
+            answer_body = Some(value.clone());
+            index += 1;
+        }
+    }
+    if args.get(index).map(String::as_str) == Some("-q") {
+        follow_up_title = args.get(index + 1).cloned();
+        follow_up_body = args
+            .get(index + 2)
+            .filter(|value| !value.starts_with("--"))
+            .cloned();
+    }
+
+    if answer_body.is_none() && follow_up_title.is_none() {
+        let thread = state.dnap.intron_thread(
+            session.scope.insulator_id,
+            session.scope.genome_id,
+            session.actor.tf_id,
+            &question_title,
+            target_mrna_fqn.as_deref().map(|target| (target, None)),
+        )?;
+        return Ok(format_intron_thread(&state.dnap, &thread, all)?);
+    }
+
+    let answered = state.dnap.append_intron_sequence(AppendIntronSequence {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
-        parent_intron_gene_fqn: parent_intron_gene_fqn.clone(),
-        intron_gene_family_abbreviation: required_option(args, "--family")?,
-        intron_locus_name,
+        target_mrna_fqn,
+        target_sequence_name: None,
+        intron_title: question_title,
+        body: answer_body,
+        follow_up_title,
+        follow_up_body,
         created_by: session.actor.tf_id,
     })?;
 
-    Ok(format!(
-        "opened intron follow-up `{}` for `{parent_intron_gene_fqn}`",
-        followed.intron.gene_fqn
-    ))
+    let mut output = format!("answered `{}`", answered.intron.title);
+    if let Some(follow_up) = answered.follow_up {
+        output.push_str(&format!("\nasked follow-up `{}`", follow_up.title));
+    }
+    Ok(output)
 }
 
 fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, CliError> {
@@ -526,6 +588,10 @@ fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, Cl
     let mut index = 0;
     while index < args.len() {
         let flag = &args[index];
+        if flag == "--because" {
+            index += 2;
+            continue;
+        }
         if !flag.starts_with("--") {
             return Err(CliError::Usage(format!(
                 "expected sequence flag, got `{flag}`"
@@ -570,9 +636,6 @@ fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
         "telomere" => Ok(EncodingType::GRN(GrnType::Telomere)),
         "centromere" => Ok(EncodingType::GRN(GrnType::Centromere)),
         "silencer" => Ok(EncodingType::GRN(GrnType::Silencer)),
-        "intron" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::Intron,
-        ))),
         "snrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
             RegulatoryRnaType::SnRna,
         ))),
@@ -674,6 +737,69 @@ fn display_value(value: &SequenceValue) -> String {
         SequenceValue::GeneRef(value) => format!("{value:?}"),
         SequenceValue::GeneRefVec(value) => format!("{value:?}"),
     }
+}
+
+fn format_intron_summary(summary: &IntronSummary) -> String {
+    let mut line = summary.intron.title.clone();
+    if let Some(sequence) = &summary.latest_sequence {
+        line.push_str(&format!(" -> {}", sequence.body));
+    }
+    if summary.has_precursor {
+        line.push_str(" [has precursor]");
+    }
+    if summary.child_count > 0 {
+        line.push_str(&format!(" [{} follow-up(s)]", summary.child_count));
+    }
+    line
+}
+
+fn format_intron_thread(dnap: &Dnap, thread: &IntronThread, all: bool) -> Result<String, CliError> {
+    let mut output = format!("question: {}", thread.intron.title);
+    if let Some(body) = &thread.intron.body {
+        output.push_str(&format!("\nbody: {body}"));
+    }
+    for precursor in &thread.precursors {
+        output.push_str(&format!(
+            "\nprecursor: {}",
+            format_intron_summary(precursor)
+        ));
+    }
+    for sequence in &thread.sequences {
+        output.push_str(&format!("\nanswer: {}", sequence.body));
+    }
+    for child in &thread.children {
+        output.push_str(&format!("\nfollow-up: {}", format_intron_summary(child)));
+        if all {
+            let child_thread = dnap.intron_thread_by_id(child.intron.id)?;
+            output.push_str(&format_intron_children_recursive(dnap, &child_thread, 1)?);
+        }
+    }
+    Ok(output)
+}
+
+fn format_intron_children_recursive(
+    dnap: &Dnap,
+    thread: &IntronThread,
+    depth: usize,
+) -> Result<String, CliError> {
+    let indent = "  ".repeat(depth);
+    let mut output = String::new();
+    for sequence in &thread.sequences {
+        output.push_str(&format!("\n{indent}answer: {}", sequence.body));
+    }
+    for child in &thread.children {
+        output.push_str(&format!(
+            "\n{indent}follow-up: {}",
+            format_intron_summary(child)
+        ));
+        let child_thread = dnap.intron_thread_by_id(child.intron.id)?;
+        output.push_str(&format_intron_children_recursive(
+            dnap,
+            &child_thread,
+            depth + 1,
+        )?);
+    }
+    Ok(output)
 }
 
 fn normalize(value: &str) -> String {
@@ -904,33 +1030,29 @@ mod tests {
     }
 
     #[test]
-    fn mediate_cli_opens_and_chains_introns() {
+    fn q_and_a_cli_create_answer_and_show_introns() {
         let mut state = bootstrapped_state();
-        dispatch(
-            &mut state,
-            words("epigenetics define-family REQ Requirement --encoding mRNA --sequence Summary"),
-        )
-        .expect("requirement family");
-        dispatch(
-            &mut state,
-            words("epigenetics define-family QST Question --encoding intron --sequence Summary"),
-        )
-        .expect("intron family");
-        dispatch(&mut state, words("mutate --new REQ Checkout")).expect("target");
+        dispatch(&mut state, words("mutate --new FRS Checkout")).expect("target");
 
-        let opened = dispatch(
-            &mut state,
-            words("mediate intron Checkout ClarifyRetries --family QST"),
-        )
-        .expect("open intron");
-        assert!(opened.contains("opened intron `QST-clarifyretries-0001`"));
+        let asked = dispatch(&mut state, words("q Checkout ClarifyRetries")).expect("ask");
+        assert!(asked.contains("asked `ClarifyRetries`"));
 
-        let follow_up = dispatch(
+        let answered = dispatch(
             &mut state,
-            words("mediate follow-up ClarifyRetries ClarifyCeiling --family QST"),
+            words("a --clarifyretries RetryTwice -q ClarifyCeiling"),
         )
-        .expect("follow up");
-        assert!(follow_up.contains("opened intron follow-up `QST-clarifyceiling-0001`"));
+        .expect("answer");
+        assert!(answered.contains("answered `ClarifyRetries`"));
+        assert!(answered.contains("asked follow-up `ClarifyCeiling`"));
+
+        let questions = dispatch(&mut state, words("q Checkout")).expect("list questions");
+        assert!(questions.contains("ClarifyRetries -> RetryTwice"));
+        assert!(questions.contains("1 follow-up"));
+
+        let thread = dispatch(&mut state, words("a --clarifyretries")).expect("show thread");
+        assert!(thread.contains("question: ClarifyRetries"));
+        assert!(thread.contains("answer: RetryTwice"));
+        assert!(thread.contains("follow-up: ClarifyCeiling"));
     }
 
     #[test]
@@ -958,10 +1080,6 @@ mod tests {
             (
                 "tRNA",
                 EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRna)),
-            ),
-            (
-                "intron",
-                EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::Intron)),
             ),
             (
                 "snRNA",
