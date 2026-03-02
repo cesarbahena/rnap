@@ -1,0 +1,157 @@
+use super::super::*;
+
+impl Dnap {
+    pub fn mutate_new(&mut self, input: MutateNew) -> Result<MutatedAllele, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let family_lookup = require_text(
+            input.gene_family_abbreviation,
+            DnapError::BlankGeneFamilyLookup,
+        )?;
+        let family = self
+            .resolve_gene_family(input.insulator_id, Some(input.genome_id), &family_lookup)
+            .ok_or(DnapError::GeneFamilyNotFound)?
+            .clone();
+        let generation = self
+            .gene_family_generations
+            .get(&family.current_generation_id)
+            .ok_or(DnapError::GeneFamilyNotFound)?
+            .clone();
+        let locus_name = require_text(input.locus_name, DnapError::BlankLocusName)?;
+
+        if let Some(locus) = self.find_locus(input.genome_id, family.id, &locus_name) {
+            self.require_no_active_allele(locus.id, input.created_by)?;
+        }
+
+        let now = SystemTime::now();
+        let locus = Locus {
+            id: self.allocate_locus_id(),
+            family_id: family.id,
+            insulator_id: input.insulator_id,
+            genome_id: input.genome_id,
+            name: locus_name,
+            created_at: now,
+        };
+        let transposon = Transposon {
+            id: self.allocate_transposon_id(),
+            locus_id: locus.id,
+            gene_family_generation_id: generation.id,
+            created_by: input.created_by,
+            created_at: now,
+        };
+        let allele = Allele {
+            id: self.allocate_allele_id(),
+            genome_id: input.genome_id,
+            locus_id: locus.id,
+            gene_family_generation_id: generation.id,
+            generation: 1,
+            origin: AlleleOrigin::Transposon(transposon.id),
+            state: AlleleState::Mutating,
+            created_by: input.created_by,
+            degraded_at: None,
+            degraded_by: None,
+            created_at: now,
+            updated_at: now,
+        };
+        let chromosome = Chromosome {
+            id: self.allocate_chromosome_id(),
+            genome_id: input.genome_id,
+            locus_id: locus.id,
+            genes: Vec::new(),
+            alleles: vec![allele.id],
+        };
+
+        let mutations = self.build_mutations(
+            allele.id,
+            input.insulator_id,
+            input.genome_id,
+            locus.id,
+            generation.id,
+            input.mutations,
+            input.causes,
+            input.created_by,
+            now,
+        )?;
+        let gene_fqn = self.gene_fqn(&family, &locus, allele.generation);
+
+        self.loci.insert(locus.id, locus.clone());
+        self.transposons.insert(transposon.id, transposon.clone());
+        self.alleles.insert(allele.id, allele.clone());
+        self.chromosomes.insert(locus.id, chromosome);
+        for mutation in &mutations {
+            self.mutations.insert(mutation.id, mutation.clone());
+        }
+
+        Ok(MutatedAllele {
+            locus,
+            transposon: Some(transposon),
+            allele,
+            mutations,
+            gene_fqn,
+        })
+    }
+
+    pub fn mutate_existing(&mut self, input: MutateExisting) -> Result<MutatedAllele, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
+
+        let allele_id = self.resolve_active_allele_id(
+            input.insulator_id,
+            input.genome_id,
+            input.created_by,
+            &input.gene_fqn,
+        )?;
+        let mut allele = self
+            .alleles
+            .get(&allele_id)
+            .cloned()
+            .ok_or(DnapError::AlleleNotFound)?;
+        if matches!(allele.state, AlleleState::Selected | AlleleState::Degraded) {
+            return Err(DnapError::AlleleCannotMutate);
+        }
+
+        let now = SystemTime::now();
+        let mutations = self.build_mutations(
+            allele.id,
+            input.insulator_id,
+            input.genome_id,
+            allele.locus_id,
+            allele.gene_family_generation_id,
+            input.mutations,
+            input.causes,
+            input.created_by,
+            now,
+        )?;
+        if allele.state == AlleleState::Expressing && !mutations.is_empty() {
+            allele.state = AlleleState::Mutating;
+        }
+        allele.updated_at = now;
+
+        let locus = self
+            .loci
+            .get(&allele.locus_id)
+            .cloned()
+            .ok_or(DnapError::AlleleNotFound)?;
+        let family = self
+            .gene_families
+            .get(&locus.family_id)
+            .ok_or(DnapError::GeneFamilyNotFound)?;
+        let gene_fqn = self.gene_fqn(family, &locus, allele.generation);
+
+        self.alleles.insert(allele.id, allele.clone());
+        for mutation in &mutations {
+            self.mutations.insert(mutation.id, mutation.clone());
+        }
+
+        Ok(MutatedAllele {
+            locus,
+            transposon: None,
+            allele,
+            mutations,
+            gene_fqn,
+        })
+    }
+}

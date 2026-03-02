@@ -10,6 +10,15 @@ mod genes;
 mod identity;
 mod ids;
 mod workflow;
+mod use_cases {
+    pub(super) mod exploration;
+    pub(super) mod introns;
+    pub(super) mod mutate;
+    pub(super) mod platform;
+    pub(super) mod queries;
+    pub(super) mod splice;
+    pub(super) mod transcribe;
+}
 
 pub use commands::*;
 pub use encoding::*;
@@ -61,1048 +70,6 @@ pub struct Dnap {
 }
 
 impl Dnap {
-    pub fn provision_insulator(
-        &mut self,
-        input: ProvisionInsulator,
-    ) -> Result<ProvisionedInsulator, DnapError> {
-        let name = require_text(input.name, DnapError::BlankInsulatorName)?;
-        let region = require_text(input.placement_region, DnapError::BlankPlacementRegion)?;
-        let now = SystemTime::now();
-        let insulator_id = self.allocate_insulator_id();
-        let insulator = Insulator {
-            id: insulator_id,
-            name,
-            created_at: now,
-            updated_at: now,
-        };
-        let placement = InsulatorPlacement {
-            insulator_id,
-            strategy: input
-                .placement_strategy
-                .unwrap_or(InsulatorPlacementStrategy::SharedCluster),
-            region,
-            active: true,
-            created_at: now,
-            updated_at: now,
-        };
-
-        self.insulators.insert(insulator_id, insulator.clone());
-        self.placements.insert(insulator_id, placement.clone());
-
-        Ok(ProvisionedInsulator {
-            insulator,
-            placement,
-        })
-    }
-
-    pub fn create_genome(&mut self, input: CreateGenome) -> Result<Genome, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        let name = require_text(input.name, DnapError::BlankGenomeName)?;
-        let now = SystemTime::now();
-        let genome = Genome {
-            id: self.allocate_genome_id(),
-            insulator_id: input.insulator_id,
-            name,
-            created_at: now,
-            updated_at: now,
-        };
-
-        self.genomes.insert(genome.id, genome.clone());
-        Ok(genome)
-    }
-
-    pub fn create_tf(&mut self, input: CreateTf) -> Result<Tf, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        let display_name = require_text(input.display_name, DnapError::BlankTfDisplayName)?;
-        let now = SystemTime::now();
-        let tf = Tf {
-            id: self.allocate_tf_id(),
-            insulator_id: input.insulator_id,
-            display_name,
-            external_subject: input.external_subject,
-            identity_provider: input.identity_provider,
-            created_at: now,
-            updated_at: now,
-        };
-
-        self.tfs.insert(tf.id, tf.clone());
-        Ok(tf)
-    }
-
-    pub fn define_gene_family(
-        &mut self,
-        input: DefineGeneFamily,
-    ) -> Result<DefinedGeneFamily, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-        if let Some(genome_id) = input.genome_id {
-            self.require_genome_in_insulator(genome_id, input.insulator_id)?;
-        }
-
-        let name = require_text(input.name, DnapError::BlankGeneFamilyName)?;
-        let abbreviation =
-            require_text(input.abbreviation, DnapError::BlankGeneFamilyAbbreviation)?;
-        let encodes = input.encodes.ok_or(DnapError::MissingEncodingType)?;
-        self.require_available_abbreviation(input.insulator_id, input.genome_id, &abbreviation)?;
-
-        let mut seen_sequences = BTreeMap::new();
-        let mut sequences = Vec::with_capacity(input.sequences.len());
-        for sequence in input.sequences {
-            let sequence_name =
-                require_text(sequence.name, DnapError::BlankSequenceDefinitionName)?;
-            let normalized = normalize_match_text(&sequence_name);
-            if seen_sequences.insert(normalized, ()).is_some() {
-                return Err(DnapError::DuplicateSequenceDefinitionName);
-            }
-            sequences.push(SequenceDefinition {
-                id: self.allocate_sequence_definition_id(),
-                name: sequence_name,
-                sequence_type: sequence.sequence_type,
-            });
-        }
-
-        let now = SystemTime::now();
-        let family_id = self.allocate_gene_family_id();
-        let generation_id = self.allocate_gene_family_generation_id();
-        let family = GeneFamily {
-            id: family_id,
-            insulator_id: input.insulator_id,
-            genome_id: input.genome_id,
-            name,
-            abbreviation,
-            current_generation_id: generation_id,
-            encodes,
-            created_at: now,
-            updated_at: now,
-        };
-        let generation = GeneFamilyGeneration {
-            id: generation_id,
-            family_id,
-            generation: 1,
-            sequences,
-            created_by: input.created_by,
-            created_at: now,
-        };
-
-        self.gene_families.insert(family_id, family.clone());
-        self.gene_family_generations
-            .insert(generation_id, generation.clone());
-
-        Ok(DefinedGeneFamily { family, generation })
-    }
-
-    pub fn resolve_gene_family(
-        &self,
-        insulator_id: InsulatorId,
-        genome_id: Option<GenomeId>,
-        abbreviation: &str,
-    ) -> Option<&GeneFamily> {
-        let normalized = normalize_match_text(abbreviation);
-        if let Some(genome_id) = genome_id {
-            if let Some(family) = self.gene_families.values().find(|family| {
-                family.insulator_id == insulator_id
-                    && family.genome_id == Some(genome_id)
-                    && normalize_match_text(&family.abbreviation) == normalized
-            }) {
-                return Some(family);
-            }
-        }
-
-        self.gene_families.values().find(|family| {
-            family.insulator_id == insulator_id
-                && family.genome_id.is_none()
-                && normalize_match_text(&family.abbreviation) == normalized
-        })
-    }
-
-    pub fn mutate_new(&mut self, input: MutateNew) -> Result<MutatedAllele, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let family_lookup = require_text(
-            input.gene_family_abbreviation,
-            DnapError::BlankGeneFamilyLookup,
-        )?;
-        let family = self
-            .resolve_gene_family(input.insulator_id, Some(input.genome_id), &family_lookup)
-            .ok_or(DnapError::GeneFamilyNotFound)?
-            .clone();
-        let generation = self
-            .gene_family_generations
-            .get(&family.current_generation_id)
-            .ok_or(DnapError::GeneFamilyNotFound)?
-            .clone();
-        let locus_name = require_text(input.locus_name, DnapError::BlankLocusName)?;
-
-        if let Some(locus) = self.find_locus(input.genome_id, family.id, &locus_name) {
-            self.require_no_active_allele(locus.id, input.created_by)?;
-        }
-
-        let now = SystemTime::now();
-        let locus = Locus {
-            id: self.allocate_locus_id(),
-            family_id: family.id,
-            insulator_id: input.insulator_id,
-            genome_id: input.genome_id,
-            name: locus_name,
-            created_at: now,
-        };
-        let transposon = Transposon {
-            id: self.allocate_transposon_id(),
-            locus_id: locus.id,
-            gene_family_generation_id: generation.id,
-            created_by: input.created_by,
-            created_at: now,
-        };
-        let allele = Allele {
-            id: self.allocate_allele_id(),
-            genome_id: input.genome_id,
-            locus_id: locus.id,
-            gene_family_generation_id: generation.id,
-            generation: 1,
-            origin: AlleleOrigin::Transposon(transposon.id),
-            state: AlleleState::Mutating,
-            created_by: input.created_by,
-            degraded_at: None,
-            degraded_by: None,
-            created_at: now,
-            updated_at: now,
-        };
-        let chromosome = Chromosome {
-            id: self.allocate_chromosome_id(),
-            genome_id: input.genome_id,
-            locus_id: locus.id,
-            genes: Vec::new(),
-            alleles: vec![allele.id],
-        };
-
-        let mutations = self.build_mutations(
-            allele.id,
-            input.insulator_id,
-            input.genome_id,
-            locus.id,
-            generation.id,
-            input.mutations,
-            input.causes,
-            input.created_by,
-            now,
-        )?;
-        let gene_fqn = self.gene_fqn(&family, &locus, allele.generation);
-
-        self.loci.insert(locus.id, locus.clone());
-        self.transposons.insert(transposon.id, transposon.clone());
-        self.alleles.insert(allele.id, allele.clone());
-        self.chromosomes.insert(locus.id, chromosome);
-        for mutation in &mutations {
-            self.mutations.insert(mutation.id, mutation.clone());
-        }
-
-        Ok(MutatedAllele {
-            locus,
-            transposon: Some(transposon),
-            allele,
-            mutations,
-            gene_fqn,
-        })
-    }
-
-    pub fn mutate_existing(&mut self, input: MutateExisting) -> Result<MutatedAllele, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            &input.gene_fqn,
-        )?;
-        let mut allele = self
-            .alleles
-            .get(&allele_id)
-            .cloned()
-            .ok_or(DnapError::AlleleNotFound)?;
-        if matches!(allele.state, AlleleState::Selected | AlleleState::Degraded) {
-            return Err(DnapError::AlleleCannotMutate);
-        }
-
-        let now = SystemTime::now();
-        let mutations = self.build_mutations(
-            allele.id,
-            input.insulator_id,
-            input.genome_id,
-            allele.locus_id,
-            allele.gene_family_generation_id,
-            input.mutations,
-            input.causes,
-            input.created_by,
-            now,
-        )?;
-        if allele.state == AlleleState::Expressing && !mutations.is_empty() {
-            allele.state = AlleleState::Mutating;
-        }
-        allele.updated_at = now;
-
-        let locus = self
-            .loci
-            .get(&allele.locus_id)
-            .cloned()
-            .ok_or(DnapError::AlleleNotFound)?;
-        let family = self
-            .gene_families
-            .get(&locus.family_id)
-            .ok_or(DnapError::GeneFamilyNotFound)?;
-        let gene_fqn = self.gene_fqn(family, &locus, allele.generation);
-
-        self.alleles.insert(allele.id, allele.clone());
-        for mutation in &mutations {
-            self.mutations.insert(mutation.id, mutation.clone());
-        }
-
-        Ok(MutatedAllele {
-            locus,
-            transposon: None,
-            allele,
-            mutations,
-            gene_fqn,
-        })
-    }
-
-    pub fn transcribe(&mut self, input: TranscribeAllele) -> Result<TranscribedAllele, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            &input.gene_fqn,
-        )?;
-        let allele = self
-            .alleles
-            .get(&allele_id)
-            .cloned()
-            .ok_or(DnapError::AlleleNotFound)?;
-        let previous_cursors = self
-            .transcriptomes
-            .get(&allele.id)
-            .map(|transcriptome| transcriptome.sequences.clone())
-            .unwrap_or_default();
-        let projection = self.project_allele(allele.id)?;
-        let latest_cursors = self.latest_sequence_cursors(allele.id);
-        let sequences = if input.full {
-            projection
-        } else {
-            projection
-                .into_iter()
-                .filter(|sequence| {
-                    let previous = previous_cursors
-                        .iter()
-                        .find(|cursor| cursor.sequence_definition_id == sequence.definition_id)
-                        .map(|cursor| {
-                            (
-                                cursor.last_rendered_mutation_id,
-                                cursor.last_rendered_sequence_hash.clone(),
-                            )
-                        });
-                    let latest = latest_cursors
-                        .iter()
-                        .find(|cursor| cursor.sequence_definition_id == sequence.definition_id)
-                        .map(|cursor| {
-                            (
-                                cursor.last_rendered_mutation_id,
-                                cursor.last_rendered_sequence_hash.clone(),
-                            )
-                        });
-                    previous != latest
-                })
-                .collect()
-        };
-
-        let now = SystemTime::now();
-        let chromosome_id = self
-            .chromosomes
-            .get(&allele.locus_id)
-            .map(|chromosome| chromosome.id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        let transcriptome = match self.transcriptomes.get(&allele.id).cloned() {
-            Some(mut transcriptome) => {
-                transcriptome.sequences = latest_cursors;
-                transcriptome.updated_at = now;
-                transcriptome
-            }
-            None => Transcriptome {
-                id: self.allocate_transcriptome_id(),
-                chromosome_id,
-                allele_id: allele.id,
-                sequences: latest_cursors,
-                created_by: input.created_by,
-                created_at: now,
-                updated_at: now,
-            },
-        };
-        self.transcriptomes.insert(allele.id, transcriptome.clone());
-
-        Ok(TranscribedAllele {
-            allele,
-            transcriptome,
-            sequences,
-            approval_comments_visible: true,
-        })
-    }
-
-    pub fn splice(&mut self, input: SpliceAllele) -> Result<SpliceResult, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            &input.gene_fqn,
-        )?;
-        let mut allele = self
-            .alleles
-            .get(&allele_id)
-            .cloned()
-            .ok_or(DnapError::AlleleNotFound)?;
-        let unexpressed_mutation_ids = self
-            .mutations
-            .values()
-            .filter(|mutation| {
-                mutation.allele_id == allele.id && mutation.state == MutationState::Unexpressed
-            })
-            .map(|mutation| mutation.id)
-            .collect::<Vec<_>>();
-        if input.lgtm && unexpressed_mutation_ids.is_empty() {
-            return Err(DnapError::LgtmRequiresUnexpressedMutation);
-        }
-
-        let now = SystemTime::now();
-        let untranscribed_unexpressed_mutations =
-            self.untranscribed_unexpressed_mutation_count(allele.id);
-        let mut exons = Vec::new();
-        for exon_text in input.exon_texts {
-            let text = require_text(exon_text, DnapError::BlankExonText)?;
-            let exon = Exon {
-                id: self.allocate_exon_id(),
-                allele_id: allele.id,
-                text,
-                depends_on: Vec::new(),
-                created_by: input.created_by,
-                created_at: now,
-            };
-            self.exons.insert(exon.id, exon.clone());
-            exons.push(exon);
-        }
-        for mutation_id in unexpressed_mutation_ids {
-            let Some(mutation) = self.mutations.get_mut(&mutation_id) else {
-                continue;
-            };
-            mutation.state = MutationState::Expressing;
-            mutation.updated_at = now;
-        }
-
-        allele.state = AlleleState::Expressing;
-        allele.updated_at = now;
-        self.alleles.insert(allele.id, allele.clone());
-
-        Ok(SpliceResult {
-            allele,
-            exons,
-            untranscribed_unexpressed_mutations,
-        })
-    }
-
-    pub fn translate(&self, input: TranslateAllele) -> Result<TranslatedAllele, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            &input.gene_fqn,
-        )?;
-        let allele = self
-            .alleles
-            .get(&allele_id)
-            .cloned()
-            .ok_or(DnapError::AlleleNotFound)?;
-        let exons = self.ordered_exons(allele.id);
-        if exons.is_empty() {
-            return Err(DnapError::ExonsNotFound);
-        }
-
-        Ok(TranslatedAllele { allele, exons })
-    }
-
-    pub fn create_exploration_graph(
-        &mut self,
-        input: CreateExplorationGraph,
-    ) -> Result<CreatedExplorationGraph, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            &input.promoter_gene_fqn,
-        )?;
-        let allele = self
-            .alleles
-            .get(&allele_id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        self.require_locus_encoding(allele.locus_id, EncodingKind::Promoter)?;
-        let promoter_locus = self
-            .loci
-            .get(&allele.locus_id)
-            .cloned()
-            .ok_or(DnapError::AlleleNotFound)?;
-        let name = require_text(input.name, DnapError::BlankExplorationGraphName)?;
-        let now = SystemTime::now();
-        let graph = ExplorationGraph {
-            id: self.allocate_exploration_graph_id(),
-            promoter_locus_id: promoter_locus.id,
-            name,
-            created_by: input.created_by,
-            created_at: now,
-            updated_at: now,
-        };
-
-        self.exploration_graphs.insert(graph.id, graph.clone());
-
-        Ok(CreatedExplorationGraph {
-            graph,
-            promoter_locus,
-        })
-    }
-
-    pub fn add_exploration_node(
-        &mut self,
-        input: AddExplorationNode,
-    ) -> Result<AddedExplorationNode, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-        let graph = self
-            .exploration_graphs
-            .get(&input.graph_id)
-            .cloned()
-            .ok_or(DnapError::ExplorationGraphNotFound)?;
-        let promoter_locus = self
-            .loci
-            .get(&graph.promoter_locus_id)
-            .ok_or(DnapError::ExplorationGraphNotFound)?;
-        if promoter_locus.insulator_id != input.insulator_id
-            || promoter_locus.genome_id != input.genome_id
-        {
-            return Err(DnapError::ExplorationGraphNotFound);
-        }
-
-        let erna_locus_name =
-            require_text(input.erna_locus_name, DnapError::BlankExplorationNodeName)?;
-        let mut created_erna = None;
-        let erna_locus = match self.find_locus_by_encoding(
-            input.insulator_id,
-            input.genome_id,
-            EncodingKind::ERna,
-            &erna_locus_name,
-        ) {
-            Some(locus) => locus.clone(),
-            None => {
-                let family_abbreviation = input
-                    .erna_family_abbreviation
-                    .clone()
-                    .ok_or(DnapError::ExplorationNodeErnaFamilyRequired)?;
-                let mutated = self.mutate_new(MutateNew {
-                    insulator_id: input.insulator_id,
-                    genome_id: input.genome_id,
-                    gene_family_abbreviation: family_abbreviation,
-                    locus_name: erna_locus_name.clone(),
-                    mutations: Vec::new(),
-                    causes: Vec::new(),
-                    created_by: input.created_by,
-                })?;
-                self.require_locus_encoding(mutated.locus.id, EncodingKind::ERna)?;
-                let locus = mutated.locus.clone();
-                created_erna = Some(mutated);
-                locus
-            }
-        };
-        self.require_locus_encoding(erna_locus.id, EncodingKind::ERna)?;
-        let label = match input.label {
-            Some(label) => require_text(label, DnapError::BlankExplorationNodeName)?,
-            None => erna_locus.name.clone(),
-        };
-        let now = SystemTime::now();
-        let node = ExplorationNode {
-            id: self.allocate_exploration_node_id(),
-            graph_id: input.graph_id,
-            erna_locus_id: erna_locus.id,
-            label,
-            position_x: input.position_x,
-            position_y: input.position_y,
-            created_by: input.created_by,
-            created_at: now,
-            updated_at: now,
-        };
-
-        self.exploration_nodes.insert(node.id, node.clone());
-
-        Ok(AddedExplorationNode {
-            node,
-            erna_locus,
-            created_erna,
-        })
-    }
-
-    pub fn add_exploration_edge(
-        &mut self,
-        input: AddExplorationEdge,
-    ) -> Result<ExplorationEdge, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-        let graph = self
-            .exploration_graphs
-            .get(&input.graph_id)
-            .ok_or(DnapError::ExplorationGraphNotFound)?;
-        let promoter_locus = self
-            .loci
-            .get(&graph.promoter_locus_id)
-            .ok_or(DnapError::ExplorationGraphNotFound)?;
-        if promoter_locus.insulator_id != input.insulator_id
-            || promoter_locus.genome_id != input.genome_id
-        {
-            return Err(DnapError::ExplorationGraphNotFound);
-        }
-        let from = self
-            .exploration_nodes
-            .get(&input.from_node_id)
-            .ok_or(DnapError::ExplorationNodeNotFound)?;
-        let to = self
-            .exploration_nodes
-            .get(&input.to_node_id)
-            .ok_or(DnapError::ExplorationNodeNotFound)?;
-        if from.graph_id != input.graph_id || to.graph_id != input.graph_id {
-            return Err(DnapError::ExplorationEdgeCrossGraph);
-        }
-        let label = input
-            .label
-            .map(|label| require_text(label, DnapError::BlankExplorationEdgeLabel))
-            .transpose()?;
-        let now = SystemTime::now();
-        let edge = ExplorationEdge {
-            id: self.allocate_exploration_edge_id(),
-            graph_id: input.graph_id,
-            from_node_id: input.from_node_id,
-            to_node_id: input.to_node_id,
-            label,
-            created_by: input.created_by,
-            created_at: now,
-        };
-
-        self.exploration_edges.insert(edge.id, edge.clone());
-        Ok(edge)
-    }
-
-    pub fn attach_enhancer_promoter(
-        &mut self,
-        input: AttachEnhancerPromoter,
-    ) -> Result<EnhancerContext, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.updated_by, input.insulator_id)?;
-
-        let enhancer_allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.updated_by,
-            &input.enhancer_gene_fqn,
-        )?;
-        let promoter_allele_id = self.resolve_active_allele_id(
-            input.insulator_id,
-            input.genome_id,
-            input.updated_by,
-            &input.promoter_gene_fqn,
-        )?;
-        let enhancer_locus_id = self
-            .alleles
-            .get(&enhancer_allele_id)
-            .map(|allele| allele.locus_id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        let promoter_locus_id = self
-            .alleles
-            .get(&promoter_allele_id)
-            .map(|allele| allele.locus_id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(enhancer_locus_id, EncodingKind::Enhancer) {
-            return Err(DnapError::EnhancerContextEnhancerRequired);
-        }
-        if !self.locus_has_encoding(promoter_locus_id, EncodingKind::Promoter) {
-            return Err(DnapError::EnhancerContextPromoterRequired);
-        }
-
-        let context = EnhancerContext {
-            enhancer_locus_id,
-            promoter_locus_id,
-            updated_by: input.updated_by,
-            updated_at: SystemTime::now(),
-        };
-        self.enhancer_contexts
-            .insert(enhancer_locus_id, context.clone());
-        Ok(context)
-    }
-
-    pub fn create_intron(&mut self, input: CreateIntron) -> Result<Intron, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let (target_mrna_locus_id, target_sequence_definition_id) = self.resolve_intron_target(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            &input.target_mrna_fqn,
-            input.target_sequence_name.as_deref(),
-        )?;
-        if let Some(precursor) = input.precursor {
-            let precursor = self
-                .introns
-                .get(&precursor)
-                .ok_or(DnapError::IntronNotFound)?;
-            if precursor.target_mrna_locus_id != target_mrna_locus_id
-                || precursor.target_sequence_definition_id != target_sequence_definition_id
-            {
-                return Err(DnapError::IntronNotFound);
-            }
-        }
-        let title = require_text(input.title, DnapError::BlankIntronTitle)?;
-        let body = input
-            .body
-            .map(|body| require_text(body, DnapError::BlankIntronTitle))
-            .transpose()?;
-        let normalized_title = normalize_match_text(&title);
-        if self.introns.values().any(|intron| {
-            intron.target_mrna_locus_id == target_mrna_locus_id
-                && intron.target_sequence_definition_id == target_sequence_definition_id
-                && intron.precursor == input.precursor
-                && intron.normalized_title == normalized_title
-        }) {
-            return Err(DnapError::DuplicateIntronTitle);
-        }
-
-        let title_scope_hash = intron_title_scope_hash(
-            target_mrna_locus_id,
-            target_sequence_definition_id,
-            input.precursor,
-            &normalized_title,
-        );
-        let intron = Intron {
-            id: self.allocate_intron_id(),
-            target_mrna_locus_id,
-            target_sequence_definition_id,
-            precursor: input.precursor,
-            title,
-            body,
-            normalized_title,
-            title_scope_hash,
-            created_by: input.created_by,
-            created_at: SystemTime::now(),
-        };
-        self.introns.insert(intron.id, intron.clone());
-
-        Ok(intron)
-    }
-
-    pub fn append_intron_sequence(
-        &mut self,
-        input: AppendIntronSequence,
-    ) -> Result<AppendedIntronSequence, DnapError> {
-        self.require_insulator(input.insulator_id)?;
-        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
-        self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
-
-        let target = match input.target_mrna_fqn.as_deref() {
-            Some(target_mrna_fqn) => Some(self.resolve_intron_target(
-                input.insulator_id,
-                input.genome_id,
-                input.created_by,
-                target_mrna_fqn,
-                input.target_sequence_name.as_deref(),
-            )?),
-            None => None,
-        };
-        let intron = self.resolve_intron(
-            input.insulator_id,
-            input.genome_id,
-            input.created_by,
-            input.intron_title.as_str(),
-            target,
-        )?;
-        let sequence = input
-            .body
-            .map(|body| {
-                let body = require_text(body, DnapError::BlankIntronAnswer)?;
-                let sequence = IntronSequence {
-                    id: self.allocate_intron_sequence_id(),
-                    intron_id: intron.id,
-                    body,
-                    created_by: input.created_by,
-                    created_at: SystemTime::now(),
-                };
-                self.intron_sequences.insert(sequence.id, sequence.clone());
-                Ok(sequence)
-            })
-            .transpose()?;
-        let follow_up = match input.follow_up_title {
-            Some(title) => Some(
-                self.create_intron(CreateIntron {
-                    insulator_id: input.insulator_id,
-                    genome_id: input.genome_id,
-                    target_mrna_fqn: self
-                        .loci
-                        .get(&intron.target_mrna_locus_id)
-                        .map(|locus| locus.name.clone())
-                        .ok_or(DnapError::IntronNotFound)?,
-                    target_sequence_name: intron.target_sequence_definition_id.and_then(|id| {
-                        self.sequence_definition_name(intron.target_mrna_locus_id, id)
-                    }),
-                    title,
-                    body: input.follow_up_body,
-                    precursor: Some(intron.id),
-                    created_by: input.created_by,
-                })?,
-            ),
-            None => None,
-        };
-
-        Ok(AppendedIntronSequence {
-            intron,
-            sequence,
-            follow_up,
-        })
-    }
-
-    pub fn intron_summaries_for(
-        &self,
-        insulator_id: InsulatorId,
-        genome_id: GenomeId,
-        created_by: TfId,
-        target_mrna_fqn: &str,
-        target_sequence_name: Option<&str>,
-    ) -> Result<Vec<IntronSummary>, DnapError> {
-        self.require_insulator(insulator_id)?;
-        self.require_genome_in_insulator(genome_id, insulator_id)?;
-        self.require_tf_in_insulator(created_by, insulator_id)?;
-        let (target_mrna_locus_id, target_sequence_definition_id) = self.resolve_intron_target(
-            insulator_id,
-            genome_id,
-            created_by,
-            target_mrna_fqn,
-            target_sequence_name,
-        )?;
-        Ok(self
-            .introns
-            .values()
-            .filter(|intron| {
-                intron.target_mrna_locus_id == target_mrna_locus_id
-                    && intron.target_sequence_definition_id == target_sequence_definition_id
-            })
-            .filter(|intron| intron.precursor.is_none())
-            .map(|intron| self.intron_summary(intron))
-            .collect())
-    }
-
-    pub fn intron_thread(
-        &self,
-        insulator_id: InsulatorId,
-        genome_id: GenomeId,
-        created_by: TfId,
-        intron_title: &str,
-        target: Option<(&str, Option<&str>)>,
-    ) -> Result<IntronThread, DnapError> {
-        self.require_insulator(insulator_id)?;
-        self.require_genome_in_insulator(genome_id, insulator_id)?;
-        self.require_tf_in_insulator(created_by, insulator_id)?;
-        let target = target
-            .map(|(target_mrna_fqn, target_sequence_name)| {
-                self.resolve_intron_target(
-                    insulator_id,
-                    genome_id,
-                    created_by,
-                    target_mrna_fqn,
-                    target_sequence_name,
-                )
-            })
-            .transpose()?;
-        let intron =
-            self.resolve_intron(insulator_id, genome_id, created_by, intron_title, target)?;
-        let sequences = self.intron_sequences_for(intron.id);
-        let mut precursors = Vec::new();
-        if let Some(precursor_id) = intron.precursor {
-            if let Some(precursor) = self.introns.get(&precursor_id) {
-                precursors.push(self.intron_summary(precursor));
-            }
-        }
-        let children = self
-            .introns
-            .values()
-            .filter(|candidate| candidate.precursor == Some(intron.id))
-            .map(|child| self.intron_summary(child))
-            .collect();
-
-        Ok(IntronThread {
-            intron,
-            sequences,
-            precursors,
-            children,
-        })
-    }
-
-    pub fn intron_thread_by_id(&self, intron_id: IntronId) -> Result<IntronThread, DnapError> {
-        let intron = self
-            .introns
-            .get(&intron_id)
-            .cloned()
-            .ok_or(DnapError::IntronNotFound)?;
-        let sequences = self.intron_sequences_for(intron.id);
-        let mut precursors = Vec::new();
-        if let Some(precursor_id) = intron.precursor {
-            if let Some(precursor) = self.introns.get(&precursor_id) {
-                precursors.push(self.intron_summary(precursor));
-            }
-        }
-        let children = self
-            .introns
-            .values()
-            .filter(|candidate| candidate.precursor == Some(intron.id))
-            .map(|child| self.intron_summary(child))
-            .collect();
-
-        Ok(IntronThread {
-            intron,
-            sequences,
-            precursors,
-            children,
-        })
-    }
-
-    pub fn project_allele(&self, allele_id: AlleleId) -> Result<Vec<Sequence>, DnapError> {
-        let allele = self
-            .alleles
-            .get(&allele_id)
-            .ok_or(DnapError::AlleleNotFound)?;
-        let generation = self
-            .gene_family_generations
-            .get(&allele.gene_family_generation_id)
-            .ok_or(DnapError::GeneFamilyNotFound)?;
-        let mut latest = BTreeMap::<SequenceDefinitionId, &Mutation>::new();
-        for mutation in self
-            .mutations
-            .values()
-            .filter(|mutation| mutation.allele_id == allele_id)
-        {
-            latest.insert(mutation.sequence_definition_id, mutation);
-        }
-
-        Ok(generation
-            .sequences
-            .iter()
-            .filter_map(|definition| {
-                latest.get(&definition.id).map(|mutation| Sequence {
-                    definition_id: definition.id,
-                    name: definition.name.clone(),
-                    value: mutation.value.clone(),
-                })
-            })
-            .collect())
-    }
-
-    pub fn locus(&self, id: LocusId) -> Option<&Locus> {
-        self.loci.get(&id)
-    }
-
-    pub fn allele(&self, id: AlleleId) -> Option<&Allele> {
-        self.alleles.get(&id)
-    }
-
-    pub fn transcriptome(&self, allele_id: AlleleId) -> Option<&Transcriptome> {
-        self.transcriptomes.get(&allele_id)
-    }
-
-    pub fn exploration_graph(&self, id: ExplorationGraphId) -> Option<&ExplorationGraph> {
-        self.exploration_graphs.get(&id)
-    }
-
-    pub fn exploration_nodes(&self, graph_id: ExplorationGraphId) -> Vec<&ExplorationNode> {
-        self.exploration_nodes
-            .values()
-            .filter(|node| node.graph_id == graph_id)
-            .collect()
-    }
-
-    pub fn exploration_edges(&self, graph_id: ExplorationGraphId) -> Vec<&ExplorationEdge> {
-        self.exploration_edges
-            .values()
-            .filter(|edge| edge.graph_id == graph_id)
-            .collect()
-    }
-
-    pub fn enhancer_context(&self, enhancer_locus_id: LocusId) -> Option<&EnhancerContext> {
-        self.enhancer_contexts.get(&enhancer_locus_id)
-    }
-
-    pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
-        let normalized = normalize_match_text(name);
-        self.insulators
-            .values()
-            .find(|insulator| normalize_match_text(&insulator.name) == normalized)
-    }
-
-    pub fn find_genome_by_name(&self, insulator_id: InsulatorId, name: &str) -> Option<&Genome> {
-        let normalized = normalize_match_text(name);
-        self.genomes.values().find(|genome| {
-            genome.insulator_id == insulator_id && normalize_match_text(&genome.name) == normalized
-        })
-    }
-
-    pub fn find_tf_by_display_name(&self, insulator_id: InsulatorId, name: &str) -> Option<&Tf> {
-        let normalized = normalize_match_text(name);
-        self.tfs.values().find(|tf| {
-            tf.insulator_id == insulator_id && normalize_match_text(&tf.display_name) == normalized
-        })
-    }
-
-    pub fn insulator(&self, id: InsulatorId) -> Option<&Insulator> {
-        self.insulators.get(&id)
-    }
-
-    pub fn active_placement(&self, insulator_id: InsulatorId) -> Option<&InsulatorPlacement> {
-        self.placements
-            .get(&insulator_id)
-            .filter(|placement| placement.active)
-    }
-
-    pub fn genome(&self, id: GenomeId) -> Option<&Genome> {
-        self.genomes.get(&id)
-    }
-
-    pub fn tf(&self, id: TfId) -> Option<&Tf> {
-        self.tfs.get(&id)
-    }
-
-    pub fn gene_family(&self, id: GeneFamilyId) -> Option<&GeneFamily> {
-        self.gene_families.get(&id)
-    }
-
     pub fn gene_family_generation(
         &self,
         id: GeneFamilyGenerationId,
@@ -1110,14 +77,14 @@ impl Dnap {
         self.gene_family_generations.get(&id)
     }
 
-    fn require_insulator(&self, id: InsulatorId) -> Result<(), DnapError> {
+    pub(super) fn require_insulator(&self, id: InsulatorId) -> Result<(), DnapError> {
         self.insulators
             .contains_key(&id)
             .then_some(())
             .ok_or(DnapError::InsulatorNotFound)
     }
 
-    fn require_genome_in_insulator(
+    pub(super) fn require_genome_in_insulator(
         &self,
         id: GenomeId,
         insulator_id: InsulatorId,
@@ -1130,7 +97,7 @@ impl Dnap {
         }
     }
 
-    fn require_tf_in_insulator(
+    pub(super) fn require_tf_in_insulator(
         &self,
         id: TfId,
         insulator_id: InsulatorId,
@@ -1143,7 +110,7 @@ impl Dnap {
         }
     }
 
-    fn require_available_abbreviation(
+    pub(super) fn require_available_abbreviation(
         &self,
         insulator_id: InsulatorId,
         genome_id: Option<GenomeId>,
@@ -1162,7 +129,7 @@ impl Dnap {
         }
     }
 
-    fn require_no_active_allele(
+    pub(super) fn require_no_active_allele(
         &self,
         locus_id: LocusId,
         created_by: TfId,
@@ -1179,7 +146,7 @@ impl Dnap {
         }
     }
 
-    fn find_locus(
+    pub(super) fn find_locus(
         &self,
         genome_id: GenomeId,
         family_id: GeneFamilyId,
@@ -1193,7 +160,7 @@ impl Dnap {
         })
     }
 
-    fn find_locus_by_encoding(
+    pub(super) fn find_locus_by_encoding(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
@@ -1209,7 +176,7 @@ impl Dnap {
         })
     }
 
-    fn require_locus_encoding(
+    pub(super) fn require_locus_encoding(
         &self,
         locus_id: LocusId,
         encoding: EncodingKind,
@@ -1248,7 +215,7 @@ impl Dnap {
         }
     }
 
-    fn resolve_intron_target(
+    pub(super) fn resolve_intron_target(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
@@ -1278,7 +245,7 @@ impl Dnap {
         Ok((allele.locus_id, sequence_definition_id))
     }
 
-    fn resolve_intron(
+    pub(super) fn resolve_intron(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
@@ -1343,7 +310,7 @@ impl Dnap {
         }
     }
 
-    fn intron_summary(&self, intron: &Intron) -> IntronSummary {
+    pub(super) fn intron_summary(&self, intron: &Intron) -> IntronSummary {
         let latest_sequence = self.intron_sequences_for(intron.id).into_iter().last();
         let child_count = self
             .introns
@@ -1358,7 +325,7 @@ impl Dnap {
         }
     }
 
-    fn intron_sequences_for(&self, intron_id: IntronId) -> Vec<IntronSequence> {
+    pub(super) fn intron_sequences_for(&self, intron_id: IntronId) -> Vec<IntronSequence> {
         self.intron_sequences
             .values()
             .filter(|sequence| sequence.intron_id == intron_id)
@@ -1366,7 +333,7 @@ impl Dnap {
             .collect()
     }
 
-    fn sequence_definition_name(
+    pub(super) fn sequence_definition_name(
         &self,
         target_mrna_locus_id: LocusId,
         sequence_definition_id: SequenceDefinitionId,
@@ -1383,7 +350,7 @@ impl Dnap {
             .map(|definition| definition.name.clone())
     }
 
-    fn latest_intron_sequence(&self, intron_id: IntronId) -> Option<IntronSequence> {
+    pub(super) fn latest_intron_sequence(&self, intron_id: IntronId) -> Option<IntronSequence> {
         self.intron_sequences
             .values()
             .filter(|sequence| sequence.intron_id == intron_id)
@@ -1391,7 +358,7 @@ impl Dnap {
             .last()
     }
 
-    fn mutation_context(
+    pub(super) fn mutation_context(
         &self,
         target_mrna_locus_id: LocusId,
         sequence_definition_id: SequenceDefinitionId,
@@ -1418,7 +385,7 @@ impl Dnap {
             .collect()
     }
 
-    fn build_mutations(
+    pub(super) fn build_mutations(
         &mut self,
         allele_id: AlleleId,
         insulator_id: InsulatorId,
@@ -1512,7 +479,7 @@ impl Dnap {
             .collect())
     }
 
-    fn resolve_active_allele_id(
+    pub(super) fn resolve_active_allele_id(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
@@ -1554,7 +521,10 @@ impl Dnap {
         }
     }
 
-    fn latest_sequence_cursors(&self, allele_id: AlleleId) -> Vec<TranscriptSequenceCursor> {
+    pub(super) fn latest_sequence_cursors(
+        &self,
+        allele_id: AlleleId,
+    ) -> Vec<TranscriptSequenceCursor> {
         let mut latest = BTreeMap::<SequenceDefinitionId, (MutationId, SequenceHash)>::new();
         for mutation in self
             .mutations
@@ -1578,7 +548,7 @@ impl Dnap {
             .collect()
     }
 
-    fn untranscribed_unexpressed_mutation_count(&self, allele_id: AlleleId) -> usize {
+    pub(super) fn untranscribed_unexpressed_mutation_count(&self, allele_id: AlleleId) -> usize {
         let previous_cursors = self
             .transcriptomes
             .get(&allele_id)
@@ -1605,7 +575,7 @@ impl Dnap {
             .count()
     }
 
-    fn ordered_exons(&self, allele_id: AlleleId) -> Vec<Exon> {
+    pub(super) fn ordered_exons(&self, allele_id: AlleleId) -> Vec<Exon> {
         let mut remaining = self
             .exons
             .values()
@@ -1637,7 +607,7 @@ impl Dnap {
         ordered
     }
 
-    fn gene_fqn(&self, family: &GeneFamily, locus: &Locus, generation: u32) -> String {
+    pub(super) fn gene_fqn(&self, family: &GeneFamily, locus: &Locus, generation: u32) -> String {
         format!(
             "{}-{}-{:04}",
             family.abbreviation,
@@ -1646,103 +616,103 @@ impl Dnap {
         )
     }
 
-    fn gene_fqn_without_generation(&self, family: &GeneFamily, locus: &Locus) -> String {
+    pub(super) fn gene_fqn_without_generation(&self, family: &GeneFamily, locus: &Locus) -> String {
         format!("{}-{}", family.abbreviation, slugify(&locus.name))
     }
 
-    fn allocate_insulator_id(&mut self) -> InsulatorId {
+    pub(super) fn allocate_insulator_id(&mut self) -> InsulatorId {
         self.next_insulator_id += 1;
         InsulatorId(self.next_insulator_id)
     }
 
-    fn allocate_genome_id(&mut self) -> GenomeId {
+    pub(super) fn allocate_genome_id(&mut self) -> GenomeId {
         self.next_genome_id += 1;
         GenomeId(self.next_genome_id)
     }
 
-    fn allocate_tf_id(&mut self) -> TfId {
+    pub(super) fn allocate_tf_id(&mut self) -> TfId {
         self.next_tf_id += 1;
         TfId(self.next_tf_id)
     }
 
-    fn allocate_gene_family_id(&mut self) -> GeneFamilyId {
+    pub(super) fn allocate_gene_family_id(&mut self) -> GeneFamilyId {
         self.next_gene_family_id += 1;
         GeneFamilyId(self.next_gene_family_id)
     }
 
-    fn allocate_gene_family_generation_id(&mut self) -> GeneFamilyGenerationId {
+    pub(super) fn allocate_gene_family_generation_id(&mut self) -> GeneFamilyGenerationId {
         self.next_gene_family_generation_id += 1;
         GeneFamilyGenerationId(self.next_gene_family_generation_id)
     }
 
-    fn allocate_sequence_definition_id(&mut self) -> SequenceDefinitionId {
+    pub(super) fn allocate_sequence_definition_id(&mut self) -> SequenceDefinitionId {
         self.next_sequence_definition_id += 1;
         SequenceDefinitionId(self.next_sequence_definition_id)
     }
 
-    fn allocate_locus_id(&mut self) -> LocusId {
+    pub(super) fn allocate_locus_id(&mut self) -> LocusId {
         self.next_locus_id += 1;
         LocusId(self.next_locus_id)
     }
 
-    fn allocate_transposon_id(&mut self) -> TransposonId {
+    pub(super) fn allocate_transposon_id(&mut self) -> TransposonId {
         self.next_transposon_id += 1;
         TransposonId(self.next_transposon_id)
     }
 
-    fn allocate_allele_id(&mut self) -> AlleleId {
+    pub(super) fn allocate_allele_id(&mut self) -> AlleleId {
         self.next_allele_id += 1;
         AlleleId(self.next_allele_id)
     }
 
-    fn allocate_mutation_id(&mut self) -> MutationId {
+    pub(super) fn allocate_mutation_id(&mut self) -> MutationId {
         self.next_mutation_id += 1;
         MutationId(self.next_mutation_id)
     }
 
-    fn allocate_chromosome_id(&mut self) -> ChromosomeId {
+    pub(super) fn allocate_chromosome_id(&mut self) -> ChromosomeId {
         self.next_chromosome_id += 1;
         ChromosomeId(self.next_chromosome_id)
     }
 
-    fn allocate_transcriptome_id(&mut self) -> TranscriptomeId {
+    pub(super) fn allocate_transcriptome_id(&mut self) -> TranscriptomeId {
         self.next_transcriptome_id += 1;
         TranscriptomeId(self.next_transcriptome_id)
     }
 
-    fn allocate_exon_id(&mut self) -> ExonId {
+    pub(super) fn allocate_exon_id(&mut self) -> ExonId {
         self.next_exon_id += 1;
         ExonId(self.next_exon_id)
     }
 
-    fn allocate_exploration_graph_id(&mut self) -> ExplorationGraphId {
+    pub(super) fn allocate_exploration_graph_id(&mut self) -> ExplorationGraphId {
         self.next_exploration_graph_id += 1;
         ExplorationGraphId(self.next_exploration_graph_id)
     }
 
-    fn allocate_exploration_node_id(&mut self) -> ExplorationNodeId {
+    pub(super) fn allocate_exploration_node_id(&mut self) -> ExplorationNodeId {
         self.next_exploration_node_id += 1;
         ExplorationNodeId(self.next_exploration_node_id)
     }
 
-    fn allocate_exploration_edge_id(&mut self) -> ExplorationEdgeId {
+    pub(super) fn allocate_exploration_edge_id(&mut self) -> ExplorationEdgeId {
         self.next_exploration_edge_id += 1;
         ExplorationEdgeId(self.next_exploration_edge_id)
     }
 
-    fn allocate_intron_id(&mut self) -> IntronId {
+    pub(super) fn allocate_intron_id(&mut self) -> IntronId {
         self.next_intron_id += 1;
         IntronId(self.next_intron_id)
     }
 
-    fn allocate_intron_sequence_id(&mut self) -> IntronSequenceId {
+    pub(super) fn allocate_intron_sequence_id(&mut self) -> IntronSequenceId {
         self.next_intron_sequence_id += 1;
         IntronSequenceId(self.next_intron_sequence_id)
     }
 }
 
 #[derive(Clone, Copy)]
-enum EncodingKind {
+pub(super) enum EncodingKind {
     Promoter,
     Enhancer,
     ERna,
@@ -2850,7 +1820,7 @@ mod tests {
     }
 
     #[test]
-    fn mutation_context_captures_relevant_introns_and_explicit_causes() {
+    pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
         let mut dnap = Dnap::default();
         let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
         define_gene_family_with_encoding(
