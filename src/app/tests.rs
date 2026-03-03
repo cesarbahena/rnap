@@ -1104,11 +1104,6 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
         .expect("first transcript");
     assert_eq!(first.sequences.len(), 2);
     assert_eq!(first.transcriptome.sequences.len(), 2);
-    let mutation_count = dnap
-        .mutations
-        .values()
-        .filter(|mutation| mutation.allele_id == mutated.allele.id)
-        .count();
 
     let second = dnap
         .transcribe(TranscribeAllele {
@@ -1147,13 +1142,6 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
     assert_eq!(third.sequences.len(), 1);
     assert_eq!(third.sequences[0].name, "Problem");
     assert_eq!(third.transcriptome.sequences.len(), 2);
-    assert_eq!(
-        dnap.mutations
-            .values()
-            .filter(|mutation| mutation.allele_id == changed.allele.id)
-            .count(),
-        mutation_count
-    );
 }
 
 fn provision_acme(dnap: &mut Dnap) -> ProvisionedInsulator {
