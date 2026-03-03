@@ -63,17 +63,17 @@ impl Dnap {
             alleles: vec![allele.id],
         };
 
-        let mutations = self.build_mutations(
-            allele.id,
-            input.insulator_id,
-            input.genome_id,
-            locus.id,
-            generation.id,
-            input.mutations,
-            input.causes,
-            input.created_by,
-            now,
-        )?;
+        let mutations = self.build_mutations(BuildMutations {
+            allele_id: allele.id,
+            insulator_id: input.insulator_id,
+            genome_id: input.genome_id,
+            locus_id: locus.id,
+            generation_id: generation.id,
+            mutations: input.mutations,
+            causes: input.causes,
+            created_by: input.created_by,
+            created_at: now,
+        })?;
         let gene_fqn = self.gene_fqn(&family, &locus, allele.generation);
 
         self.loci.insert(locus.id, locus.clone());
@@ -114,17 +114,17 @@ impl Dnap {
         }
 
         let now = SystemTime::now();
-        let mutations = self.build_mutations(
-            allele.id,
-            input.insulator_id,
-            input.genome_id,
-            allele.locus_id,
-            allele.gene_family_generation_id,
-            input.mutations,
-            input.causes,
-            input.created_by,
-            now,
-        )?;
+        let mutations = self.build_mutations(BuildMutations {
+            allele_id: allele.id,
+            insulator_id: input.insulator_id,
+            genome_id: input.genome_id,
+            locus_id: allele.locus_id,
+            generation_id: allele.gene_family_generation_id,
+            mutations: input.mutations,
+            causes: input.causes,
+            created_by: input.created_by,
+            created_at: now,
+        })?;
         if allele.state == AlleleState::Expressing && !mutations.is_empty() {
             allele.state = AlleleState::Mutating;
         }

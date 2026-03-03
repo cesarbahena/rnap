@@ -561,7 +561,7 @@ fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
             &question_title,
             target_mrna_fqn.as_deref().map(|target| (target, None)),
         )?;
-        return Ok(format_intron_thread(&state.dnap, &thread, all)?);
+        return format_intron_thread(&state.dnap, &thread, all);
     }
 
     let answered = state.dnap.append_intron_sequence(AppendIntronSequence {
@@ -677,7 +677,7 @@ fn current_session(state: &LocalState) -> Result<Session, CliError> {
     state
         .session
         .clone()
-        .ok_or_else(|| CliError::Session(SessionError::MissingSession))
+        .ok_or(CliError::Session(SessionError::MissingSession))
 }
 
 fn positional(args: &[String], index: usize, name: &str) -> Result<String, CliError> {

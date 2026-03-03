@@ -69,6 +69,18 @@ pub struct Dnap {
     intron_sequences: BTreeMap<IntronSequenceId, IntronSequence>,
 }
 
+pub(super) struct BuildMutations {
+    pub allele_id: AlleleId,
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub locus_id: LocusId,
+    pub generation_id: GeneFamilyGenerationId,
+    pub mutations: Vec<SequenceMutation>,
+    pub causes: Vec<String>,
+    pub created_by: TfId,
+    pub created_at: SystemTime,
+}
+
 impl Dnap {
     pub fn gene_family_generation(
         &self,
@@ -200,19 +212,19 @@ impl Dnap {
         let Some(family) = self.gene_families.get(&locus.family_id) else {
             return false;
         };
-        match (family.encodes, encoding) {
-            (EncodingType::GRN(GrnType::Promoter), EncodingKind::Promoter) => true,
-            (EncodingType::GRN(GrnType::Enhancer), EncodingKind::Enhancer) => true,
-            (
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
-                EncodingKind::ERna,
-            ) => true,
-            (
-                EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
-                EncodingKind::MRna,
-            ) => true,
-            _ => false,
-        }
+        matches!(
+            (family.encodes, encoding),
+            (EncodingType::GRN(GrnType::Promoter), EncodingKind::Promoter)
+                | (EncodingType::GRN(GrnType::Enhancer), EncodingKind::Enhancer)
+                | (
+                    EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
+                    EncodingKind::ERna,
+                )
+                | (
+                    EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
+                    EncodingKind::MRna,
+                )
+        )
     }
 
     pub(super) fn resolve_intron_target(
@@ -353,9 +365,8 @@ impl Dnap {
     pub(super) fn latest_intron_sequence(&self, intron_id: IntronId) -> Option<IntronSequence> {
         self.intron_sequences
             .values()
-            .filter(|sequence| sequence.intron_id == intron_id)
+            .rfind(|sequence| sequence.intron_id == intron_id)
             .cloned()
-            .last()
     }
 
     pub(super) fn mutation_context(
@@ -387,34 +398,33 @@ impl Dnap {
 
     pub(super) fn build_mutations(
         &mut self,
-        allele_id: AlleleId,
-        insulator_id: InsulatorId,
-        genome_id: GenomeId,
-        locus_id: LocusId,
-        generation_id: GeneFamilyGenerationId,
-        mutations: Vec<SequenceMutation>,
-        causes: Vec<String>,
-        created_by: TfId,
-        created_at: SystemTime,
+        input: BuildMutations,
     ) -> Result<Vec<Mutation>, DnapError> {
         let generation = self
             .gene_family_generations
-            .get(&generation_id)
+            .get(&input.generation_id)
             .ok_or(DnapError::GeneFamilyNotFound)?
             .clone();
         let mut open_by_sequence = self
             .mutations
             .values()
             .filter(|mutation| {
-                mutation.allele_id == allele_id && mutation.state == MutationState::Unexpressed
+                mutation.allele_id == input.allele_id
+                    && mutation.state == MutationState::Unexpressed
             })
             .map(|mutation| (mutation.sequence_definition_id, mutation.clone()))
             .collect::<BTreeMap<_, _>>();
-        let resolved_causes = causes
+        let resolved_causes = input
+            .causes
             .iter()
             .map(|cause| {
-                let intron =
-                    self.resolve_intron(insulator_id, genome_id, created_by, cause, None)?;
+                let intron = self.resolve_intron(
+                    input.insulator_id,
+                    input.genome_id,
+                    input.created_by,
+                    cause,
+                    None,
+                )?;
                 if self.latest_intron_sequence(intron.id).is_none() {
                     return Err(DnapError::IntronCauseRequiresAnswer);
                 }
@@ -423,7 +433,7 @@ impl Dnap {
             .collect::<Result<Vec<_>, _>>()?;
         let mut touched = Vec::<SequenceDefinitionId>::new();
         let mut requested = Vec::<(SequenceDefinitionId, SequenceValue)>::new();
-        for mutation in mutations {
+        for mutation in input.mutations {
             let sequence_name =
                 require_text(mutation.sequence_name, DnapError::BlankMutationSequenceName)?;
             let definition = resolve_sequence_definition(&generation, &sequence_name)?;
@@ -438,7 +448,7 @@ impl Dnap {
 
         let mut used_causes = Vec::<IntronId>::new();
         for (definition_id, value) in requested {
-            let context = self.mutation_context(locus_id, definition_id, &resolved_causes);
+            let context = self.mutation_context(input.locus_id, definition_id, &resolved_causes);
             for context_item in &context {
                 if let MutationContext::Cause(intron_id, _) = context_item {
                     if !used_causes.contains(intron_id) {
@@ -449,20 +459,20 @@ impl Dnap {
             if let Some(existing) = open_by_sequence.get_mut(&definition_id) {
                 existing.value = value;
                 existing.context = context;
-                existing.updated_at = created_at;
+                existing.updated_at = input.created_at;
             } else {
                 open_by_sequence.insert(
                     definition_id,
                     Mutation {
                         id: self.allocate_mutation_id(),
-                        allele_id,
+                        allele_id: input.allele_id,
                         sequence_definition_id: definition_id,
                         value,
                         context,
                         state: MutationState::Unexpressed,
-                        created_by,
-                        created_at,
-                        updated_at: created_at,
+                        created_by: input.created_by,
+                        created_at: input.created_at,
+                        updated_at: input.created_at,
                     },
                 );
             }
