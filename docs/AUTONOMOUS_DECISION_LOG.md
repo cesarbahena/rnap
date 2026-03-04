@@ -4,6 +4,8 @@ This branch records implementation decisions made while advancing DNAp without l
 
 Each entry is provisional until reviewed and merged.
 
+Current status: superseded as authoritative product direction. The Promoter-owned exploration graph vertical and older `EncodingType` assumptions below are recovery context only. The current foundation is `NormalizedArtifact`, minimal GRN/Operon/Promoter membership, and deferred workflow channels.
+
 ## 2026-02-11: Exploration Graph Vertical
 
 - Decision: implement the next autonomous vertical around Promoter-owned eRNA exploration graphs.

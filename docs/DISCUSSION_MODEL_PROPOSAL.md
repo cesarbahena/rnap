@@ -1,8 +1,12 @@
 # Discussion Model Proposal
 
-This document is a proposal, not approved domain truth.
+This document is superseded recovery context, not approved domain truth.
 
-It summarizes the updated mental model to dissect point by point before changing canonical docs or implementation.
+The current authoritative model is defined in `ONTOLOGY.md`, `DOMAIN_MODEL.md`, `WORKFLOW_MODEL.md`, and `DEFERRED_DOMAIN_LEDGER.md`.
+
+Do not implement structures from this file directly. In particular, the one-Promoter `PreInitiationComplex` root model and Promoter-owned exploration graph model are outdated. Recover ideas from this document only by re-approving them against the current GRN/Operon/NormalizedArtifact foundation.
+
+This file summarizes an older mental model that was kept so potentially valuable reasoning is not lost.
 
 ## Core Shift
 

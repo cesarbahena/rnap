@@ -29,8 +29,8 @@ The reset preserved these product concepts in active docs:
 - `GeneFamilyGenerationId` replacing old `GenotypeId`.
 - `SequenceDefinitionId` as stable field identity.
 - All SequenceDefinitions required before commit.
-- `EncodingType` as required, product-critical document typing.
-- GRN / Translation RNA / Regulatory RNA taxonomy and document meanings.
+- Product-critical document typing through the current `NormalizedArtifact` taxonomy.
+- Earlier GRN / Translation RNA / Regulatory RNA taxonomy and document meanings, now superseded by `NormalizedArtifact`.
 - CLI sequence-name matcher: kebab-case, case-insensitive, fuzzy, exactly one match or error.
 - `Locus` as Genome-scoped document/work item identity.
 - `Transposon` as origin metadata for new Genes/work items.
@@ -55,6 +55,8 @@ These were removed from slice docs because they made the active product definiti
 - Temporary `Prev.md` and `PrevPrev.md` recovery files.
 
 If one of these turns out to be product-relevant, restore it as a current product concept, not as historical commentary.
+
+The active docs now intentionally keep the stable model small. Older one-Promoter PreInitiationComplex, Promoter-owned exploration graph, and generic TfComplex/channel structures are not active product truth unless re-approved.
 
 ## Areas That May Be Under-Preserved
 

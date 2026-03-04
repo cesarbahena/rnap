@@ -26,6 +26,7 @@ Slice 006 implements:
 - Composition occurs through multiple TfClasses on a Tf.
 - Histones may exist at Insulator or Genome scope.
 - Genome Histones extend Insulator Histones.
+- Triage assignment is not authorization. `OperonPromoter.triage_tf` does not grant permissions by itself.
 - `Histone.key` is unique within an Insulator.
 - Only one active HistoneMark may exist per `(target, histone)` pair.
 - Multi-valued attributes use vector value types.

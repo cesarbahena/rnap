@@ -87,7 +87,7 @@ struct ArtifactRef {
 }
 
 struct MRna(ArtifactRef);
-struct ERna(ArtifactRef);
+struct Ribozyme(ArtifactRef);
 struct Enhancer(ArtifactRef);
 ```
 
@@ -101,7 +101,6 @@ struct GeneFamilyGeneration {
     family_id: GeneFamilyId,
     generation: u32,
     sequences: Vec<SequenceDefinition>,
-    created_by: TfId,
     created_at: Timestamp,
 }
 ```
@@ -191,22 +190,50 @@ enum GeneFqnVersionFormat {
 }
 ```
 
+## Canonical Scopes
+
+`Chromosome` is a named canonical scope inside a Genome.
+
+```rust
+struct Chromosome {
+    id: ChromosomeId,
+    genome_id: GenomeId,
+    name: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    degraded_at: Option<Timestamp>,
+}
+```
+
+`Chromosome.name` is unique within a Genome under DNAp canonical name matching. Chromosome has no type/kind in the stable foundation.
+
 ## Document Instances
 
-`Locus` is Genome-scoped document/work item identity. It anchors committed versions for one document instance.
+`Locus` is the stable identity for one controlled document or controlled document item. It anchors committed versions for one document instance and belongs to a Chromosome.
 
 ```rust
 struct Locus {
     id: LocusId,
+    chromosome_id: ChromosomeId,
     family_id: GeneFamilyId,
-    insulator_id: InsulatorId,
-    genome_id: GenomeId,
     name: String,
+    activator: TfId,
     created_at: Timestamp,
+    updated_at: Timestamp,
+    degraded_at: Option<Timestamp>,
 }
 ```
 
 `Locus.name` is the document instance name used for identity and Gene fully qualified names. It is not a Sequence value.
+
+Invariants:
+
+- A Locus belongs to exactly one current Chromosome.
+- A Locus may move between Chromosomes.
+- Locus movement is a domain transition and must be recorded through Signal.
+- `Locus.name` is unique within the containing Genome under DNAp canonical name matching.
+- Implementations may use derived lookup keys or indexes to enforce name matching and uniqueness. Those keys are not domain fields.
+- `Locus.activator` is the accountable owner of the controlled artifact line.
 
 ## Active Work Context
 
@@ -217,9 +244,19 @@ struct Grn {
     id: GrnId,
     genome_id: GenomeId,
     name: String,
+    activator: TfId,
+    state: GrnState,
     operons: Vec<OperonId>,
     created_at: Timestamp,
     updated_at: Timestamp,
+    degraded_at: Option<Timestamp>,
+}
+
+enum GrnState {
+    Triage,
+    Active,
+    Blocked,
+    Closed,
 }
 ```
 
@@ -230,9 +267,16 @@ struct Operon {
     id: OperonId,
     grn_id: GrnId,
     name: String,
-    promoters: Vec<Promoter>,
     created_at: Timestamp,
     updated_at: Timestamp,
+    degraded_at: Option<Timestamp>,
+}
+
+struct OperonPromoter {
+    operon_id: OperonId,
+    promoter: Promoter,
+    triage_tf: Option<TfId>,
+    degraded_at: Option<Timestamp>,
 }
 ```
 
@@ -245,22 +289,34 @@ struct Promoter(ArtifactRef);
 Invariants:
 
 - A GRN belongs to exactly one Genome.
+- `Grn.activator` is the accountable owner of the change context.
+- GRN owns operational lifecycle state through `GrnState`.
+- GRN exists from triage onward. It is the work container before and after activation.
+- A GRN may work across multiple Chromosomes through its Alleles.
+- Multiple GRNs may touch the same Chromosome or Locus. Conflict detection/resolution is deferred.
+- `GrnState` is not a rule engine; detailed readiness, authorization, dependency, and transition gates are derived from artifacts and future configurable workflow policy.
 - An Operon belongs to exactly one GRN.
+- Operon does not own lifecycle state. GRN owns operational lifecycle state.
+- Operon-specific readiness or blockage is derived from Promoter memberships, artifacts, dependencies, and future configurable workflow policy until concrete use cases prove independent Operon state is needed.
 - A Promoter may be assigned to at most one active Operon.
 - Intake triage assigns Promoter artifacts to one active Operon in one active GRN.
+- Triage responsibility belongs to the Promoter-in-Operon membership, not directly to the Promoter artifact.
+- `OperonPromoter.triage_tf` is accountability, not authorization. It does not grant permissions by itself.
+- `GrnState::Triage` allows unassigned OperonPromoter membership.
+- `GrnState::Active` requires every active OperonPromoter membership to have exactly one triage Tf.
+- Only one active OperonPromoter may exist per Promoter.
 - Cross-GRN relationships must be modeled explicitly as dependency, duplication, split, conflict, or another approved relationship, not by assigning the same Promoter to multiple active Operons.
+
+PreInitiationComplex is a named discussion concept. It is not part of the stable domain foundation. No persisted PreInitiationComplex object, GRN field, participant model, topic model, or generic channel abstraction is approved until concrete use cases define it.
 
 `Transposon` is the origin path for a new Gene/work item. It carries origin metadata only; Sequence values arrive through Mutations on the Allele.
 
 ```rust
 struct Transposon {
     id: TransposonId,
-    genome_id: GenomeId,
     locus_id: LocusId,
     gene_family_generation_id: GeneFamilyGenerationId,
-    created_by: TfId,
     degraded_at: Option<Timestamp>,
-    degraded_by: Option<TfId>,
     created_at: Timestamp,
 }
 ```
@@ -275,13 +331,11 @@ enum AlleleOrigin {
 
 struct Allele {
     id: AlleleId,
-    genome_id: GenomeId,
+    grn_id: GrnId,
     locus_id: LocusId,
     origin: AlleleOrigin,
     state: AlleleState,
-    created_by: TfId,
     degraded_at: Option<Timestamp>,
-    degraded_by: Option<TfId>,
     created_at: Timestamp,
     updated_at: Timestamp,
 }
@@ -290,11 +344,10 @@ enum AlleleState {
     Mutating,
     Expressing,
     Selected,
-    Degraded,
 }
 ```
 
-One active Allele is allowed per `(Locus, Tf)`. Multiple Tfs may each have one active Allele for the same Locus.
+One active shared Allele is allowed per `(Locus, GRN)`. Alleles are team-visible candidate work inside a GRN, not per-Tf private drafts.
 
 `Mutation` is a Sequence value change on an Allele.
 
@@ -326,7 +379,7 @@ struct Mutation {
     sequence_definition_id: SequenceDefinitionId,
     value: SequenceValue,
     state: MutationState,
-    created_by: TfId,
+    degraded_at: Option<Timestamp>,
     created_at: Timestamp,
     updated_at: Timestamp,
 }
@@ -348,22 +401,14 @@ Approval-status comments for mutated and workflow-suggested Sequences are always
 `Transcriptome` is render/access cursor metadata for token-saving transcript output. It tracks what was last shown so later transcriptions can avoid re-outputting unchanged Sequences unless a full render flag is provided. It does not store the projected document content.
 
 ```rust
-struct Chromosome {
-    id: ChromosomeId,
-    genome_id: GenomeId,
-    locus_id: LocusId,
-    genes: Vec<GeneId>,
-    alleles: Vec<AlleleId>,
-}
-
 struct Transcriptome {
     id: TranscriptomeId,
     chromosome_id: ChromosomeId,
     allele_id: AlleleId,
     sequences: Vec<TranscriptSequenceCursor>,
-    created_by: TfId,
     created_at: Timestamp,
     updated_at: Timestamp,
+    degraded_at: Option<Timestamp>,
 }
 
 struct TranscriptSequenceCursor {
@@ -378,18 +423,16 @@ struct TranscriptSequenceCursor {
 ```rust
 struct Gene {
     id: GeneId,
-    genome_id: GenomeId,
     locus_id: LocusId,
     gene_family_generation_id: GeneFamilyGenerationId,
     generation: u32,
     sequences: Vec<Sequence>,
     selected_from: AlleleId,
-    insulator_id: InsulatorId,
     created_at: Timestamp,
 }
 ```
 
-`Exon` is a refined requirement artifact type. The current `dna splice` implementation creates Exon task records attached to the working Allele; the long-term Exon-as-Gene lifecycle is intentionally unresolved until the normalized artifact remodel is implemented.
+`Exon` is a refined requirement artifact type. The current `dna splice` implementation creates Exon task records attached to the working Allele. This is an implementation bridge, not the final Exon domain model. The long-term Exon-as-Gene lifecycle is unresolved until the normalized artifact remodel is implemented.
 
 ```rust
 struct Exon {
@@ -397,16 +440,61 @@ struct Exon {
     allele_id: AlleleId,
     text: String,
     depends_on: Vec<ExonId>,
-    created_by: TfId,
     created_at: Timestamp,
+    degraded_at: Option<Timestamp>,
 }
 ```
 
 Exons attached to an Allele organize as a DAG through `depends_on`, not a positional list. If Exon A depends on Exon B, B must precede A in the work graph.
 
-`Intron` is a raw requirement artifact type. The current `dna q`/`dna a` implementation uses fixed Intron discussion records; the long-term Intron-as-Gene lifecycle is intentionally unresolved until the normalized artifact remodel is implemented.
+`Intron` is a raw requirement artifact type. Fixed Intron discussion records are not part of the stable foundation. The long-term Intron-as-Gene lifecycle is unresolved until concrete requirement-discussion workflows are approved.
 
-Workflow interactions among Intron, ExploratoryNarrative, TfComplex, CountermeasureAssessmentSystem, and related communication concepts are defined in [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md). Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
+Workflow interactions among Intron, Ribozyme, TfComplex, CountermeasureAssessmentSystem, and related communication concepts are defined in [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md). Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
+
+## Signals And Degradation
+
+Domain records store current business state and fields needed for normal queries.
+
+`degraded_at` is the stable soft-delete/deactivation field for records that can become inactive while remaining auditable. Active queries filter on `degraded_at = None`. Degradation is not a business-state enum variant unless the workflow itself needs a degraded state.
+
+Actor provenance, reasons, before/after details, and transition payloads belong in append-only Signals.
+
+```rust
+struct Signal {
+    id: SignalId,
+    insulator_id: InsulatorId,
+    tf_id: Option<TfId>,
+    signal_type: SignalType,
+    target: SignalTarget,
+    occurred_at: Timestamp,
+    reason: Option<String>,
+    payload: SignalPayload,
+}
+
+enum SignalTarget {
+    Insulator(InsulatorId),
+    Genome(GenomeId),
+    Chromosome(ChromosomeId),
+    Grn(GrnId),
+    Operon(OperonId),
+    Locus(LocusId),
+    Allele(AlleleId),
+    Gene(GeneId),
+    Mutation(MutationId),
+    Tf(TfId),
+    Histone(HistoneId),
+    HistoneMark(HistoneMarkId),
+}
+```
+
+Invariants:
+
+- Signal is append-only.
+- Signal carries `insulator_id` directly for tenant-scoped audit export and filtering.
+- `tf_id` is the Tf responsible for the event when a Tf exists.
+- Signal payloads are typed in application code even if a storage adapter persists them as JSONB.
+- Do not add `created_by`, `updated_by`, `assigned_by`, `moved_by`, or equivalent per-record audit fields unless a current product query needs that value without consulting Signal.
+- Keep domain validity fields such as `HistoneMark.valid_from` and `valid_until` when the timestamps affect behavior, not merely audit.
 
 ## Authorization And Context
 
@@ -459,9 +547,7 @@ struct HistoneMark {
     rationale: Option<String>,
     valid_from: Timestamp,
     valid_until: Option<Timestamp>,
-    created_by: TfId,
     degraded_at: Option<Timestamp>,
-    degraded_by: Option<TfId>,
     created_at: Timestamp,
 }
 
@@ -506,9 +592,8 @@ In this form:
 
 - `FRS` is resolved as a GeneFamily abbreviation in the current Genome context.
 - `Checkout` is the Locus document instance name.
-- At least one Sequence mutation flag is required.
-- DNAp creates the Locus, Transposon, first Allele, and initial Mutation records in one operation.
-- Alleles are created by `dna mutate --new` only when the command actually mutates at least one Sequence.
+- Sequence mutation flags are optional.
+- DNAp creates the Locus, Transposon, and first Allele in one operation. If Sequence mutation flags are present, it also creates or updates `Unexpressed` Mutations.
 
 Mutating existing work omits `--new` and uses the Gene fully qualified name as the first positional argument:
 

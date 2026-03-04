@@ -23,15 +23,17 @@ Combined slice 003/004 implements:
 
 ## Behavior
 
-- Locus is Genome-scoped document/work item identity.
+- Locus is stable document/work item identity inside a Chromosome.
 - Locus anchors committed versions for one document instance.
+- Locus names are unique within the containing Genome under DNAp canonical name matching.
+- Locus may move between Chromosomes with Signal audit.
 - Locus has a document instance name from the first positional CLI argument when created through `dna mutate --new`.
 - Locus name is not a Sequence value.
 - Gene FQN presentation uses Insulator configuration with Genome override.
 - Default Gene FQN presentation is `<gene-family-abbreviation>-<locus-name-slug>-<generation>`, for example `FRS-checkout-0001`.
 - CLI Gene FQN matching is case-insensitive even when presentation case is configurable.
 - Locus belongs to one GeneFamily.
-- Locus belongs to a Genome in the same Insulator as its GeneFamily.
+- Locus belongs to one current Chromosome.
 - A new Gene/work item starts from a Transposon during `dna mutate --new`.
 - Transposon carries origin metadata only.
 - Transposon does not carry Sequence values.
@@ -43,11 +45,10 @@ Combined slice 003/004 implements:
 - Mutating an `Expressing` Allele moves it back to `Mutating` when it creates or updates `Unexpressed` Mutations.
 - `dna splice --lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without changing Exons.
 - `dna select` moves the Allele to `Selected` and creates the immutable Gene.
-- A candidate belongs to exactly one Genome.
-- The Genome must belong to the Locus Insulator.
-- The creator Tf must belong to the same Insulator.
-- One active Allele is allowed per `(Locus, Tf)`.
-- Multiple Tfs may each have one active Allele for the same Locus.
+- A candidate Allele belongs to exactly one GRN.
+- The GRN must belong to the same Genome as the Locus's Chromosome.
+- One active shared Allele is allowed per `(Locus, GRN)`.
+- Multiple GRNs may each have one active Allele for the same Locus.
 - Mutations are editable while `Unexpressed`.
 - Mutations target SequenceDefinitions by `SequenceDefinitionId`.
 - Mutation values must match the SequenceDefinition type.
@@ -79,7 +80,7 @@ dna mutate --new FRS 'Checkout' --some-section 'Awesome section'
 
 - `dna mutate --new` can create Locus, Transposon, Allele, zero Mutations, and default Gene FQN.
 - `dna mutate --new` can also create initial `Unexpressed` Mutation records.
-- Active Allele target matching allows Locus name or omitted generation when it resolves exactly one active Allele.
+- Active Allele target matching allows Locus name or omitted generation when it resolves exactly one active Allele in the current GRN context.
 - Mutating an `Expressing` Allele with Sequence flags moves it to `Mutating`.
 - `dna splice --lgtm` moves the Allele back to `Expressing` by expressing current `Unexpressed` Mutations without changing Exons.
-- Active Allele FQN resolution is scoped to the creating Tf.
+- Active Allele FQN resolution is scoped to the current GRN.

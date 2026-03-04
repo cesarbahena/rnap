@@ -1,13 +1,14 @@
 # DNAp Build Index
 
-DNAp is an enterprise multitenant SDLC platform for configurable document types and delivery workflows.
+DNAp is the Development Network Alignment Platform: an enterprise multitenant SDLC platform for configurable artifact types and delivery workflows.
 
 ## Core Documents
 
 - [ONTOLOGY.md](ONTOLOGY.md): canonical DNAp terms and meanings.
+- [ABSTRACTION_CHARTER.md](ABSTRACTION_CHARTER.md): allowed abstraction classes and modeling rules.
 - [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md): approved workflow interactions among DNAp concepts.
 - [DOMAIN_MODEL.md](DOMAIN_MODEL.md): current product/domain model.
-- [ENCODING_TAXONOMY.md](ENCODING_TAXONOMY.md): system-fixed SDLC document encodings.
+- [ENCODING_TAXONOMY.md](ENCODING_TAXONOMY.md): system-fixed normalized artifact taxonomy.
 - [DEFERRED_DOMAIN_LEDGER.md](DEFERRED_DOMAIN_LEDGER.md): domain obligations intentionally not implemented yet.
 
 ## Build Order
@@ -43,6 +44,8 @@ DNAp is an enterprise multitenant SDLC platform for configurable document types 
 - Build backend/application behavior first.
 - Do not expose normal tenant-user CLI commands for provisioning Insulators.
 - CLI commands should use mainstream biology-oriented workflow language and avoid generic CRUD.
+- CLI commands may compose multiple backend workflow facts when that makes common human workflows easier.
+- Backend records and audit must keep composed workflow facts distinguishable.
 - Tenant data remains enterprise-native unless a tenant explicitly configures biology-heavy language.
 - Configurable definitions may be Insulator-scoped or Genome-scoped.
 - Scoped configurable definitions resolve nearest scope first: Genome override, then Insulator default.

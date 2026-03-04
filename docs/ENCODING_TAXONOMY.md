@@ -21,7 +21,7 @@ NormalizedArtifact::ManagedRequirement
 struct MRna(ArtifactRef);
 
 NormalizedArtifact::ExploratoryNarrative
-struct ERna(ArtifactRef);
+struct Ribozyme(ArtifactRef);
 
 NormalizedArtifact::EnterpriseNegotiationHandoverCertificate
 struct Enhancer(ArtifactRef);
@@ -33,6 +33,7 @@ struct Enhancer(ArtifactRef);
 enum NormalizedArtifact {
     Promoter,
     ProblemAssertionManifest,
+    ProtocolEvaluator,
     ExploratoryNarrative,
     ProjectedIntent,
     Spacer,
@@ -76,7 +77,8 @@ enum NormalizedArtifact {
 
 - `Promoter`: initiative seed or story used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
-- `ExploratoryNarrative`: eRNA, flexible exploration document for narratives, diagrams, and early graph work.
+- `ProtocolEvaluator`: eRNA, protocol/evaluator/control rule artifact that interprets Histones, Signals, artifacts, and relationships.
+- `ExploratoryNarrative`: Ribozyme, relationship/dependency/exploration topology artifact.
 - `ProjectedIntent`: piRNA, projected or explicit intent boundary.
 - `Spacer`: risk assessment.
 - `Protospacer`: unforeseen or emergent risk.
@@ -113,4 +115,4 @@ enum NormalizedArtifact {
 
 `NormalizedArtifact` defines what artifact kind a GeneFamily represents. It does not hardcode lifecycle, dependency, authorization, or tenant-specific workflow semantics.
 
-Those semantics are deferred until concrete use cases define the structures needed. Likely direction: tenant/project configurable workflow policy analogous to Histone-backed configuration, but no ChromatinRemodeler design is approved yet.
+Those semantics are deferred until concrete use cases define the structures needed. eRNA is reserved for protocol/evaluator/control rule artifacts that interpret Histones, Signals, artifacts, and relationships.

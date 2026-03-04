@@ -2,65 +2,108 @@
 
 This document defines approved interaction rules among DNAp concepts. It does not define build order.
 
-## General Rule
+## Stable Foundation
 
 Code should persist only concrete records and typed relationships with a defined workflow purpose.
 
-`TfComplex` does not define Gene schemas, does not own workflow rules, and does not replace GeneFamily or NormalizedArtifact. Application behavior interprets workflow rules over concrete records and relationship edges.
+The stable workflow foundation is intentionally small:
 
-TfComplex targets must be constrained per use case. DNAp must not add unrestricted links between arbitrary Genes.
+- Genome is the project boundary.
+- Chromosome is a named canonical scope inside a Genome.
+- GRN is the work context inside a Genome from triage onward.
+- GRN owns operational lifecycle state.
+- GRN may work across multiple Chromosomes.
+- Operon groups Promoter artifacts inside one GRN.
+- Promoter is a `NormalizedArtifact` on a GeneFamily.
+- Alleles are shared per `(Locus, GRN)`.
+- Triage assignment is accountability, not authorization.
+- Authorization remains Histone-backed.
+- Workflow-channel concepts are deferred until concrete use cases prove the records and relationships they need.
 
 ## GRN And Operons
 
 Genome is the project boundary. GRN is the active initiative/work context inside a Genome.
 
+GRN exists from triage onward. It is the work container before and after activation.
+
+GRN can coordinate changes across multiple Chromosomes. Chromosome is canonical placement; GRN is change context.
+
+GRN owns operational lifecycle state: Triage, Active, Blocked, or Closed.
+
+GRN lifecycle state is not the workflow rule engine. Detailed readiness, authorization, dependency, and transition gates are derived from artifacts and future configurable workflow policy.
+
 A GRN has one or more Operons. An Operon groups Promoter artifacts and represents higher-level intake structure such as an epic.
+
+Operon does not own lifecycle state. GRN owns operational lifecycle state. Operon-specific readiness or blockage is derived from its Promoter memberships, artifacts, dependencies, and future configurable workflow policy until a concrete use case proves independent Operon state is needed.
 
 Promoter is a NormalizedArtifact on a GeneFamily. A concrete Promoter reference is represented by the internal `Promoter(ArtifactRef)` wrapper, not by a raw `LocusId` in domain APIs.
 
 A Promoter may be assigned to only one active Operon at a time.
 
+Triage responsibility belongs to Promoter-in-Operon membership, not directly to the Promoter artifact.
+
+Triage assignment is accountability, not authorization. `OperonPromoter.triage_tf` identifies who is responsible for routing and coordination, but it does not grant permissions by itself.
+
+Unassigned Promoter membership is allowed while a GRN is in Triage. A GRN cannot become Active unless every active Promoter membership has exactly one triage Tf.
+
+Only one active OperonPromoter may exist per Promoter.
+
 If the same intake artifact appears relevant to multiple GRNs or Operons, model that as an explicit dependency, duplication, split, conflict, or another approved relationship. Do not model it as multiple active Operon membership.
 
-## PreInitiationComplex
+CLI workflows may compose GRN creation, Operon creation, Promoter membership, and triage assignment into one user-facing action for ease of use.
 
-PreInitiationComplex uses existing Promoter, EnterpriseNegotiationHandoverCertificate, and ExploratoryNarrative controlled documents.
+Domain records and audit must keep those operations distinguishable. GRN creation, Operon creation, Promoter membership, and triage assignment are separate domain facts even when one CLI command performs them together.
 
-### Promoter And Enterprise Negotiation Handover
+## Alleles In GRNs
 
-EnterpriseNegotiationHandoverCertificate artifacts associate to a Promoter through a Promoter property, not a separate link object.
+Alleles are shared candidate versions inside a GRN.
 
-The Promoter association points to the stable Promoter Locus, not a specific Promoter Allele.
+One active Allele is allowed per `(Locus, GRN)`.
 
-EnterpriseNegotiationHandoverCertificate is a NormalizedArtifact, so the exact research/negotiation schema comes from the GeneFamily.
+Multiple GRNs may each have an active Allele for the same Locus. This is allowed because GRNs isolate parallel change contexts. Conflict detection and future resolution commands are deferred until concrete use cases define them.
 
-### Promoter And Exploration Graphs
+Mutations record field-level edits on the shared Allele. Tf authorship, selection, degradation, movement, and other transition provenance are recorded through Signal.
 
-A Promoter may have many named exploration graphs.
+## Deferred Workflow Concepts
 
-Each ExplorationGraph belongs to exactly one Promoter and is owned by the stable Promoter Locus, not a specific Promoter Allele.
+The following concepts are preserved as product vocabulary, but they are not approved persisted objects, generic channel abstractions, or workflow rule engines:
 
-ExplorationGraph is a Promoter-owned workflow artifact, not a controlled Gene.
+- PreInitiationComplex
+- MediatorComplex
+- RepressorsComplex
+- CRISPR
+- StructuralMaintenance
+- TfComplex
 
-`Promoter -> ExploratoryNarrative` is represented through exploration graph containment, not a direct graph edge.
+Do not abstract these concepts into a generic discussion-channel model before their concrete workflows prove shared structure.
 
-### Exploratory Narrative Graphs
+Do not add unrestricted links between arbitrary Genes. Relationship targets must be constrained by approved use cases and should use typed artifact references when a relationship requires a specific `NormalizedArtifact`.
 
-ExploratoryNarrative owns controlled document content.
+## Deferred Research And Exploration
 
-ExplorationGraph owns graph topology.
+EnterpriseNegotiationHandoverCertificate artifacts are formal enterprise negotiation/research handover documents. Their exact association rules are deferred.
 
-An ExploratoryNarrative may serve as a root node inside an exploration graph.
+ExplorationGraph ownership is not part of the active foundation. The old Promoter-owned graph model is outdated because GRNs now contain Operons with many Promoters.
 
-ExplorationNode is graph-local placement/presentation for a reusable ExploratoryNarrative Locus.
+Exploration graph ownership must be remodeled around GRN, Operon, or another concrete scope when the use cases are clear.
 
-ExplorationNode points to the stable ExploratoryNarrative Locus, not directly to an Allele.
+ExplorationGraph remains workflow topology/presentation state, not controlled document content.
 
-Whiteboard rendering resolves an ExploratoryNarrative Locus to the current active Allele unless a future snapshot/export feature requires historical resolution.
+Do not add new Promoter-owned exploration graph behavior until the ownership scope is redesigned.
 
-ExplorationEdge belongs to one ExplorationGraph and connects graph-local ExplorationNodes, not reusable ExploratoryNarrative documents directly.
+Ribozyme owns relationship/dependency/exploration topology. If a whiteboard or diagram use case needs graph-local state, graph/node/edge records belong to Ribozyme modeling.
 
-ExploratoryNarrative exploration graphs may be cyclic.
+A Ribozyme may point to Genes, Loci, Alleles, or other approved typed references when concrete graph use cases are approved.
+
+ExplorationNode is graph-local placement/presentation for a reusable artifact reference.
+
+ExplorationNode points to stable artifact identity unless a concrete use case requires candidate or historical resolution.
+
+Whiteboard rendering resolves a Ribozyme-referenced Locus to the current active Allele unless a future snapshot/export feature requires historical resolution.
+
+ExplorationEdge belongs to one ExplorationGraph and connects graph-local ExplorationNodes, not reusable controlled artifacts directly.
+
+Ribozyme exploration graphs may be cyclic.
 
 Exploration graphs are intended to render as collaborative React whiteboards.
 
@@ -70,48 +113,19 @@ Exploration graph edges keep semantic relationship data separate from graph-loca
 
 Real-time collaboration will need operation-friendly changes such as creating, moving, resizing, labeling, and linking nodes. CRDT/OT semantics are deferred.
 
-Do not add direct `EnterpriseNegotiationHandoverCertificate <-> ExploratoryNarrative` edges until a concrete workflow requires them.
+Do not add direct `EnterpriseNegotiationHandoverCertificate <-> Ribozyme` edges until a concrete workflow requires them.
 
-### Exploratory Narrative Reuse
+The same controlled artifact may be reused across Ribozyme graphs.
 
-The same ExploratoryNarrative controlled document may be reused across graphs.
+Reused artifacts keep one controlled document identity, while each graph node has graph-local presentation state.
 
-Reused ExploratoryNarrative keeps one controlled document identity, while each graph node has graph-local presentation state.
+## Deferred Channel Notes
 
-## RepressorsComplex
+The old channel notes remain useful as recovery context only:
 
-RepressorsComplex uses piRNA or miRNA open issues and may emit siRNA.
+- RepressorsComplex may eventually use ProjectedIntent, Microalignment, StopImplementation, or DeferredScope artifacts.
+- MediatorComplex may eventually involve Intron, SemanticNarrowing, SemanticConstraintAssumption, StrategicNote, and TaskMediation artifacts.
+- CRISPR may eventually involve Protospacer, CausalResolution, TraceReport, CountermeasureAssessmentSystem, and SuggestedChanges artifacts.
+- StructuralMaintenance may eventually govern deployment and runtime artifacts.
 
-Authoritative siRNA issues may also be roots.
-
-## MediatorComplex
-
-MediatorComplex uses Intron open issues with Intron follow-ups.
-
-MediatorComplex may use snRNA follow-ups as task modification suggestions for mRNA.
-
-MediatorComplex may use scaRNA as requirement modification suggestions from implementation reality.
-
-snoRNA is an ADR and can be used as an issue discussion about rRNA.
-
-These items may be follow-ups to Introns or root issues linking to another mRNA or rRNA Gene as appropriate.
-
-tmRNA is an unblocker mediation request. It is no longer required by default and is not tied to siRNA.
-
-## CRISPR
-
-CRISPR uses proto-spacer emergent issues or crRNA incident reports.
-
-crRNA may be linked to a risk.
-
-CRISPR may follow up with PAM exploratory evidence and tracrRNA root cause analysis.
-
-Cas actions are analogous to Exons and can be suggested changes through sgRNA.
-
-sgRNA is repurposed for suggested CRISPR action changes.
-
-## Structural Maintenance
-
-Structural maintenance is a deployment discussion channel for Centromeres and microtubule tasks.
-
-More structural maintenance granularity is intentionally open.
+These statements do not approve object shapes, command behavior, lifecycle state, or relationship cardinality.

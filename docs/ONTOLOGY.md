@@ -1,30 +1,34 @@
 # DNAp Ontology
 
-DNAp means Document Normalization and Alignment Platform.
+DNAp means Development Network Alignment Platform.
 
 This document defines product terms. It does not define build order or storage implementation.
+
+Modeling rules for these terms are defined in [ABSTRACTION_CHARTER.md](ABSTRACTION_CHARTER.md).
 
 ## Platform
 
 - `Insulator`: customer/account tenant and hard isolation boundary.
 - `Genome`: project boundary inside an Insulator.
-- `GRN`: active initiative/work context inside a Genome.
+- `Chromosome`: named canonical scope inside a Genome.
+- `GRN`: Governance Regulatory Network; work context inside a Genome from triage onward. A GRN owns operational lifecycle state.
 - `Operon`: grouping of Promoter artifacts inside one GRN, such as an epic.
 - `Tf`: user identity. Tf means Team Factor.
-- `Histone`: IAM-like system permission and contextual evaluation attribute.
+- `Histone`: permission/governance fact.
 
 ## Document Identity
 
 - `GeneFamily`: configurable enterprise document or work-item type.
 - `GeneFamilyGeneration`: immutable schema version for a GeneFamily.
 - `SequenceDefinition`: one required configurable field in a GeneFamilyGeneration.
-- `Locus`: stable identity for one controlled document or controlled document item.
+- `Locus`: stable identity for one controlled document or controlled document item. A Locus belongs to one current Chromosome and may move between Chromosomes.
 - `Gene`: canonical controlled document or controlled document item.
 - `Transposon`: new non-canonical Gene origin.
-- `Allele`: work-in-progress Gene candidate for a Locus.
+- `Allele`: shared work-in-progress Gene candidate for a Locus inside one GRN.
 - `Mutation`: Sequence value change on an Allele.
+- `Signal`: append-only tenant-scoped audit/provenance event for domain transitions.
 
-A Promoter may be assigned to only one active Operon at a time. Cross-GRN or cross-Operon relationships use explicit relationships such as dependency, duplication, split, or conflict rather than multiple active membership.
+The stable workflow foundation is Chromosome, GRN, Operon, Promoter membership, shared Alleles, and Signal audit. A Promoter may be assigned to only one active Operon at a time. Triage responsibility belongs to Promoter-in-Operon membership and is not authorization. Cross-GRN or cross-Operon relationships use explicit relationships such as dependency, duplication, split, or conflict rather than multiple active membership.
 
 `GeneFamily` is not a single document schema hard-coded by DNAp. Many enterprise schemas can share one `NormalizedArtifact`.
 
@@ -44,7 +48,8 @@ Example: `NormalizedArtifact::ManagedRequirement` is the artifact taxonomy value
 
 - `Promoter`: user story or idea used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
-- `ExploratoryNarrative`: eRNA, flexible typed exploration document. Examples include event storming, draft diagrams, and follow-up exploration.
+- `ProtocolEvaluator`: eRNA, protocol/evaluator/control rule artifact.
+- `ExploratoryNarrative`: Ribozyme, relationship/dependency/exploration topology artifact.
 - `ProjectedIntent`: piRNA, projected or explicit intent boundary.
 - `Spacer`: documented risk or risk assessment.
 - `Protospacer`: unforeseen or emergent risk.
@@ -77,11 +82,12 @@ Example: `NormalizedArtifact::ManagedRequirement` is the artifact taxonomy value
 - `CircularInstitutionalReferenceContext`: circRNA, institutional reference context.
 - `SuggestedChanges`: sgRNA, suggested changes artifact.
 
-Lifecycle, dependency, authorization, and tenant-specific workflow semantics are deferred until concrete use cases define the structures needed. Likely direction: configurable workflow policy analogous to Histone-backed configuration, but no ChromatinRemodeler design is approved yet.
+Lifecycle, dependency, authorization, and tenant-specific workflow semantics are deferred until concrete use cases define the structures needed. eRNA is reserved for protocol/evaluator/control rule artifacts. No ChromatinRemodeler design is approved.
 
 ## Workflow Concepts
 
-- `TfComplex`: discussion and alignment subsystem. It names the communication model but is not automatically a persisted container object.
+- `TfComplex`: discussion and alignment subsystem. It names the communication model but is not approved as a persisted container object.
+- `PreInitiationComplex`, `MediatorComplex`, `RepressorsComplex`, `CRISPR`, and `StructuralMaintenance`: named workflow-channel concepts. They are not part of the stable persisted foundation until concrete workflows define their records and relationships.
 
 ## TfComplex Areas
 

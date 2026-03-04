@@ -23,6 +23,7 @@ Slice 004 implements:
 - Mutations are mutable while `Unexpressed`.
 - Mutations are individual and composable.
 - One command versus many commands does not change Mutation semantics.
+- Mutations apply to the shared active Allele for `(Locus, GRN)`.
 - Mutations target SequenceDefinitions by `SequenceDefinitionId`.
 - A Mutation must target an existing SequenceDefinition in the Allele's GeneFamilyGeneration.
 - Mutation values must match the SequenceDefinition type.
@@ -30,7 +31,7 @@ Slice 004 implements:
 - CLI input for `Gene` and `GeneVec` values uses Gene FQNs and resolves them to `GeneId` internally.
 - Current Allele state is projected from Mutations.
 - A degraded Allele cannot accept new Mutations.
-- Mutations are created by Tfs.
+- Mutation actor provenance is recorded through Signal.
 - CLI mutation flags use the approved sequence-name matcher from slice 002.
 - `dna mutate --new` may create an Allele with zero Mutations.
 - Mutating an `Expressing` Allele is allowed and changes `Allele.state` to `Mutating` when it creates or updates `Unexpressed` Mutations.
@@ -65,8 +66,8 @@ dna splice FRS-checkout --set-buy-soap "Buy hypoallergenic soap"
 dna splice FRS-checkout --lgtm
 ```
 
-- `dna splice` takes an mRNA Gene FQN as the first positional argument and resolves the active Allele for that work item.
-- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
+- `dna splice` takes an mRNA Gene FQN as the first positional argument and resolves the active Allele for that work item in the current GRN context.
+- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele in the current GRN context.
 - Quoted positional arguments create new Exons attached to that mRNA Allele.
 - `--before-<exon-name>` places the new or selected Exon before an existing Exon by making the existing Exon depend on it.
 - `--after-<exon-name>` places the new or selected Exon after an existing Exon by making it depend on the existing Exon.
@@ -84,7 +85,7 @@ dna translate FRS-checkout-0001
 ```
 
 - `dna translate` takes a Locus name or Gene FQN as the first positional argument.
-- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
+- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele in the current GRN context.
 - `dna translate` renders Exons in dependency order.
 - `dna translate` shows dependency text for Exons that depend on other Exons.
 - `dna translate` errors when the active Allele has no Exons.
@@ -97,7 +98,7 @@ dna mutate FRS-checkout-0001
 ```
 
 - Without `--new`, the first positional argument is the Locus name or Gene fully qualified name.
-- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
+- Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele in the current GRN context.
 - Mutation flags set Sequence values on the active Allele.
 - Sequence flag names use the approved sequence-name matcher.
 - Scalar Sequence flags use `--<sequence-name> <value>`.
@@ -115,7 +116,7 @@ dna mutate FRS-checkout-0001
 ## Implementation Contract
 
 - Implement backend/application behavior for starting a new Allele through `dna mutate --new`.
-- Implement backend/application behavior for mutating existing active Alleles by Gene FQN.
+- Implement backend/application behavior for mutating existing active Alleles by Gene FQN in the current GRN context.
 - Implement SequenceDefinition matching with case/kebab-insensitive command input.
 - Implement SequenceValue type checks against the matched SequenceDefinition.
 - Implement current Allele projection from latest Mutations.
