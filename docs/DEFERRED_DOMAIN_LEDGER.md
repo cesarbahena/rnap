@@ -15,10 +15,11 @@ The ledger contains implementation obligations and open decisions that are inten
 
 ## Document Types
 
+- Implement `NormalizedArtifact` as the canonical GeneFamily taxonomy and replace the older `EncodingType`/RNA/GRN split in code.
 - Schema evolution and rename tracking across GeneFamilyGenerations.
 - `SequenceValue` validation during work-type definition versus mutation application.
 - Exact Gene FQN configuration storage and override implementation.
-- Keep `Exon` and `Cas` out of `EncodingType`.
+- Artifact-specific lifecycle, dependency, authorization, and tenant workflow semantics. Deferred until concrete use cases define the needed configurable structures; no ChromatinRemodeler design is approved yet.
 
 ## Candidate Work
 
@@ -34,8 +35,8 @@ The ledger contains implementation obligations and open decisions that are inten
 
 ## Splicing
 
-- Exact Exon lifecycle after `dna splice`.
-- Exons are executable tasks created by `dna splice`, not EncodingTypes.
+- Exact Exon lifecycle after `dna splice` under the NormalizedArtifact model.
+- Reconcile current Exon task records with long-term Exon-as-Gene artifact semantics.
 
 ## Authorization
 
@@ -46,8 +47,8 @@ The ledger contains implementation obligations and open decisions that are inten
 
 ## Workflow
 
-- Whether agents are Tfs, TfClass membership, or a separate actor type.
-- Implement PreInitiationComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md), including Promoter-owned exploration graphs and Enhancer Promoter properties.
+- Non-human actor identity for agents and services. Likely direction: keep a unified Tf identity model, but defer `TfKind`, delegation fields, ownership, and control relationships until concrete use cases define the configurable structures needed, likely alongside Histone-backed authorization and context.
+- Implement PreInitiationComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md), including Promoter-owned exploration graphs and EnterpriseNegotiationHandoverCertificate Promoter properties.
 - Implement ExplorationGraph, ExplorationNode, and ExplorationEdge as workflow artifacts for collaborative whiteboards.
 - Decide and implement operation/revision semantics for real-time graph collaboration. CRDT/OT semantics are deferred.
 - Implement RepressorsComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md).

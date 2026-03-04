@@ -22,53 +22,54 @@ This document defines product terms. It does not define build order or storage i
 - `Allele`: work-in-progress Gene candidate for a Locus.
 - `Mutation`: Sequence value change on an Allele.
 
-`GeneFamily` is not a single document schema hard-coded by DNAp. Many enterprise schemas can share one EncodingType.
+`GeneFamily` is not a single document schema hard-coded by DNAp. Many enterprise schemas can share one `NormalizedArtifact`.
 
-Example: multiple GeneFamilies may encode `Enhancer`, such as business research, technology research, market research, or security research.
+Example: multiple GeneFamilies may use `EnterpriseNegotiationHandoverCertificate`, such as business research, technology research, market research, or security research.
 
-## Encoding
+## Normalized Artifacts
 
-Every GeneFamily has a system-fixed `EncodingType`. Encoding controls document handling and is core product value.
+Every GeneFamily has a system-fixed `NormalizedArtifact`. The normalized artifact taxonomy controls document handling and is core product value.
 
-RNA means Request for Normalization and Alignment.
+`NormalizedArtifact` replaces the older `EncodingType::RNA(...)` and `EncodingType::GRN(...)` split as the canonical taxonomy.
 
-### GRN
+All `NormalizedArtifact` variants are Gene-capable artifact types. Lifecycle semantics may differ by artifact type and tenant workflow policy, but the artifact itself is modeled through GeneFamily, Locus, Allele, Gene, and Mutation.
 
 - `Promoter`: user story or idea used to start discussion.
-- `Enhancer`: formal research document. Examples include business, technology, and market research.
-- `PIWI`: documented scope.
-- `Spacers`: documented risk.
-- `Telomere`: testing document.
-- `Centromere`: deployment document.
+- `ProblemAssertionManifest`: PAM, structured problem assertion.
+- `ExploratoryNarrative`: eRNA, flexible typed exploration document. Examples include event storming, draft diagrams, and follow-up exploration.
+- `ProjectedIntent`: piRNA, projected or explicit intent boundary.
+- `Spacer`: documented risk or risk assessment.
+- `Protospacer`: unforeseen or emergent risk.
+- `Phenotype`: definition of success.
+- `EnterpriseNegotiationHandoverCertificate`: Enhancer, formal enterprise negotiation/research handover artifact.
 - `Silencer`: retirement document.
+- `StrategicNote`: snoRNA, strategic note or ADR-like artifact.
+- `SemanticNarrowing`: snRNA, semantic narrowing artifact.
+- `SemanticConstraintAssumption`: scaRNA, semantic constraint or assumption artifact.
+- `Microalignment`: miRNA, small scope/alignment adjustment.
+- `StopImplementation`: siRNA, authoritative stop/out-of-scope artifact.
+- `DeferredScope`: dsRNA, deferred scope artifact.
+- `Intron`: raw requirement.
+- `ManagedRequirement`: mRNA, managed requirements document.
+- `Exon`: refined requirement.
+- `ResourceReference`: rRNA, resource or reference document.
+- `TaskRealization`: tRNA, task realization artifact.
+- `TaskRealizationFramework`: tRF, task realization framework.
+- `TestRegressionCriteria`: TERC, test plan.
+- `TestObjectiveManifest`: Telomere, executable test case.
+- `TestOrchestrationManifest`: CI configuration.
+- `CentralRuntimeManifest`: CD configuration.
+- `CountermeasureAssessmentSystem`: Cas, threat model or security document.
+- `ProductionTestedImplementation`: Protein, verification pipeline artifact.
+- `Chaperone`: SDLC alignment review.
+- `TaskMediation`: tmRNA, task mediation artifact.
+- `CausalResolution`: crRNA, causal or incident resolution artifact.
+- `TraceReport`: tracrRNA, trace or root-cause report.
+- `LongNarrativeContext`: lncRNA, long narrative context.
+- `CircularInstitutionalReferenceContext`: circRNA, institutional reference context.
+- `SuggestedChanges`: sgRNA, suggested changes artifact.
 
-### Translation RNA
-
-- `eRNA`: flexible typed exploration graph node. Examples include event storming, draft diagrams, and follow-up exploration.
-- `mRNA`: requirements analysis document.
-- `rRNA`: architecture/design document.
-- `tRNA`: agentic skills.
-
-### Regulatory RNA
-
-- `snRNA`: task modification suggestion for an mRNA.
-- `scaRNA`: requirement modification suggestion from implementation reality.
-- `siRNA`: authoritative out-of-scope order.
-- `tmRNA`: unblocker mediation request.
-- `miRNA`: emergent scope reduction discussion.
-- `piRNA`: explicit out-of-scope discussion.
-- `snoRNA`: ADR.
-- `crRNA`: incident report, possibly linked to a risk.
-- `tracrRNA`: root cause analysis.
-- `lncRNA`: research document.
-- `circRNA`: onboarding particularities.
-- `sgRNA`: suggested CRISPR action change.
-
-## Non-Encoding Workflow Terms
-
-- `Intron`: requirement ambiguity question. Introns are fixed discussion records, not Genes, and do not have Loci.
-- `Exon`: executable task created by `dna splice`. Exon is not an EncodingType.
-- `Cas`: CRISPR action concept. Cas is not an EncodingType.
+Lifecycle, dependency, authorization, and tenant-specific workflow semantics are deferred until concrete use cases define the structures needed. Likely direction: configurable workflow policy analogous to Histone-backed configuration, but no ChromatinRemodeler design is approved yet.
 - `TfComplex`: discussion and alignment subsystem. It names the communication model but is not automatically a persisted container object.
 
 ## TfComplex Areas

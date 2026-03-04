@@ -6,21 +6,21 @@ This document defines approved interaction rules among DNAp concepts. It does no
 
 Code should persist only concrete records and typed relationships with a defined workflow purpose.
 
-`TfComplex` does not define Gene schemas, does not own workflow rules, and does not replace GeneFamily or EncodingType. Application behavior interprets workflow rules over concrete records and relationship edges.
+`TfComplex` does not define Gene schemas, does not own workflow rules, and does not replace GeneFamily or NormalizedArtifact. Application behavior interprets workflow rules over concrete records and relationship edges.
 
 TfComplex targets must be constrained per use case. DNAp must not add unrestricted links between arbitrary Genes.
 
 ## PreInitiationComplex
 
-PreInitiationComplex uses existing Promoter, Enhancer, and eRNA controlled documents.
+PreInitiationComplex uses existing Promoter, EnterpriseNegotiationHandoverCertificate, and ExploratoryNarrative controlled documents.
 
-### Promoter And Enhancer
+### Promoter And Enterprise Negotiation Handover
 
-Enhancers associate to a Promoter through an Enhancer property, not a separate link object.
+EnterpriseNegotiationHandoverCertificate artifacts associate to a Promoter through a Promoter property, not a separate link object.
 
-The Promoter association on an Enhancer points to the stable Promoter Locus, not a specific Promoter Allele.
+The Promoter association points to the stable Promoter Locus, not a specific Promoter Allele.
 
-Enhancer is an EncodingType, so the exact research schema comes from the Enhancer GeneFamily.
+EnterpriseNegotiationHandoverCertificate is a NormalizedArtifact, so the exact research/negotiation schema comes from the GeneFamily.
 
 ### Promoter And Exploration Graphs
 
@@ -30,25 +30,25 @@ Each ExplorationGraph belongs to exactly one Promoter and is owned by the stable
 
 ExplorationGraph is a Promoter-owned workflow artifact, not a controlled Gene.
 
-`Promoter -> eRNA` is represented through exploration graph containment, not a direct graph edge.
+`Promoter -> ExploratoryNarrative` is represented through exploration graph containment, not a direct graph edge.
 
-### eRNA Graphs
+### Exploratory Narrative Graphs
 
-eRNA owns controlled document content.
+ExploratoryNarrative owns controlled document content.
 
 ExplorationGraph owns graph topology.
 
-An eRNA may serve as a root node inside an exploration graph.
+An ExploratoryNarrative may serve as a root node inside an exploration graph.
 
-ExplorationNode is graph-local placement/presentation for a reusable eRNA Locus.
+ExplorationNode is graph-local placement/presentation for a reusable ExploratoryNarrative Locus.
 
-ExplorationNode points to the stable eRNA Locus, not directly to an Allele.
+ExplorationNode points to the stable ExploratoryNarrative Locus, not directly to an Allele.
 
-Whiteboard rendering resolves an eRNA Locus to the current active Allele unless a future snapshot/export feature requires historical resolution.
+Whiteboard rendering resolves an ExploratoryNarrative Locus to the current active Allele unless a future snapshot/export feature requires historical resolution.
 
-ExplorationEdge belongs to one ExplorationGraph and connects graph-local ExplorationNodes, not reusable eRNA documents directly.
+ExplorationEdge belongs to one ExplorationGraph and connects graph-local ExplorationNodes, not reusable ExploratoryNarrative documents directly.
 
-eRNA exploration graphs may be cyclic.
+ExploratoryNarrative exploration graphs may be cyclic.
 
 Exploration graphs are intended to render as collaborative React whiteboards.
 
@@ -58,13 +58,13 @@ Exploration graph edges keep semantic relationship data separate from graph-loca
 
 Real-time collaboration will need operation-friendly changes such as creating, moving, resizing, labeling, and linking nodes. CRDT/OT semantics are deferred.
 
-Do not add direct `Enhancer <-> eRNA` edges until a concrete workflow requires them.
+Do not add direct `EnterpriseNegotiationHandoverCertificate <-> ExploratoryNarrative` edges until a concrete workflow requires them.
 
-### eRNA Reuse
+### Exploratory Narrative Reuse
 
-The same eRNA controlled document may be reused across graphs.
+The same ExploratoryNarrative controlled document may be reused across graphs.
 
-Reused eRNA keeps one controlled document identity, while each graph node has graph-local presentation state.
+Reused ExploratoryNarrative keeps one controlled document identity, while each graph node has graph-local presentation state.
 
 ## RepressorsComplex
 

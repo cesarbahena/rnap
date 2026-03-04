@@ -56,6 +56,8 @@ struct Tf {
 }
 ```
 
+Agents and service actors will likely use the same Tf identity model so audit, Histones, approvals, and workflow provenance stay unified. Do not add `TfKind`, delegation fields, or a separate actor taxonomy until concrete non-human actor use cases define the needed configurable structures, likely through Histone-backed authorization and context.
+
 ## Configurable Document Types
 
 `GeneFamily` defines a configurable SDLC document/work type.
@@ -68,11 +70,13 @@ struct GeneFamily {
     name: String,
     abbreviation: String,
     current_generation_id: GeneFamilyGenerationId,
-    encodes: EncodingType,
+    normalized_artifact: NormalizedArtifact,
     created_at: Timestamp,
     updated_at: Timestamp,
 }
 ```
+
+`NormalizedArtifact` is the system-fixed artifact taxonomy for GeneFamilies. It replaces the older `EncodingType::RNA(...)` and `EncodingType::GRN(...)` split as the canonical product model. All `NormalizedArtifact` variants are Gene-capable artifact types.
 
 `GeneFamilyGeneration` is an immutable schema version for a GeneFamily.
 
@@ -328,9 +332,7 @@ struct Gene {
 }
 ```
 
-`Exon` is created by `dna splice` from an mRNA Allele. Exons are attached to the working Allele and represent executable tasks derived from that requirements analysis document.
-
-`Exon` is not an `EncodingType`; it is a workflow/task object.
+`Exon` is a refined requirement artifact type. The current `dna splice` implementation creates Exon task records attached to the working Allele; the long-term Exon-as-Gene lifecycle is intentionally unresolved until the normalized artifact remodel is implemented.
 
 ```rust
 struct Exon {
@@ -345,9 +347,9 @@ struct Exon {
 
 Exons attached to an Allele organize as a DAG through `depends_on`, not a positional list. If Exon A depends on Exon B, B must precede A in the work graph.
 
-`Intron` is a Regulatory RNA encoding for chainable disambiguation items. Unlike Exons, Introns are controlled document items modeled through normal GeneFamily and GeneFamilyGeneration configuration.
+`Intron` is a raw requirement artifact type. The current `dna q`/`dna a` implementation uses fixed Intron discussion records; the long-term Intron-as-Gene lifecycle is intentionally unresolved until the normalized artifact remodel is implemented.
 
-Workflow interactions among Intron, eRNA, TfComplex, Cas, and related communication concepts are defined in [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md). Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
+Workflow interactions among Intron, ExploratoryNarrative, TfComplex, CountermeasureAssessmentSystem, and related communication concepts are defined in [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md). Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
 
 ## Authorization And Context
 

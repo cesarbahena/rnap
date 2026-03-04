@@ -6,7 +6,7 @@ Define configurable SDLC document types through GeneFamily and GeneFamilyGenerat
 
 ## Contract
 
-Use the model in [DOMAIN_MODEL.md](DOMAIN_MODEL.md) and encoding taxonomy in [ENCODING_TAXONOMY.md](ENCODING_TAXONOMY.md).
+Use the model in [DOMAIN_MODEL.md](DOMAIN_MODEL.md) and normalized artifact taxonomy in [ENCODING_TAXONOMY.md](ENCODING_TAXONOMY.md).
 
 Slice 002 implements:
 
@@ -14,11 +14,7 @@ Slice 002 implements:
 - `GeneFamilyGeneration`
 - `SequenceDefinition`
 - `SequenceType`
-- `EncodingType`
-- `GrnType`
-- `RnaType`
-- `TranslationRnaType`
-- `RegulatoryRnaType`
+- `NormalizedArtifact`
 
 ## Behavior
 
@@ -32,8 +28,10 @@ Slice 002 implements:
 - A GeneFamily points to one current GeneFamilyGeneration.
 - Generation numbers live on GeneFamilyGeneration.
 - GeneFamilyGeneration id type is `GeneFamilyGenerationId`.
-- EncodingType is required.
-- EncodingTypes are system-fixed.
+- NormalizedArtifact is required.
+- NormalizedArtifact values are system-fixed.
+- NormalizedArtifact replaces the older EncodingType/RNA/GRN split as the canonical taxonomy.
+- All NormalizedArtifact variants are Gene-capable artifact types.
 - SequenceDefinition has stable identity through `SequenceDefinitionId`.
 - SequenceDefinition names are enterprise-native tenant data.
 - SequenceDefinition names are unique inside a GeneFamilyGeneration.
@@ -64,7 +62,7 @@ Implementing mutation CLI flags that use this matcher belongs to slice 004.
 - Reject blank `GeneFamily.abbreviation`.
 - Reject blank `SequenceDefinition.name`.
 - Reject duplicate `SequenceDefinition.name` inside one GeneFamilyGeneration.
-- Require `EncodingType`.
+- Require `NormalizedArtifact`.
 - Allow Genome-scoped GeneFamily to shadow an Insulator-scoped abbreviation.
 - Reject duplicate abbreviations in the same effective scope.
 - Resolve GeneFamily lookup from Genome context as Genome override first, then Insulator default.
