@@ -8,6 +8,27 @@ All `NormalizedArtifact` variants are Gene-capable artifact types. Previous exce
 
 Canonical term meanings are defined in [ONTOLOGY.md](ONTOLOGY.md).
 
+## Naming Convention
+
+`NormalizedArtifact` variants use full enterprise semantic names.
+
+Biology-inspired names and backronyms remain first-class internal domain language where they model relationships clearly. They should be used for typed artifact-reference wrappers, CLI aliases, docs, and internal workflow roles, not as tenant-facing defaults.
+
+Examples:
+
+```rust
+NormalizedArtifact::ManagedRequirement
+struct MRna(ArtifactRef);
+
+NormalizedArtifact::ExploratoryNarrative
+struct ERna(ArtifactRef);
+
+NormalizedArtifact::EnterpriseNegotiationHandoverCertificate
+struct Enhancer(ArtifactRef);
+```
+
+`ArtifactRef` is a resolved reference to a Locus plus the NormalizedArtifact invariant. A raw `LocusId` may be stored, but domain APIs should use `ArtifactRef` or a wrapper when a relationship requires a specific artifact type.
+
 ```rust
 enum NormalizedArtifact {
     Promoter,

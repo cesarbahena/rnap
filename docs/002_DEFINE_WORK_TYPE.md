@@ -32,6 +32,8 @@ Slice 002 implements:
 - NormalizedArtifact values are system-fixed.
 - NormalizedArtifact replaces the older EncodingType/RNA/GRN split as the canonical taxonomy.
 - All NormalizedArtifact variants are Gene-capable artifact types.
+- NormalizedArtifact variants use full enterprise semantic names.
+- Internal typed artifact-reference wrappers may use biology-inspired names/backronyms when the relationship specifically needs that role.
 - SequenceDefinition has stable identity through `SequenceDefinitionId`.
 - SequenceDefinition names are enterprise-native tenant data.
 - SequenceDefinition names are unique inside a GeneFamilyGeneration.

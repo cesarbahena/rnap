@@ -10,6 +10,18 @@ Code should persist only concrete records and typed relationships with a defined
 
 TfComplex targets must be constrained per use case. DNAp must not add unrestricted links between arbitrary Genes.
 
+## GRN And Operons
+
+Genome is the project boundary. GRN is the active initiative/work context inside a Genome.
+
+A GRN has one or more Operons. An Operon groups Promoter artifacts and represents higher-level intake structure such as an epic.
+
+Promoter is a NormalizedArtifact on a GeneFamily. A concrete Promoter reference is represented by the internal `Promoter(ArtifactRef)` wrapper, not by a raw `LocusId` in domain APIs.
+
+A Promoter may be assigned to only one active Operon at a time.
+
+If the same intake artifact appears relevant to multiple GRNs or Operons, model that as an explicit dependency, duplication, split, conflict, or another approved relationship. Do not model it as multiple active Operon membership.
+
 ## PreInitiationComplex
 
 PreInitiationComplex uses existing Promoter, EnterpriseNegotiationHandoverCertificate, and ExploratoryNarrative controlled documents.

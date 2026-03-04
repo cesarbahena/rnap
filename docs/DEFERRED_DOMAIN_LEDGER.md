@@ -16,6 +16,7 @@ The ledger contains implementation obligations and open decisions that are inten
 ## Document Types
 
 - Implement `NormalizedArtifact` as the canonical GeneFamily taxonomy and replace the older `EncodingType`/RNA/GRN split in code.
+- Implement `ArtifactRef` plus narrowly useful biology/backronym wrappers such as `MRna(ArtifactRef)` or `Enhancer(ArtifactRef)` where relationships require a specific NormalizedArtifact.
 - Schema evolution and rename tracking across GeneFamilyGenerations.
 - `SequenceValue` validation during work-type definition versus mutation application.
 - Exact Gene FQN configuration storage and override implementation.
@@ -48,6 +49,7 @@ The ledger contains implementation obligations and open decisions that are inten
 ## Workflow
 
 - Non-human actor identity for agents and services. Likely direction: keep a unified Tf identity model, but defer `TfKind`, delegation fields, ownership, and control relationships until concrete use cases define the configurable structures needed, likely alongside Histone-backed authorization and context.
+- Implement GRN and Operon active work context. Decision approved: Genome is project boundary, GRN is active initiative/work context, Operon groups Promoters, and a Promoter may belong to only one active Operon at a time.
 - Implement PreInitiationComplex behavior from [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md), including Promoter-owned exploration graphs and EnterpriseNegotiationHandoverCertificate Promoter properties.
 - Implement ExplorationGraph, ExplorationNode, and ExplorationEdge as workflow artifacts for collaborative whiteboards.
 - Decide and implement operation/revision semantics for real-time graph collaboration. CRDT/OT semantics are deferred.

@@ -78,6 +78,21 @@ struct GeneFamily {
 
 `NormalizedArtifact` is the system-fixed artifact taxonomy for GeneFamilies. It replaces the older `EncodingType::RNA(...)` and `EncodingType::GRN(...)` split as the canonical product model. All `NormalizedArtifact` variants are Gene-capable artifact types.
 
+NormalizedArtifact enum variants use full enterprise semantic names. Biology-inspired names and backronyms may be used for internal typed artifact-reference wrappers where the role matters.
+
+```rust
+struct ArtifactRef {
+    locus_id: LocusId,
+    normalized_artifact: NormalizedArtifact,
+}
+
+struct MRna(ArtifactRef);
+struct ERna(ArtifactRef);
+struct Enhancer(ArtifactRef);
+```
+
+`ArtifactRef` is constructed only through resolvers that verify the referenced Locus belongs to a GeneFamily with the expected NormalizedArtifact. Raw `LocusId` remains storage identity; domain relationships should use `ArtifactRef` or a wrapper when a specific artifact type is required.
+
 `GeneFamilyGeneration` is an immutable schema version for a GeneFamily.
 
 ```rust
@@ -192,6 +207,48 @@ struct Locus {
 ```
 
 `Locus.name` is the document instance name used for identity and Gene fully qualified names. It is not a Sequence value.
+
+## Active Work Context
+
+`Grn` is the active initiative/work context inside a Genome. `Genome` remains the project boundary; `Grn` organizes active SDLC work within that project.
+
+```rust
+struct Grn {
+    id: GrnId,
+    genome_id: GenomeId,
+    name: String,
+    operons: Vec<OperonId>,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+}
+```
+
+`Operon` groups Promoters within one GRN. Operons represent higher-level intake groupings such as epics.
+
+```rust
+struct Operon {
+    id: OperonId,
+    grn_id: GrnId,
+    name: String,
+    promoters: Vec<Promoter>,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+}
+```
+
+`Promoter` is an internal typed artifact-reference wrapper around `ArtifactRef`. It references a Locus whose GeneFamily has `NormalizedArtifact::Promoter`.
+
+```rust
+struct Promoter(ArtifactRef);
+```
+
+Invariants:
+
+- A GRN belongs to exactly one Genome.
+- An Operon belongs to exactly one GRN.
+- A Promoter may be assigned to at most one active Operon.
+- Intake triage assigns Promoter artifacts to one active Operon in one active GRN.
+- Cross-GRN relationships must be modeled explicitly as dependency, duplication, split, conflict, or another approved relationship, not by assigning the same Promoter to multiple active Operons.
 
 `Transposon` is the origin path for a new Gene/work item. It carries origin metadata only; Sequence values arrive through Mutations on the Allele.
 

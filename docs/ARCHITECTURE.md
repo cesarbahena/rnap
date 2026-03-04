@@ -15,9 +15,9 @@ This is an explicit boundary commitment, not a commitment to a full Clean Archit
 As `src/app/` grows, split it by durable product boundaries rather than by storage tables:
 
 - identity: Insulator, placement, Genome, Tf.
-- encoding: fixed RNA/GRN taxonomy.
+- artifact taxonomy: fixed NormalizedArtifact taxonomy and internal biology/backronym lineage.
 - genes: GeneFamily, GeneFamilyGeneration, SequenceDefinition, Locus, Transposon, Allele, Gene, Mutation.
-- workflow: Transcriptome, Exon, ExplorationGraph, Enhancer context, Intron.
+- workflow: Transcriptome, Exon, ExplorationGraph, EnterpriseNegotiationHandoverCertificate context, Intron.
 - application use cases: mutation, transcription, splicing, translation, exploration, questions/answers.
 - matching: human-oriented normalized/fuzzy command resolution shared by CLI-facing use cases.
 
@@ -25,6 +25,9 @@ As `src/app/` grows, split it by durable product boundaries rather than by stora
 
 - Domain modules own names, invariants, value types, and durable product concepts.
 - Application modules own use cases and enforce cross-entity invariants.
+- `LocusId` is raw storage identity. Use resolved artifact references when a relationship requires a specific NormalizedArtifact.
+- `ArtifactRef` carries a resolved `LocusId` plus its NormalizedArtifact invariant. Internal biological/backronym wrappers such as `MRna(ArtifactRef)` or `Enhancer(ArtifactRef)` may be used where the role matters.
+- NormalizedArtifact enum variants use full enterprise semantic names. Biological/backronym names are internal role wrappers, aliases, CLI aliases, or documentation lineage, not tenant-facing defaults.
 - CLI parsing must stay thin and must not duplicate backend/application rules.
 - Local JSON state is an adapter for development workflows, not product storage architecture.
 - Session state carries actor and scope in a way that can later be replaced by real login/auth.

@@ -8,6 +8,8 @@ This document defines product terms. It does not define build order or storage i
 
 - `Insulator`: customer/account tenant and hard isolation boundary.
 - `Genome`: project boundary inside an Insulator.
+- `GRN`: active initiative/work context inside a Genome.
+- `Operon`: grouping of Promoter artifacts inside one GRN, such as an epic.
 - `Tf`: user identity. Tf means Team Factor.
 - `Histone`: IAM-like system permission and contextual evaluation attribute.
 
@@ -22,6 +24,8 @@ This document defines product terms. It does not define build order or storage i
 - `Allele`: work-in-progress Gene candidate for a Locus.
 - `Mutation`: Sequence value change on an Allele.
 
+A Promoter may be assigned to only one active Operon at a time. Cross-GRN or cross-Operon relationships use explicit relationships such as dependency, duplication, split, or conflict rather than multiple active membership.
+
 `GeneFamily` is not a single document schema hard-coded by DNAp. Many enterprise schemas can share one `NormalizedArtifact`.
 
 Example: multiple GeneFamilies may use `EnterpriseNegotiationHandoverCertificate`, such as business research, technology research, market research, or security research.
@@ -33,6 +37,10 @@ Every GeneFamily has a system-fixed `NormalizedArtifact`. The normalized artifac
 `NormalizedArtifact` replaces the older `EncodingType::RNA(...)` and `EncodingType::GRN(...)` split as the canonical taxonomy.
 
 All `NormalizedArtifact` variants are Gene-capable artifact types. Lifecycle semantics may differ by artifact type and tenant workflow policy, but the artifact itself is modeled through GeneFamily, Locus, Allele, Gene, and Mutation.
+
+`NormalizedArtifact` variants use full enterprise semantic names. Biology-inspired names and backronyms remain first-class internal domain language for typed artifact-reference wrappers, CLI aliases, docs, and workflow roles.
+
+Example: `NormalizedArtifact::ManagedRequirement` is the artifact taxonomy value, while `MRna(ArtifactRef)` may be used internally when a relationship specifically needs a managed requirement reference.
 
 - `Promoter`: user story or idea used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
@@ -70,6 +78,9 @@ All `NormalizedArtifact` variants are Gene-capable artifact types. Lifecycle sem
 - `SuggestedChanges`: sgRNA, suggested changes artifact.
 
 Lifecycle, dependency, authorization, and tenant-specific workflow semantics are deferred until concrete use cases define the structures needed. Likely direction: configurable workflow policy analogous to Histone-backed configuration, but no ChromatinRemodeler design is approved yet.
+
+## Workflow Concepts
+
 - `TfComplex`: discussion and alignment subsystem. It names the communication model but is not automatically a persisted container object.
 
 ## TfComplex Areas
