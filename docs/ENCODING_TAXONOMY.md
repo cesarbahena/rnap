@@ -20,7 +20,7 @@ Examples:
 NormalizedArtifact::ManagedRequirement
 struct MRna(ArtifactRef);
 
-NormalizedArtifact::ExploratoryNarrative
+NormalizedArtifact::Ribozyme
 struct Ribozyme(ArtifactRef);
 
 NormalizedArtifact::EnterpriseNegotiationHandoverCertificate
@@ -33,8 +33,8 @@ struct Enhancer(ArtifactRef);
 enum NormalizedArtifact {
     Promoter,
     ProblemAssertionManifest,
-    ProtocolEvaluator,
-    ExploratoryNarrative,
+    ExecutableRegulatoryNormalizedArtifact,
+    Ribozyme,
     ProjectedIntent,
     Spacer,
     Protospacer,
@@ -77,8 +77,8 @@ enum NormalizedArtifact {
 
 - `Promoter`: initiative seed or story used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
-- `ProtocolEvaluator`: eRNA, protocol/evaluator/control rule artifact that interprets Histones, Signals, artifacts, and relationships.
-- `ExploratoryNarrative`: Ribozyme, relationship/dependency/exploration topology artifact.
+- `ExecutableRegulatoryNormalizedArtifact`: eRNA, human-readable executable governance artifact with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.
+- `Ribozyme`: flexible exploration artifact for event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 - `ProjectedIntent`: piRNA, projected or explicit intent boundary.
 - `Spacer`: risk assessment.
 - `Protospacer`: unforeseen or emergent risk.
@@ -115,4 +115,4 @@ enum NormalizedArtifact {
 
 `NormalizedArtifact` defines what artifact kind a GeneFamily represents. It does not hardcode lifecycle, dependency, authorization, or tenant-specific workflow semantics.
 
-Those semantics are deferred until concrete use cases define the structures needed. eRNA is reserved for protocol/evaluator/control rule artifacts that interpret Histones, Signals, artifacts, and relationships.
+Those semantics are deferred until concrete use cases define the structures needed. eRNA is reserved for human-readable executable governance artifacts with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.

@@ -91,7 +91,7 @@ ExplorationGraph remains workflow topology/presentation state, not controlled do
 
 Do not add new Promoter-owned exploration graph behavior until the ownership scope is redesigned.
 
-Ribozyme owns relationship/dependency/exploration topology. If a whiteboard or diagram use case needs graph-local state, graph/node/edge records belong to Ribozyme modeling.
+Ribozyme owns flexible exploration work: event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration. If a whiteboard or diagram use case needs graph-local state, graph/node/edge records belong to Ribozyme modeling.
 
 A Ribozyme may point to Genes, Loci, Alleles, or other approved typed references when concrete graph use cases are approved.
 

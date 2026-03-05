@@ -23,7 +23,7 @@ The ledger contains implementation obligations and open decisions that are inten
 - Schema evolution and rename tracking across GeneFamilyGenerations.
 - `SequenceValue` validation during work-type definition versus mutation application.
 - Exact Gene FQN configuration storage and override implementation.
-- Artifact-specific lifecycle, dependency, authorization, and tenant workflow semantics. Deferred until concrete use cases define the needed structures. eRNA is reserved for protocol/evaluator/control rule artifacts.
+- Artifact-specific lifecycle, dependency, authorization, and tenant workflow semantics. Deferred until concrete use cases define the needed structures. eRNA is reserved for human-readable executable governance artifacts with IAM-like DSL attributes.
 - NormalizedArtifact transition from current code's older `EncodingType` split. Docs define the desired model; code migration remains pending.
 
 ## Candidate Work
@@ -70,9 +70,9 @@ The ledger contains implementation obligations and open decisions that are inten
 - Generic discussion-channel abstraction. Deferred because PreInitiationComplex, MediatorComplex, RepressorsComplex, CRISPR, and StructuralMaintenance do not yet have enough shared approved behavior to justify a common object.
 - EnterpriseNegotiationHandoverCertificate association rules. Deferred; it remains a NormalizedArtifact, but exact Promoter/GRN/Operon attachment semantics are not active foundation.
 - Remodel ExplorationGraph, ExplorationNode, and ExplorationEdge ownership around GRN/Operon or another approved scope. Previous Promoter-owned graph behavior is no longer foundation because GRNs contain Operons with many Promoters.
-- Rename the old eRNA graph/dependency/exploration role to Ribozyme.
-- Reserve eRNA for protocol/evaluator/control rule artifacts that interpret Histones, Signals, artifacts, and relationships.
-- Add `ProtocolEvaluator` to NormalizedArtifact for eRNA.
+- Replace the old eRNA exploration role with Ribozyme.
+- Reserve eRNA for `ExecutableRegulatoryNormalizedArtifact`, a human-readable executable governance artifact with IAM-like DSL attributes.
+- Add `ExecutableRegulatoryNormalizedArtifact` and `Ribozyme` to NormalizedArtifact in code.
 - Decide and implement operation/revision semantics for real-time graph collaboration. CRDT/OT semantics are deferred.
 - Explore RepressorsComplex behavior only through concrete approved use cases.
 - Explore MediatorComplex behavior only through concrete approved use cases.

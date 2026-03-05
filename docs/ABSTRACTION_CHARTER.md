@@ -60,20 +60,18 @@ A Control Fact governs, constrains, or interprets behavior across artifacts and 
 - `Histone`: permission/governance fact.
 - `eRNA`: protocol/evaluator/control rule artifact.
 
-Histones answer what governance fact exists. eRNA answers how Histones, Signals, artifacts, and relationships are evaluated for allowed, required, blocked, warned, or ready behavior.
-
-Do not put dependency topology into eRNA. Dependency topology belongs to Ribozyme.
+Histones answer what governance fact exists. eRNA is an `ExecutableRegulatoryNormalizedArtifact`: a human-readable executable governance artifact with IAM-like DSL attributes. eRNA mainly regulates Gene lifecycle and command state changes by checking dependency state.
 
 ## Relationship
 
 A Relationship models dependency, topology, containment, or graph structure between artifacts or candidates.
 
-- `Ribozyme`: relationship/dependency/exploration topology artifact.
+- `Ribozyme`: flexible exploration artifact for event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 - Embedded Genes through `SequenceType::Gene` and `GeneVec`: controlled artifact composition inside another artifact.
 
-Ribozyme is the replacement name for the older eRNA graph/dependency/exploration role. Ribozyme may need graph-local node and edge records when whiteboard, layout, reuse, or realtime collaboration use cases require them.
+Ribozyme is the replacement name for the older eRNA exploration role. Ribozyme may need graph-local node and edge records when whiteboard, layout, reuse, or realtime collaboration use cases require them.
 
-Embedded Genes are content composition. Ribozyme is topology. Do not confuse them.
+Embedded Genes are content composition. Ribozyme is exploratory collaboration. Do not confuse them.
 
 ## Signal
 
