@@ -12,7 +12,7 @@ pub enum DnapError {
     DuplicateSequenceDefinitionName,
     DuplicateGeneFamilyAbbreviation,
     DuplicateActiveAllele,
-    MissingEncodingType,
+    MissingNormalizedArtifact,
     BlankLocusName,
     BlankGeneFamilyLookup,
     BlankMutationSequenceName,

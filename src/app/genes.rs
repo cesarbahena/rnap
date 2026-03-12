@@ -3,9 +3,9 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, EncodingType, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, InsulatorId,
-    IntronId, IntronSequenceId, LocusId, MutationId, SequenceDefinitionId, SequenceType, TfId,
-    TransposonId,
+    AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, InsulatorId, IntronId,
+    IntronSequenceId, LocusId, MutationId, NormalizedArtifact, SequenceDefinitionId, SequenceType,
+    TfId, TransposonId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -16,7 +16,7 @@ pub struct GeneFamily {
     pub name: String,
     pub abbreviation: String,
     pub current_generation_id: GeneFamilyGenerationId,
-    pub encodes: EncodingType,
+    pub normalized_artifact: NormalizedArtifact,
     pub created_at: SystemTime,
     pub updated_at: SystemTime,
 }

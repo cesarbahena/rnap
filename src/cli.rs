@@ -5,10 +5,9 @@ use std::time::SystemTime;
 use crate::app::{
     AddExplorationEdge, AddExplorationNode, AppendIntronSequence, AttachEnhancerPromoter,
     CreateExplorationGraph, CreateGenome, CreateIntron, CreateTf, DefineGeneFamily, DefineSequence,
-    Dnap, DnapError, EncodingType, ExplorationGraphId, ExplorationNodeId, GrnType, IntronSummary,
-    IntronThread, MutateExisting, MutateNew, ProvisionInsulator, RegulatoryRnaType, RnaType,
-    SequenceMutation, SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
-    TranslationRnaType,
+    Dnap, DnapError, ExplorationGraphId, ExplorationNodeId, IntronSummary, IntronThread,
+    MutateExisting, MutateNew, NormalizedArtifact, ProvisionInsulator, SequenceMutation,
+    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -153,12 +152,10 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
             let session = current_session(state)?;
             let abbreviation = positional(args, 1, "gene family abbreviation")?;
             let name = positional(args, 2, "gene family name")?;
-            let encoding = option_value(args, "--encoding")
-                .map(|value| parse_encoding(&value))
+            let normalized_artifact = option_value(args, "--artifact")
+                .map(|value| parse_normalized_artifact(&value))
                 .transpose()?
-                .unwrap_or(EncodingType::RNA(RnaType::Translation(
-                    TranslationRnaType::MRna,
-                )));
+                .unwrap_or(NormalizedArtifact::ManagedRequirement);
             let sequence_names = repeated_option(args, "--sequence");
             if sequence_names.is_empty() {
                 return Err(CliError::Usage(
@@ -170,7 +167,7 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
                 genome_id: Some(session.scope.genome_id),
                 name,
                 abbreviation,
-                encodes: Some(encoding),
+                normalized_artifact: Some(normalized_artifact),
                 sequences: sequence_names
                     .into_iter()
                     .map(|name| DefineSequence {
@@ -612,64 +609,56 @@ fn parse_sequence_mutations(args: &[String]) -> Result<Vec<SequenceMutation>, Cl
     Ok(mutations)
 }
 
-fn parse_encoding(value: &str) -> Result<EncodingType, CliError> {
+fn parse_normalized_artifact(value: &str) -> Result<NormalizedArtifact, CliError> {
     match normalize(value).as_str() {
-        "erna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::ERna,
+        "promoter" => Ok(NormalizedArtifact::Promoter),
+        "pam" | "problemassertionmanifest" => Ok(NormalizedArtifact::ProblemAssertionManifest),
+        "erna" | "executable" => Ok(NormalizedArtifact::Executable),
+        "ribozyme" => Ok(NormalizedArtifact::Ribozyme),
+        "pirna" | "projectedintent" => Ok(NormalizedArtifact::ProjectedIntent),
+        "spacer" | "spacers" => Ok(NormalizedArtifact::Spacer),
+        "protospacer" => Ok(NormalizedArtifact::Protospacer),
+        "phenotype" => Ok(NormalizedArtifact::Phenotype),
+        "enhancer" | "enterprisenegotiationhandovercertificate" => {
+            Ok(NormalizedArtifact::EnterpriseNegotiationHandoverCertificate)
+        }
+        "silencer" => Ok(NormalizedArtifact::Silencer),
+        "snorna" | "strategicnote" => Ok(NormalizedArtifact::StrategicNote),
+        "snrna" | "semanticnarrowing" => Ok(NormalizedArtifact::SemanticNarrowing),
+        "scarna" | "semanticconstraintassumption" => {
+            Ok(NormalizedArtifact::SemanticConstraintAssumption)
+        }
+        "mirna" | "microalignment" => Ok(NormalizedArtifact::Microalignment),
+        "sirna" | "stopimplementation" => Ok(NormalizedArtifact::StopImplementation),
+        "dsrna" | "deferredscope" => Ok(NormalizedArtifact::DeferredScope),
+        "intron" => Ok(NormalizedArtifact::Intron),
+        "mrna" | "managedrequirement" => Ok(NormalizedArtifact::ManagedRequirement),
+        "exon" => Ok(NormalizedArtifact::Exon),
+        "rrna" | "resourcereference" => Ok(NormalizedArtifact::ResourceReference),
+        "trna" | "taskrealization" => Ok(NormalizedArtifact::TaskRealization),
+        "trf" | "taskrealizationframework" => Ok(NormalizedArtifact::TaskRealizationFramework),
+        "terc" | "testregressioncriteria" => Ok(NormalizedArtifact::TestRegressionCriteria),
+        "telomere" | "testobjectivemanifest" => Ok(NormalizedArtifact::TestObjectiveManifest),
+        "testorchestrationmanifest" => Ok(NormalizedArtifact::TestOrchestrationManifest),
+        "centralruntimemanifest" => Ok(NormalizedArtifact::CentralRuntimeManifest),
+        "cas" | "countermeasureassessmentsystem" => {
+            Ok(NormalizedArtifact::CountermeasureAssessmentSystem)
+        }
+        "protein" | "productiontestedimplementation" => {
+            Ok(NormalizedArtifact::ProductionTestedImplementation)
+        }
+        "chaperone" => Ok(NormalizedArtifact::Chaperone),
+        "tmrna" | "taskmediation" => Ok(NormalizedArtifact::TaskMediation),
+        "crrna" | "causalresolution" => Ok(NormalizedArtifact::CausalResolution),
+        "tracrrna" | "tracereport" => Ok(NormalizedArtifact::TraceReport),
+        "lncrna" | "longnarrativecontext" => Ok(NormalizedArtifact::LongNarrativeContext),
+        "circrna" | "circularinstitutionalreferencecontext" => {
+            Ok(NormalizedArtifact::CircularInstitutionalReferenceContext)
+        }
+        "sgrna" | "suggestedchanges" => Ok(NormalizedArtifact::SuggestedChanges),
+        _ => Err(CliError::Usage(format!(
+            "unsupported normalized artifact `{value}`"
         ))),
-        "mrna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::MRna,
-        ))),
-        "rrna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::RRna,
-        ))),
-        "trna" => Ok(EncodingType::RNA(RnaType::Translation(
-            TranslationRnaType::TRna,
-        ))),
-        "sgrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SgRna,
-        ))),
-        "promoter" => Ok(EncodingType::GRN(GrnType::Promoter)),
-        "enhancer" => Ok(EncodingType::GRN(GrnType::Enhancer)),
-        "piwi" => Ok(EncodingType::GRN(GrnType::PIWI)),
-        "spacers" => Ok(EncodingType::GRN(GrnType::Spacers)),
-        "telomere" => Ok(EncodingType::GRN(GrnType::Telomere)),
-        "centromere" => Ok(EncodingType::GRN(GrnType::Centromere)),
-        "silencer" => Ok(EncodingType::GRN(GrnType::Silencer)),
-        "snrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SnRna,
-        ))),
-        "scarna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::ScaRna,
-        ))),
-        "sirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SiRna,
-        ))),
-        "tmrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::TmRna,
-        ))),
-        "mirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::MiRna,
-        ))),
-        "pirna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::PiRna,
-        ))),
-        "snorna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::SnoRna,
-        ))),
-        "crrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::CrRna,
-        ))),
-        "tracrrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::TracrRna,
-        ))),
-        "lncrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::LncRna,
-        ))),
-        "circrna" => Ok(EncodingType::RNA(RnaType::Regulatory(
-            RegulatoryRnaType::CircRna,
-        ))),
-        _ => Err(CliError::Usage(format!("unsupported encoding `{value}`"))),
     }
 }
 

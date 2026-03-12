@@ -33,7 +33,7 @@ struct Enhancer(ArtifactRef);
 enum NormalizedArtifact {
     Promoter,
     ProblemAssertionManifest,
-    ExecutableRegulatoryNormalizedArtifact,
+    Executable,
     Ribozyme,
     ProjectedIntent,
     Spacer,
@@ -77,7 +77,7 @@ enum NormalizedArtifact {
 
 - `Promoter`: initiative seed or story used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
-- `ExecutableRegulatoryNormalizedArtifact`: eRNA, human-readable executable governance artifact with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.
+- `Executable`: eRNA, human-readable executable governance artifact with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.
 - `Ribozyme`: flexible exploration artifact for event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 - `ProjectedIntent`: piRNA, projected or explicit intent boundary.
 - `Spacer`: risk assessment.

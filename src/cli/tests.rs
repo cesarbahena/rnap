@@ -28,7 +28,7 @@ fn epigenetics_bootstraps_session_then_normal_workflow_commands_use_it() {
     dispatch(
             &mut state,
             words(
-                "epigenetics define-family FRS FeatureRequirements --encoding mRNA --sequence Summary --sequence Risk",
+                "epigenetics define-family FRS FeatureRequirements --artifact mRNA --sequence Summary --sequence Risk",
             ),
         )
         .expect("define family");
@@ -111,12 +111,12 @@ fn explore_cli_creates_graph_nodes_and_edges() {
     let mut state = bootstrapped_state();
     dispatch(
         &mut state,
-        words("epigenetics define-family STR Story --encoding promoter --sequence Summary"),
+        words("epigenetics define-family STR Story --artifact promoter --sequence Summary"),
     )
     .expect("promoter family");
     dispatch(
         &mut state,
-        words("epigenetics define-family EXP Exploration --encoding eRNA --sequence Summary"),
+        words("epigenetics define-family EXP Exploration --artifact eRNA --sequence Summary"),
     )
     .expect("erna family");
     dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
@@ -158,12 +158,12 @@ fn explore_cli_attaches_enhancer_to_promoter_property() {
     let mut state = bootstrapped_state();
     dispatch(
         &mut state,
-        words("epigenetics define-family STR Story --encoding promoter --sequence Summary"),
+        words("epigenetics define-family STR Story --artifact promoter --sequence Summary"),
     )
     .expect("promoter family");
     dispatch(
         &mut state,
-        words("epigenetics define-family RSH Research --encoding enhancer --sequence Summary"),
+        words("epigenetics define-family RSH Research --artifact enhancer --sequence Summary"),
     )
     .expect("enhancer family");
     dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
@@ -205,91 +205,53 @@ fn q_and_a_cli_create_answer_and_show_introns() {
 }
 
 #[test]
-fn parses_current_encoding_taxonomy_aliases() {
+fn parses_current_normalized_artifact_taxonomy_aliases() {
     let cases = [
-        ("promoter", EncodingType::GRN(GrnType::Promoter)),
-        ("enhancer", EncodingType::GRN(GrnType::Enhancer)),
-        ("piwi", EncodingType::GRN(GrnType::PIWI)),
-        ("spacers", EncodingType::GRN(GrnType::Spacers)),
-        ("telomere", EncodingType::GRN(GrnType::Telomere)),
-        ("centromere", EncodingType::GRN(GrnType::Centromere)),
-        ("silencer", EncodingType::GRN(GrnType::Silencer)),
+        ("promoter", NormalizedArtifact::Promoter),
         (
-            "eRNA",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
+            "enhancer",
+            NormalizedArtifact::EnterpriseNegotiationHandoverCertificate,
         ),
-        (
-            "mRNA",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
-        ),
-        (
-            "rRNA",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRna)),
-        ),
-        (
-            "tRNA",
-            EncodingType::RNA(RnaType::Translation(TranslationRnaType::TRna)),
-        ),
-        (
-            "snRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnRna)),
-        ),
-        (
-            "scaRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::ScaRna)),
-        ),
-        (
-            "siRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SiRna)),
-        ),
-        (
-            "tmRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TmRna)),
-        ),
-        (
-            "miRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::MiRna)),
-        ),
-        (
-            "piRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::PiRna)),
-        ),
-        (
-            "snoRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SnoRna)),
-        ),
-        (
-            "crRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CrRna)),
-        ),
-        (
-            "tracrRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::TracrRna)),
-        ),
-        (
-            "lncRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::LncRna)),
-        ),
+        ("spacers", NormalizedArtifact::Spacer),
+        ("telomere", NormalizedArtifact::TestObjectiveManifest),
+        ("silencer", NormalizedArtifact::Silencer),
+        ("eRNA", NormalizedArtifact::Executable),
+        ("mRNA", NormalizedArtifact::ManagedRequirement),
+        ("rRNA", NormalizedArtifact::ResourceReference),
+        ("tRNA", NormalizedArtifact::TaskRealization),
+        ("snRNA", NormalizedArtifact::SemanticNarrowing),
+        ("scaRNA", NormalizedArtifact::SemanticConstraintAssumption),
+        ("siRNA", NormalizedArtifact::StopImplementation),
+        ("tmRNA", NormalizedArtifact::TaskMediation),
+        ("miRNA", NormalizedArtifact::Microalignment),
+        ("piRNA", NormalizedArtifact::ProjectedIntent),
+        ("snoRNA", NormalizedArtifact::StrategicNote),
+        ("crRNA", NormalizedArtifact::CausalResolution),
+        ("tracrRNA", NormalizedArtifact::TraceReport),
+        ("lncRNA", NormalizedArtifact::LongNarrativeContext),
         (
             "circRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::CircRna)),
+            NormalizedArtifact::CircularInstitutionalReferenceContext,
         ),
-        (
-            "sgRNA",
-            EncodingType::RNA(RnaType::Regulatory(RegulatoryRnaType::SgRna)),
-        ),
+        ("sgRNA", NormalizedArtifact::SuggestedChanges),
     ];
 
     for (alias, expected) in cases {
-        assert_eq!(parse_encoding(alias).expect("supported encoding"), expected);
+        assert_eq!(
+            parse_normalized_artifact(alias).expect("supported normalized_artifact"),
+            expected
+        );
     }
 }
 
 #[test]
-fn rejects_unknown_encoding_aliases() {
-    let error = parse_encoding("not-a-real-encoding").expect_err("unknown encoding");
+fn rejects_unknown_normalized_artifact_aliases() {
+    let error = parse_normalized_artifact("not-a-real-normalized_artifact")
+        .expect_err("unknown normalized_artifact");
 
-    assert!(matches!(error, CliError::Usage(message) if message.contains("unsupported encoding")));
+    assert!(
+        matches!(error, CliError::Usage(message) if message.contains("unsupported normalized artifact"))
+    );
 }
 
 fn bootstrapped_state() -> LocalState {
@@ -317,7 +279,7 @@ fn bootstrapped_state() -> LocalState {
     dispatch(
             &mut state,
             words(
-                "epigenetics define-family FRS FeatureRequirements --encoding mRNA --sequence Summary --sequence Risk",
+                "epigenetics define-family FRS FeatureRequirements --artifact mRNA --sequence Summary --sequence Risk",
             ),
         )
         .expect("define family");

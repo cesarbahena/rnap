@@ -12,6 +12,8 @@ This handoff is for agents continuing DNAp model or implementation work. It is n
 - [WORKFLOW_MODEL.md](WORKFLOW_MODEL.md): approved workflow interactions and explicit deferrals.
 - [DEFERRED_DOMAIN_LEDGER.md](DEFERRED_DOMAIN_LEDGER.md): obligations and known code/model gaps.
 - [DOCS_RESET_RECOVERY_NOTES.md](DOCS_RESET_RECOVERY_NOTES.md): recovery notes if something appears lost.
+- [decisions/001_agent_workflow.md](decisions/001_agent_workflow.md): accepted agent workflow and decision authority.
+- [decisions/002_ribozyme_graph_deferral.md](decisions/002_ribozyme_graph_deferral.md): accepted deferral of Ribozyme graph-local records until concrete use cases are approved.
 
 Treat [DISCUSSION_MODEL_PROPOSAL.md](DISCUSSION_MODEL_PROPOSAL.md) and [AUTONOMOUS_DECISION_LOG.md](AUTONOMOUS_DECISION_LOG.md) as superseded recovery context only.
 
@@ -38,7 +40,7 @@ Key meanings:
 - `Mutation` is a field-level edit to an Allele.
 - `Signal` is append-only event/provenance.
 - `Histone` is permission/governance fact.
-- `eRNA` is `ExecutableRegulatoryNormalizedArtifact`: a human-readable executable governance artifact with IAM-like DSL attributes.
+- `eRNA` is `NormalizedArtifact::Executable`: a human-readable executable governance artifact with IAM-like DSL attributes.
 - `Ribozyme` replaces the old eRNA exploration role: event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 
 ## Important Recent Decisions
@@ -46,8 +48,9 @@ Key meanings:
 These were clarified during discussion and may not be fully implemented in code yet:
 
 - `DomainEvent` is renamed to `Signal`.
-- `ExecutableRegulatoryNormalizedArtifact` is the eRNA normalized artifact.
+- `Executable` is the eRNA normalized artifact variant; avoid redundant `NormalizedArtifact` wording inside variant names.
 - `ExploratoryNarrative` is removed from the active taxonomy and replaced by `Ribozyme`.
+- Ribozyme is modeled as a normal Gene-capable `NormalizedArtifact` for now; graph-local records are deferred until a concrete Ribozyme graph domain is approved.
 - eRNA regulates Gene lifecycle and command state changes by checking dependency state. It is not mainly a `dna select` policy object.
 - eRNA itself declares and evaluates dependency requirements; do not invent a separate dependency graph abstraction unless a concrete use case proves it.
 - Enhancer remains `EnterpriseNegotiationHandoverCertificate`: an executive/enterprise handover document, not executable governance.
@@ -74,10 +77,10 @@ These were clarified during discussion and may not be fully implemented in code 
 
 The docs currently define the target model ahead of implementation in several areas:
 
-- Code still uses older `EncodingType`/RNA/GRN concepts in places; docs define `NormalizedArtifact` as target.
-- Code/tests still mention older eRNA exploration graph behavior; target model is Ribozyme for that role.
+- Code now has the flat `NormalizedArtifact` taxonomy, but workflow behavior still carries old exploration/eRNA graph assumptions in places.
+- Code/tests still mention older eRNA exploration graph behavior; target model is Ribozyme for that role, but graph-local records are explicitly deferred.
 - Code/tests still include per-Tf active Allele assumptions in places; target model is shared active Allele per `(Locus, GRN)`.
-- `Signal`, `Chromosome`, `ExecutableRegulatoryNormalizedArtifact`, and full `Ribozyme` taxonomy are not fully implemented.
+- `Signal`, `Chromosome`, `NormalizedArtifact::Executable`, and full `Ribozyme` taxonomy are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.
 

@@ -172,11 +172,11 @@ impl Dnap {
         })
     }
 
-    pub(super) fn find_locus_by_encoding(
+    pub(super) fn find_locus_by_artifact(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
-        encoding: EncodingKind,
+        normalized_artifact: ArtifactKind,
         name: &str,
     ) -> Option<&Locus> {
         let normalized = normalize_match_text(name);
@@ -184,28 +184,28 @@ impl Dnap {
             locus.insulator_id == insulator_id
                 && locus.genome_id == genome_id
                 && normalize_match_text(&locus.name) == normalized
-                && self.locus_has_encoding(locus.id, encoding)
+                && self.locus_has_artifact(locus.id, normalized_artifact)
         })
     }
 
-    pub(super) fn require_locus_encoding(
+    pub(super) fn require_locus_artifact(
         &self,
         locus_id: LocusId,
-        encoding: EncodingKind,
+        normalized_artifact: ArtifactKind,
     ) -> Result<(), DnapError> {
-        if self.locus_has_encoding(locus_id, encoding) {
+        if self.locus_has_artifact(locus_id, normalized_artifact) {
             Ok(())
         } else {
-            match encoding {
-                EncodingKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
-                EncodingKind::ERna => Err(DnapError::ExplorationNodeErnaRequired),
-                EncodingKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
-                EncodingKind::MRna => Err(DnapError::IntronTargetRequired),
+            match normalized_artifact {
+                ArtifactKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
+                ArtifactKind::Executable => Err(DnapError::ExplorationNodeErnaRequired),
+                ArtifactKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
+                ArtifactKind::ManagedRequirement => Err(DnapError::IntronTargetRequired),
             }
         }
     }
 
-    fn locus_has_encoding(&self, locus_id: LocusId, encoding: EncodingKind) -> bool {
+    fn locus_has_artifact(&self, locus_id: LocusId, normalized_artifact: ArtifactKind) -> bool {
         let Some(locus) = self.loci.get(&locus_id) else {
             return false;
         };
@@ -213,16 +213,16 @@ impl Dnap {
             return false;
         };
         matches!(
-            (family.encodes, encoding),
-            (EncodingType::GRN(GrnType::Promoter), EncodingKind::Promoter)
-                | (EncodingType::GRN(GrnType::Enhancer), EncodingKind::Enhancer)
+            (family.normalized_artifact, normalized_artifact),
+            (NormalizedArtifact::Promoter, ArtifactKind::Promoter)
                 | (
-                    EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
-                    EncodingKind::ERna,
+                    NormalizedArtifact::EnterpriseNegotiationHandoverCertificate,
+                    ArtifactKind::Enhancer
                 )
+                | (NormalizedArtifact::Executable, ArtifactKind::Executable,)
                 | (
-                    EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
-                    EncodingKind::MRna,
+                    NormalizedArtifact::ManagedRequirement,
+                    ArtifactKind::ManagedRequirement,
                 )
         )
     }
@@ -241,7 +241,7 @@ impl Dnap {
             .alleles
             .get(&allele_id)
             .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(allele.locus_id, EncodingKind::MRna) {
+        if !self.locus_has_artifact(allele.locus_id, ArtifactKind::ManagedRequirement) {
             return Err(DnapError::IntronTargetRequired);
         }
         let sequence_definition_id = target_sequence_name
@@ -722,11 +722,11 @@ impl Dnap {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum EncodingKind {
+pub(super) enum ArtifactKind {
     Promoter,
     Enhancer,
-    ERna,
-    MRna,
+    Executable,
+    ManagedRequirement,
 }
 
 fn require_text(value: String, error: DnapError) -> Result<String, DnapError> {

@@ -60,7 +60,7 @@ A Control Fact governs, constrains, or interprets behavior across artifacts and 
 - `Histone`: permission/governance fact.
 - `eRNA`: protocol/evaluator/control rule artifact.
 
-Histones answer what governance fact exists. eRNA is an `ExecutableRegulatoryNormalizedArtifact`: a human-readable executable governance artifact with IAM-like DSL attributes. eRNA mainly regulates Gene lifecycle and command state changes by checking dependency state.
+Histones answer what governance fact exists. eRNA is `NormalizedArtifact::Executable`: a human-readable executable governance artifact with IAM-like DSL attributes. eRNA mainly regulates Gene lifecycle and command state changes by checking dependency state.
 
 ## Relationship
 

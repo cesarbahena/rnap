@@ -19,7 +19,7 @@ impl Dnap {
             .alleles
             .get(&allele_id)
             .ok_or(DnapError::AlleleNotFound)?;
-        self.require_locus_encoding(allele.locus_id, EncodingKind::Promoter)?;
+        self.require_locus_artifact(allele.locus_id, ArtifactKind::Promoter)?;
         let promoter_locus = self
             .loci
             .get(&allele.locus_id)
@@ -69,10 +69,10 @@ impl Dnap {
         let erna_locus_name =
             require_text(input.erna_locus_name, DnapError::BlankExplorationNodeName)?;
         let mut created_erna = None;
-        let erna_locus = match self.find_locus_by_encoding(
+        let erna_locus = match self.find_locus_by_artifact(
             input.insulator_id,
             input.genome_id,
-            EncodingKind::ERna,
+            ArtifactKind::Executable,
             &erna_locus_name,
         ) {
             Some(locus) => locus.clone(),
@@ -90,13 +90,13 @@ impl Dnap {
                     causes: Vec::new(),
                     created_by: input.created_by,
                 })?;
-                self.require_locus_encoding(mutated.locus.id, EncodingKind::ERna)?;
+                self.require_locus_artifact(mutated.locus.id, ArtifactKind::Executable)?;
                 let locus = mutated.locus.clone();
                 created_erna = Some(mutated);
                 locus
             }
         };
-        self.require_locus_encoding(erna_locus.id, EncodingKind::ERna)?;
+        self.require_locus_artifact(erna_locus.id, ArtifactKind::Executable)?;
         let label = match input.label {
             Some(label) => require_text(label, DnapError::BlankExplorationNodeName)?,
             None => erna_locus.name.clone(),
@@ -203,10 +203,10 @@ impl Dnap {
             .get(&promoter_allele_id)
             .map(|allele| allele.locus_id)
             .ok_or(DnapError::AlleleNotFound)?;
-        if !self.locus_has_encoding(enhancer_locus_id, EncodingKind::Enhancer) {
+        if !self.locus_has_artifact(enhancer_locus_id, ArtifactKind::Enhancer) {
             return Err(DnapError::EnhancerContextEnhancerRequired);
         }
-        if !self.locus_has_encoding(promoter_locus_id, EncodingKind::Promoter) {
+        if !self.locus_has_artifact(promoter_locus_id, ArtifactKind::Promoter) {
             return Err(DnapError::EnhancerContextPromoterRequired);
         }
 

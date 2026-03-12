@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Allele, EncodingType, Exon, ExplorationGraph, ExplorationGraphId, ExplorationNode,
-    ExplorationNodeId, GeneFamily, GeneFamilyGeneration, GenomeId, Insulator, InsulatorId,
-    InsulatorPlacement, InsulatorPlacementStrategy, Intron, IntronId, IntronSequence, Locus,
-    Mutation, Sequence, SequenceType, SequenceValue, TfId, Transcriptome, Transposon,
+    Allele, Exon, ExplorationGraph, ExplorationGraphId, ExplorationNode, ExplorationNodeId,
+    GeneFamily, GeneFamilyGeneration, GenomeId, Insulator, InsulatorId, InsulatorPlacement,
+    InsulatorPlacementStrategy, Intron, IntronId, IntronSequence, Locus, Mutation,
+    NormalizedArtifact, Sequence, SequenceType, SequenceValue, TfId, Transcriptome, Transposon,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -34,7 +34,7 @@ pub struct DefineGeneFamily {
     pub genome_id: Option<GenomeId>,
     pub name: String,
     pub abbreviation: String,
-    pub encodes: Option<EncodingType>,
+    pub normalized_artifact: Option<NormalizedArtifact>,
     pub sequences: Vec<DefineSequence>,
     pub created_by: TfId,
 }

@@ -48,7 +48,7 @@ Example: `NormalizedArtifact::ManagedRequirement` is the artifact taxonomy value
 
 - `Promoter`: user story or idea used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
-- `ExecutableRegulatoryNormalizedArtifact`: eRNA, human-readable executable governance artifact with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.
+- `Executable`: eRNA, human-readable executable governance artifact with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.
 - `Ribozyme`: flexible exploration artifact for event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 - `ProjectedIntent`: piRNA, projected or explicit intent boundary.
 - `Spacer`: documented risk or risk assessment.

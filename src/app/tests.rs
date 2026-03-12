@@ -102,7 +102,7 @@ fn rejects_blank_gene_family_inputs() {
             genome_id: None,
             name: " ".to_owned(),
             abbreviation: "PRD".to_owned(),
-            encodes: Some(prd_encoding()),
+            normalized_artifact: Some(prd_normalized_artifact()),
             sequences: vec![sequence("title")],
             created_by: tf.id,
         }),
@@ -115,7 +115,7 @@ fn rejects_blank_gene_family_inputs() {
             genome_id: None,
             name: "Product Requirements Document".to_owned(),
             abbreviation: "\n".to_owned(),
-            encodes: Some(prd_encoding()),
+            normalized_artifact: Some(prd_normalized_artifact()),
             sequences: vec![sequence("title")],
             created_by: tf.id,
         }),
@@ -128,7 +128,7 @@ fn rejects_blank_gene_family_inputs() {
             genome_id: None,
             name: "Product Requirements Document".to_owned(),
             abbreviation: "PRD".to_owned(),
-            encodes: Some(prd_encoding()),
+            normalized_artifact: Some(prd_normalized_artifact()),
             sequences: vec![sequence(" ")],
             created_by: tf.id,
         }),
@@ -148,7 +148,7 @@ fn rejects_duplicate_sequence_names_inside_one_generation() {
             genome_id: None,
             name: "Product Requirements Document".to_owned(),
             abbreviation: "PRD".to_owned(),
-            encodes: Some(prd_encoding()),
+            normalized_artifact: Some(prd_normalized_artifact()),
             sequences: vec![sequence("Title"), sequence("title")],
             created_by: tf.id,
         }),
@@ -157,7 +157,7 @@ fn rejects_duplicate_sequence_names_inside_one_generation() {
 }
 
 #[test]
-fn requires_encoding_type_for_gene_family() {
+fn requires_normalized_artifact_type_for_gene_family() {
     let mut dnap = Dnap::default();
     let provisioned = provision_acme(&mut dnap);
     let tf = create_cesar(&mut dnap, provisioned.insulator.id);
@@ -168,11 +168,11 @@ fn requires_encoding_type_for_gene_family() {
             genome_id: None,
             name: "Product Requirements Document".to_owned(),
             abbreviation: "PRD".to_owned(),
-            encodes: None,
+            normalized_artifact: None,
             sequences: vec![sequence("title")],
             created_by: tf.id,
         }),
-        Err(DnapError::MissingEncodingType)
+        Err(DnapError::MissingNormalizedArtifact)
     );
 }
 
@@ -225,7 +225,7 @@ fn rejects_duplicate_abbreviations_in_the_same_effective_scope() {
             genome_id: None,
             name: "Another Product Requirements Document".to_owned(),
             abbreviation: "prd".to_owned(),
-            encodes: Some(prd_encoding()),
+            normalized_artifact: Some(prd_normalized_artifact()),
             sequences: vec![sequence("title")],
             created_by: tf.id,
         }),
@@ -247,7 +247,7 @@ fn rejects_duplicate_abbreviations_in_the_same_effective_scope() {
             genome_id: Some(genome.id),
             name: "Duplicate Billing PRD".to_owned(),
             abbreviation: "prd".to_owned(),
-            encodes: Some(prd_encoding()),
+            normalized_artifact: Some(prd_normalized_artifact()),
             sequences: vec![sequence("title")],
             created_by: tf.id,
         }),
@@ -669,23 +669,23 @@ fn translate_errors_when_the_active_allele_has_no_exons() {
 fn creates_promoter_owned_exploration_graph_with_auto_created_erna_node() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Story",
         "STR",
-        EncodingType::GRN(GrnType::Promoter),
+        NormalizedArtifact::Promoter,
     );
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Exploration",
         "EXP",
-        EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
+        NormalizedArtifact::Executable,
     );
     dnap.mutate_new(MutateNew {
         insulator_id,
@@ -733,23 +733,23 @@ fn creates_promoter_owned_exploration_graph_with_auto_created_erna_node() {
 fn exploration_edges_connect_nodes_inside_one_graph_and_allow_cycles() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Story",
         "STR",
-        EncodingType::GRN(GrnType::Promoter),
+        NormalizedArtifact::Promoter,
     );
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Exploration",
         "EXP",
-        EncodingType::RNA(RnaType::Translation(TranslationRnaType::ERna)),
+        NormalizedArtifact::Executable,
     );
     dnap.mutate_new(MutateNew {
         insulator_id,
@@ -815,23 +815,23 @@ fn exploration_edges_connect_nodes_inside_one_graph_and_allow_cycles() {
 fn enhancer_context_stores_promoter_property_on_enhancer_locus() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Story",
         "STR",
-        EncodingType::GRN(GrnType::Promoter),
+        NormalizedArtifact::Promoter,
     );
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Research",
         "RSH",
-        EncodingType::GRN(GrnType::Enhancer),
+        NormalizedArtifact::EnterpriseNegotiationHandoverCertificate,
     );
     let promoter = dnap
         .mutate_new(MutateNew {
@@ -880,14 +880,14 @@ fn enhancer_context_stores_promoter_property_on_enhancer_locus() {
 fn introns_target_mrna_and_can_chain_follow_ups() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Requirement",
         "REQ",
-        EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
+        NormalizedArtifact::ManagedRequirement,
     );
     let target = dnap
         .mutate_new(MutateNew {
@@ -943,14 +943,14 @@ fn introns_target_mrna_and_can_chain_follow_ups() {
 fn introns_reject_rrna_targets() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Design",
         "DSN",
-        EncodingType::RNA(RnaType::Translation(TranslationRnaType::RRna)),
+        NormalizedArtifact::ResourceReference,
     );
     dnap.mutate_new(MutateNew {
         insulator_id,
@@ -982,14 +982,14 @@ fn introns_reject_rrna_targets() {
 pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, tf_id) = workspace(&mut dnap);
-    define_gene_family_with_encoding(
+    define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
         Some(genome_id),
         tf_id,
         "Requirement",
         "REQ",
-        EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna)),
+        NormalizedArtifact::ManagedRequirement,
     );
     dnap.mutate_new(MutateNew {
         insulator_id,
@@ -1191,28 +1191,28 @@ fn define_gene_family(
         genome_id,
         name: name.to_owned(),
         abbreviation: abbreviation.to_owned(),
-        encodes: Some(prd_encoding()),
+        normalized_artifact: Some(prd_normalized_artifact()),
         sequences: vec![sequence("Some Section"), sequence("Problem")],
         created_by,
     })
     .expect("valid gene family")
 }
 
-fn define_gene_family_with_encoding(
+fn define_gene_family_with_normalized_artifact(
     dnap: &mut Dnap,
     insulator_id: InsulatorId,
     genome_id: Option<GenomeId>,
     created_by: TfId,
     name: &str,
     abbreviation: &str,
-    encodes: EncodingType,
+    normalized_artifact: NormalizedArtifact,
 ) -> DefinedGeneFamily {
     dnap.define_gene_family(DefineGeneFamily {
         insulator_id,
         genome_id,
         name: name.to_owned(),
         abbreviation: abbreviation.to_owned(),
-        encodes: Some(encodes),
+        normalized_artifact: Some(normalized_artifact),
         sequences: vec![sequence("Some Section")],
         created_by,
     })
@@ -1255,6 +1255,6 @@ fn mutation(sequence_name: &str, value: SequenceValue) -> SequenceMutation {
     }
 }
 
-fn prd_encoding() -> EncodingType {
-    EncodingType::RNA(RnaType::Translation(TranslationRnaType::MRna))
+fn prd_normalized_artifact() -> NormalizedArtifact {
+    NormalizedArtifact::ManagedRequirement
 }

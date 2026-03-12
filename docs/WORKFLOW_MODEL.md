@@ -91,27 +91,13 @@ ExplorationGraph remains workflow topology/presentation state, not controlled do
 
 Do not add new Promoter-owned exploration graph behavior until the ownership scope is redesigned.
 
-Ribozyme owns flexible exploration work: event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration. If a whiteboard or diagram use case needs graph-local state, graph/node/edge records belong to Ribozyme modeling.
+Ribozyme owns flexible exploration work: event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 
-A Ribozyme may point to Genes, Loci, Alleles, or other approved typed references when concrete graph use cases are approved.
+For now, Ribozyme is modeled only as a normal Gene-capable `NormalizedArtifact`. It uses the normal GeneFamily, Locus, Allele, Gene, and Mutation lifecycle.
 
-ExplorationNode is graph-local placement/presentation for a reusable artifact reference.
+Do not add persisted ExplorationGraph, ExplorationNode, ExplorationEdge, RibozymeGraph, RibozymeNode, RibozymeEdge, or equivalent graph-local records until a concrete Ribozyme graph use case is approved.
 
-ExplorationNode points to stable artifact identity unless a concrete use case requires candidate or historical resolution.
-
-Whiteboard rendering resolves a Ribozyme-referenced Locus to the current active Allele unless a future snapshot/export feature requires historical resolution.
-
-ExplorationEdge belongs to one ExplorationGraph and connects graph-local ExplorationNodes, not reusable controlled artifacts directly.
-
-Ribozyme exploration graphs may be cyclic.
-
-Exploration graphs are intended to render as collaborative React whiteboards.
-
-Exploration graph nodes and edges need presentation metadata such as position, size, labels, and style.
-
-Exploration graph edges keep semantic relationship data separate from graph-local presentation state such as label, route, color, and stroke.
-
-Real-time collaboration will need operation-friendly changes such as creating, moving, resizing, labeling, and linking nodes. CRDT/OT semantics are deferred.
+Future graph capabilities should be modeled around Ribozyme when the domain is clear. Collaborative whiteboard layout, graph-local node/edge presentation state, reusable artifact references inside graphs, realtime operation semantics, and CRDT/OT behavior remain deferred.
 
 Do not add direct `EnterpriseNegotiationHandoverCertificate <-> Ribozyme` edges until a concrete workflow requires them.
 

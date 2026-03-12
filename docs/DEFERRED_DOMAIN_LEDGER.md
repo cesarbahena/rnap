@@ -15,7 +15,7 @@ The ledger contains implementation obligations and open decisions that are inten
 
 ## Document Types
 
-- Implement `NormalizedArtifact` as the canonical GeneFamily taxonomy and replace the older `EncodingType`/RNA/GRN split in code.
+- Continue replacing remaining old exploration/eRNA graph behavior with the approved Ribozyme/executable taxonomy model.
 - Implement `ArtifactRef` plus narrowly useful biology/backronym wrappers such as `MRna(ArtifactRef)` or `Enhancer(ArtifactRef)` where relationships require a specific NormalizedArtifact.
 - Implement Chromosome as the named canonical scope inside a Genome.
 - Move Locus identity to Chromosome scope while keeping Locus names unique across the containing Genome.
@@ -24,7 +24,7 @@ The ledger contains implementation obligations and open decisions that are inten
 - `SequenceValue` validation during work-type definition versus mutation application.
 - Exact Gene FQN configuration storage and override implementation.
 - Artifact-specific lifecycle, dependency, authorization, and tenant workflow semantics. Deferred until concrete use cases define the needed structures. eRNA is reserved for human-readable executable governance artifacts with IAM-like DSL attributes.
-- NormalizedArtifact transition from current code's older `EncodingType` split. Docs define the desired model; code migration remains pending.
+- Complete downstream NormalizedArtifact migration where workflow behavior still carries old exploration/eRNA assumptions.
 
 ## Candidate Work
 
@@ -69,10 +69,10 @@ The ledger contains implementation obligations and open decisions that are inten
 - PreInitiationComplex structure. Decision approved: keep it as a named discussion concept only; no persisted object, GRN field, participant model, topic model, or generic channel abstraction is approved until concrete use cases define it.
 - Generic discussion-channel abstraction. Deferred because PreInitiationComplex, MediatorComplex, RepressorsComplex, CRISPR, and StructuralMaintenance do not yet have enough shared approved behavior to justify a common object.
 - EnterpriseNegotiationHandoverCertificate association rules. Deferred; it remains a NormalizedArtifact, but exact Promoter/GRN/Operon attachment semantics are not active foundation.
-- Remodel ExplorationGraph, ExplorationNode, and ExplorationEdge ownership around GRN/Operon or another approved scope. Previous Promoter-owned graph behavior is no longer foundation because GRNs contain Operons with many Promoters.
+- Ribozyme graph capabilities are deferred. For now, Ribozyme is a normal Gene-capable `NormalizedArtifact`; do not implement ExplorationGraph, ExplorationNode, ExplorationEdge, RibozymeGraph, RibozymeNode, RibozymeEdge, or equivalents until a concrete Ribozyme graph use case is approved.
 - Replace the old eRNA exploration role with Ribozyme.
-- Reserve eRNA for `ExecutableRegulatoryNormalizedArtifact`, a human-readable executable governance artifact with IAM-like DSL attributes.
-- Add `ExecutableRegulatoryNormalizedArtifact` and `Ribozyme` to NormalizedArtifact in code.
+- Reserve eRNA for `NormalizedArtifact::Executable`, a human-readable executable governance artifact with IAM-like DSL attributes.
+- Add `Executable` and `Ribozyme` to NormalizedArtifact in code.
 - Decide and implement operation/revision semantics for real-time graph collaboration. CRDT/OT semantics are deferred.
 - Explore RepressorsComplex behavior only through concrete approved use cases.
 - Explore MediatorComplex behavior only through concrete approved use cases.

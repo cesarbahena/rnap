@@ -48,7 +48,7 @@ dna epigenetics use --insulator Acme --genome Billing --tf Cesar
 Define a local work type for workflow testing:
 
 ```sh
-dna epigenetics define-family FRS FeatureRequirements --encoding mRNA --sequence Summary --sequence Risk
+dna epigenetics define-family FRS FeatureRequirements --artifact mRNA --sequence Summary --sequence Risk
 ```
 
 Run normal workflow commands:

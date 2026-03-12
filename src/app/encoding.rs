@@ -15,48 +15,40 @@ pub enum SequenceType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum EncodingType {
-    RNA(RnaType),
-    GRN(GrnType),
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum GrnType {
+pub enum NormalizedArtifact {
     Promoter,
-    Enhancer,
-    PIWI,
-    Spacers,
-    Telomere,
-    Centromere,
+    ProblemAssertionManifest,
+    Executable,
+    Ribozyme,
+    ProjectedIntent,
+    Spacer,
+    Protospacer,
+    Phenotype,
+    EnterpriseNegotiationHandoverCertificate,
     Silencer,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RnaType {
-    Translation(TranslationRnaType),
-    Regulatory(RegulatoryRnaType),
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TranslationRnaType {
-    ERna,
-    MRna,
-    RRna,
-    TRna,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RegulatoryRnaType {
-    SnRna,
-    ScaRna,
-    SiRna,
-    TmRna,
-    MiRna,
-    PiRna,
-    SnoRna,
-    CrRna,
-    TracrRna,
-    LncRna,
-    CircRna,
-    SgRna,
+    StrategicNote,
+    SemanticNarrowing,
+    SemanticConstraintAssumption,
+    Microalignment,
+    StopImplementation,
+    DeferredScope,
+    Intron,
+    ManagedRequirement,
+    Exon,
+    ResourceReference,
+    TaskRealization,
+    TaskRealizationFramework,
+    TestRegressionCriteria,
+    TestObjectiveManifest,
+    TestOrchestrationManifest,
+    CentralRuntimeManifest,
+    CountermeasureAssessmentSystem,
+    ProductionTestedImplementation,
+    Chaperone,
+    TaskMediation,
+    CausalResolution,
+    TraceReport,
+    LongNarrativeContext,
+    CircularInstitutionalReferenceContext,
+    SuggestedChanges,
 }

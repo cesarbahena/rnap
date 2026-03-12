@@ -82,7 +82,9 @@ impl Dnap {
         let name = require_text(input.name, DnapError::BlankGeneFamilyName)?;
         let abbreviation =
             require_text(input.abbreviation, DnapError::BlankGeneFamilyAbbreviation)?;
-        let encodes = input.encodes.ok_or(DnapError::MissingEncodingType)?;
+        let normalized_artifact = input
+            .normalized_artifact
+            .ok_or(DnapError::MissingNormalizedArtifact)?;
         self.require_available_abbreviation(input.insulator_id, input.genome_id, &abbreviation)?;
 
         let mut seen_sequences = BTreeMap::new();
@@ -111,7 +113,7 @@ impl Dnap {
             name,
             abbreviation,
             current_generation_id: generation_id,
-            encodes,
+            normalized_artifact,
             created_at: now,
             updated_at: now,
         };
