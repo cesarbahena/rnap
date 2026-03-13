@@ -14,6 +14,7 @@ This handoff is for agents continuing DNAp model or implementation work. It is n
 - [DOCS_RESET_RECOVERY_NOTES.md](DOCS_RESET_RECOVERY_NOTES.md): recovery notes if something appears lost.
 - [decisions/001_agent_workflow.md](decisions/001_agent_workflow.md): accepted agent workflow and decision authority.
 - [decisions/002_ribozyme_graph_deferral.md](decisions/002_ribozyme_graph_deferral.md): accepted deferral of Ribozyme graph-local records until concrete use cases are approved.
+- [decisions/004_verification_scope.md](decisions/004_verification_scope.md): accepted verification rule; run code tests only when code or executable configuration changes.
 
 Treat [DISCUSSION_MODEL_PROPOSAL.md](DISCUSSION_MODEL_PROPOSAL.md) and [AUTONOMOUS_DECISION_LOG.md](AUTONOMOUS_DECISION_LOG.md) as superseded recovery context only.
 
@@ -97,4 +98,6 @@ Ask one at a time and keep them tied to durable model semantics:
 
 ## Verification
 
-Before this handoff was written, `cargo fmt --check && cargo test` passed with 34 tests. Re-run after any edit.
+Current code verification baseline: `cargo fmt --check && cargo test` passed with 34 tests after commit `f12d652`.
+
+Run code verification only when code or executable configuration changes. Do not run `cargo test` for documentation-only edits; instead review the changed docs for local consistency, broken references, and contradictions relevant to the edit.

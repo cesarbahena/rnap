@@ -42,6 +42,7 @@ DNAp is the Development Network Alignment Platform: an enterprise multitenant SD
 ## Build Rules
 
 - Build backend/application behavior first.
+- Run code verification only when code or executable configuration changes; documentation-only edits require document review, not `cargo test`.
 - Do not expose normal tenant-user CLI commands for provisioning Insulators.
 - CLI commands should use mainstream biology-oriented workflow language and avoid generic CRUD.
 - CLI commands may compose multiple backend workflow facts when that makes common human workflows easier.
