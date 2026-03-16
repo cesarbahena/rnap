@@ -7,18 +7,19 @@ impl Dnap {
     ) -> Result<EnhancerContext, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.updated_by, input.insulator_id)?;
 
         let enhancer_allele_id = self.resolve_active_allele_id(
             input.insulator_id,
             input.genome_id,
-            input.updated_by,
+            input.grn_id,
             &input.enhancer_gene_fqn,
         )?;
         let promoter_allele_id = self.resolve_active_allele_id(
             input.insulator_id,
             input.genome_id,
-            input.updated_by,
+            input.grn_id,
             &input.promoter_gene_fqn,
         )?;
         let enhancer_locus_id = self

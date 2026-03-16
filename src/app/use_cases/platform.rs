@@ -69,6 +69,26 @@ impl Dnap {
         Ok(tf)
     }
 
+    pub fn create_grn(&mut self, input: CreateGrn) -> Result<CreatedGrn, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_tf_in_insulator(input.activator, input.insulator_id)?;
+        let name = require_text(input.name, DnapError::BlankGrnName)?;
+        let now = SystemTime::now();
+        let grn = Grn {
+            id: self.allocate_grn_id(),
+            genome_id: input.genome_id,
+            name,
+            activator: input.activator,
+            state: GrnState::Triage,
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.grns.insert(grn.id, grn.clone());
+        Ok(CreatedGrn { grn })
+    }
+
     pub fn define_gene_family(
         &mut self,
         input: DefineGeneFamily,

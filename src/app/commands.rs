@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Allele, Exon, GeneFamily, GeneFamilyGeneration, GenomeId, Insulator, InsulatorId,
+    Allele, Exon, GeneFamily, GeneFamilyGeneration, GenomeId, Grn, GrnId, Insulator, InsulatorId,
     InsulatorPlacement, InsulatorPlacementStrategy, Intron, IntronId, IntronSequence, Locus,
     Mutation, NormalizedArtifact, Sequence, SequenceType, SequenceValue, TfId, Transcriptome,
     Transposon,
@@ -26,6 +26,14 @@ pub struct CreateTf {
     pub display_name: String,
     pub external_subject: Option<String>,
     pub identity_provider: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreateGrn {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
+    pub name: String,
+    pub activator: TfId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -55,6 +63,7 @@ pub struct DefinedGeneFamily {
 pub struct MutateNew {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub gene_family_abbreviation: String,
     pub locus_name: String,
     pub mutations: Vec<SequenceMutation>,
@@ -66,6 +75,7 @@ pub struct MutateNew {
 pub struct MutateExisting {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub gene_fqn: String,
     pub mutations: Vec<SequenceMutation>,
     pub causes: Vec<String>,
@@ -91,6 +101,7 @@ pub struct MutatedAllele {
 pub struct TranscribeAllele {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub gene_fqn: String,
     pub full: bool,
     pub created_by: TfId,
@@ -108,6 +119,7 @@ pub struct TranscribedAllele {
 pub struct SpliceAllele {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub gene_fqn: String,
     pub exon_texts: Vec<String>,
     pub lgtm: bool,
@@ -125,6 +137,7 @@ pub struct SpliceResult {
 pub struct TranslateAllele {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub gene_fqn: String,
     pub created_by: TfId,
 }
@@ -139,6 +152,7 @@ pub struct TranslatedAllele {
 pub struct AttachEnhancerPromoter {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub enhancer_gene_fqn: String,
     pub promoter_gene_fqn: String,
     pub updated_by: TfId,
@@ -148,6 +162,7 @@ pub struct AttachEnhancerPromoter {
 pub struct CreateIntron {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub target_mrna_fqn: String,
     pub target_sequence_name: Option<String>,
     pub title: String,
@@ -160,6 +175,7 @@ pub struct CreateIntron {
 pub struct AppendIntronSequence {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub target_mrna_fqn: Option<String>,
     pub target_sequence_name: Option<String>,
     pub intron_title: String,
@@ -190,6 +206,11 @@ pub struct IntronThread {
     pub sequences: Vec<IntronSequence>,
     pub precursors: Vec<IntronSummary>,
     pub children: Vec<IntronSummary>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreatedGrn {
+    pub grn: Grn,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

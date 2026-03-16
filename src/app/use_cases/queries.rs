@@ -69,6 +69,13 @@ impl Dnap {
         })
     }
 
+    pub fn find_grn_by_name(&self, genome_id: GenomeId, name: &str) -> Option<&Grn> {
+        let normalized = normalize_match_text(name);
+        self.grns
+            .values()
+            .find(|grn| grn.genome_id == genome_id && normalize_match_text(&grn.name) == normalized)
+    }
+
     pub fn insulator(&self, id: InsulatorId) -> Option<&Insulator> {
         self.insulators.get(&id)
     }

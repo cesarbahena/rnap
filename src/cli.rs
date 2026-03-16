@@ -3,7 +3,7 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AppendIntronSequence, AttachEnhancerPromoter, CreateGenome, CreateIntron, CreateTf,
+    AppendIntronSequence, AttachEnhancerPromoter, CreateGenome, CreateGrn, CreateIntron, CreateTf,
     DefineGeneFamily, DefineSequence, Dnap, DnapError, IntronSummary, IntronThread, MutateExisting,
     MutateNew, NormalizedArtifact, ProvisionInsulator, SequenceMutation, SequenceType,
     SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
@@ -111,7 +111,8 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
                 tf.display_name, tf.id
             ))
         }
-        "use" => {
+        "init-grn" => {
+            let name = positional(args, 1, "grn name")?;
             let insulator_name = required_option(args, "--insulator")?;
             let genome_name = required_option(args, "--genome")?;
             let tf_name = required_option(args, "--tf")?;
@@ -127,6 +128,38 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
                 .dnap
                 .find_tf_by_display_name(insulator.id, &tf_name)
                 .ok_or_else(|| CliError::NotFound(format!("tf `{tf_name}`")))?;
+            let created = state.dnap.create_grn(CreateGrn {
+                insulator_id: insulator.id,
+                genome_id: genome.id,
+                name,
+                activator: tf.id,
+            })?;
+            Ok(format!(
+                "initialized grn `{}` ({:?})",
+                created.grn.name, created.grn.id
+            ))
+        }
+        "use" => {
+            let insulator_name = required_option(args, "--insulator")?;
+            let genome_name = required_option(args, "--genome")?;
+            let tf_name = required_option(args, "--tf")?;
+            let grn_name = required_option(args, "--grn")?;
+            let insulator = state
+                .dnap
+                .find_insulator_by_name(&insulator_name)
+                .ok_or_else(|| CliError::NotFound(format!("insulator `{insulator_name}`")))?;
+            let genome = state
+                .dnap
+                .find_genome_by_name(insulator.id, &genome_name)
+                .ok_or_else(|| CliError::NotFound(format!("genome `{genome_name}`")))?;
+            let tf = state
+                .dnap
+                .find_tf_by_display_name(insulator.id, &tf_name)
+                .ok_or_else(|| CliError::NotFound(format!("tf `{tf_name}`")))?;
+            let grn = state
+                .dnap
+                .find_grn_by_name(genome.id, &grn_name)
+                .ok_or_else(|| CliError::NotFound(format!("grn `{grn_name}`")))?;
             state.session = Some(Session {
                 schema_version: 1,
                 profile: "local".to_owned(),
@@ -137,14 +170,15 @@ fn epigenetics(state: &mut LocalState, args: &[String]) -> Result<String, CliErr
                 scope: SessionScope {
                     insulator_id: insulator.id,
                     genome_id: genome.id,
+                    grn_id: grn.id,
                 },
                 issued_by: SessionIssuer::EpigeneticsLocal,
                 issued_at: SystemTime::now(),
                 expires_at: None,
             });
             Ok(format!(
-                "using insulator `{}`, genome `{}`, tf `{}`",
-                insulator.name, genome.name, tf.display_name
+                "using insulator `{}`, genome `{}`, grn `{}`, tf `{}`",
+                insulator.name, genome.name, grn.name, tf.display_name
             ))
         }
         "define-family" => {
@@ -197,6 +231,7 @@ fn mutate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
         let mutated = state.dnap.mutate_new(MutateNew {
             insulator_id: session.scope.insulator_id,
             genome_id: session.scope.genome_id,
+            grn_id: session.scope.grn_id,
             gene_family_abbreviation: family,
             locus_name,
             mutations,
@@ -216,6 +251,7 @@ fn mutate(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     let mutated = state.dnap.mutate_existing(MutateExisting {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
+        grn_id: session.scope.grn_id,
         gene_fqn,
         mutations,
         causes,
@@ -235,6 +271,7 @@ fn transcribe(state: &mut LocalState, args: &[String]) -> Result<String, CliErro
     let transcribed = state.dnap.transcribe(TranscribeAllele {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
+        grn_id: session.scope.grn_id,
         gene_fqn,
         full,
         created_by: session.actor.tf_id,
@@ -284,6 +321,7 @@ fn splice(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     let spliced = state.dnap.splice(SpliceAllele {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
+        grn_id: session.scope.grn_id,
         gene_fqn,
         exon_texts,
         lgtm,
@@ -303,6 +341,7 @@ fn translate(state: &mut LocalState, args: &[String]) -> Result<String, CliError
     let translated = state.dnap.translate(TranslateAllele {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
+        grn_id: session.scope.grn_id,
         gene_fqn,
         created_by: session.actor.tf_id,
     })?;
@@ -350,6 +389,7 @@ fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, C
         .attach_enhancer_promoter(AttachEnhancerPromoter {
             insulator_id: session.scope.insulator_id,
             genome_id: session.scope.genome_id,
+            grn_id: session.scope.grn_id,
             enhancer_gene_fqn: enhancer_gene_fqn.clone(),
             promoter_gene_fqn: promoter_gene_fqn.clone(),
             updated_by: session.actor.tf_id,
@@ -380,6 +420,7 @@ fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError>
         let summaries = state.dnap.intron_summaries_for(
             session.scope.insulator_id,
             session.scope.genome_id,
+            session.scope.grn_id,
             session.actor.tf_id,
             &target_mrna_fqn,
             sequence_name.as_deref(),
@@ -400,6 +441,7 @@ fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError>
     let intron = state.dnap.create_intron(CreateIntron {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
+        grn_id: session.scope.grn_id,
         target_mrna_fqn: target_mrna_fqn.clone(),
         target_sequence_name: sequence_name,
         title,
@@ -442,6 +484,7 @@ fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
         let thread = state.dnap.intron_thread(
             session.scope.insulator_id,
             session.scope.genome_id,
+            session.scope.grn_id,
             session.actor.tf_id,
             &question_title,
             target_mrna_fqn.as_deref().map(|target| (target, None)),
@@ -452,6 +495,7 @@ fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     let answered = state.dnap.append_intron_sequence(AppendIntronSequence {
         insulator_id: session.scope.insulator_id,
         genome_id: session.scope.genome_id,
+        grn_id: session.scope.grn_id,
         target_mrna_fqn,
         target_sequence_name: None,
         intron_title: question_title,

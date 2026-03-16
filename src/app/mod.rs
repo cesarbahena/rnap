@@ -32,6 +32,7 @@ pub use workflow::*;
 pub struct Dnap {
     next_insulator_id: u64,
     next_genome_id: u64,
+    next_grn_id: u64,
     next_tf_id: u64,
     next_gene_family_id: u64,
     next_gene_family_generation_id: u64,
@@ -48,6 +49,7 @@ pub struct Dnap {
     insulators: BTreeMap<InsulatorId, Insulator>,
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
+    grns: BTreeMap<GrnId, Grn>,
     tfs: BTreeMap<TfId, Tf>,
     gene_families: BTreeMap<GeneFamilyId, GeneFamily>,
     gene_family_generations: BTreeMap<GeneFamilyGenerationId, GeneFamilyGeneration>,
@@ -67,6 +69,7 @@ pub(super) struct BuildMutations {
     pub allele_id: AlleleId,
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub locus_id: LocusId,
     pub generation_id: GeneFamilyGenerationId,
     pub mutations: Vec<SequenceMutation>,
@@ -100,6 +103,19 @@ impl Dnap {
             Ok(())
         } else {
             Err(DnapError::GenomeInsulatorMismatch)
+        }
+    }
+
+    pub(super) fn require_grn_in_genome(
+        &self,
+        id: GrnId,
+        genome_id: GenomeId,
+    ) -> Result<(), DnapError> {
+        let grn = self.grns.get(&id).ok_or(DnapError::GrnNotFound)?;
+        if grn.genome_id == genome_id {
+            Ok(())
+        } else {
+            Err(DnapError::GrnGenomeMismatch)
         }
     }
 
@@ -138,11 +154,11 @@ impl Dnap {
     pub(super) fn require_no_active_allele(
         &self,
         locus_id: LocusId,
-        created_by: TfId,
+        grn_id: GrnId,
     ) -> Result<(), DnapError> {
         let duplicate = self.alleles.values().any(|allele| {
             allele.locus_id == locus_id
-                && allele.created_by == created_by
+                && allele.grn_id == grn_id
                 && !matches!(allele.state, AlleleState::Selected | AlleleState::Degraded)
         });
         if duplicate {
@@ -191,12 +207,12 @@ impl Dnap {
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
-        created_by: TfId,
+        grn_id: GrnId,
         target_mrna_fqn: &str,
         target_sequence_name: Option<&str>,
     ) -> Result<(LocusId, Option<SequenceDefinitionId>), DnapError> {
         let allele_id =
-            self.resolve_active_allele_id(insulator_id, genome_id, created_by, target_mrna_fqn)?;
+            self.resolve_active_allele_id(insulator_id, genome_id, grn_id, target_mrna_fqn)?;
         let allele = self
             .alleles
             .get(&allele_id)
@@ -221,6 +237,7 @@ impl Dnap {
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
+        _grn_id: GrnId,
         created_by: TfId,
         title: &str,
         target: Option<(LocusId, Option<SequenceDefinitionId>)>,
@@ -381,6 +398,7 @@ impl Dnap {
                 let intron = self.resolve_intron(
                     input.insulator_id,
                     input.genome_id,
+                    input.grn_id,
                     input.created_by,
                     cause,
                     None,
@@ -453,7 +471,7 @@ impl Dnap {
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
-        created_by: TfId,
+        grn_id: GrnId,
         gene_fqn: &str,
     ) -> Result<AlleleId, DnapError> {
         let normalized = normalize_match_text(gene_fqn);
@@ -466,7 +484,7 @@ impl Dnap {
             .values()
             .filter(|allele| {
                 allele.genome_id == genome_id
-                    && allele.created_by == created_by
+                    && allele.grn_id == grn_id
                     && !matches!(allele.state, AlleleState::Selected | AlleleState::Degraded)
             })
             .filter_map(|allele| {
@@ -603,6 +621,11 @@ impl Dnap {
     pub(super) fn allocate_tf_id(&mut self) -> TfId {
         self.next_tf_id += 1;
         TfId(self.next_tf_id)
+    }
+
+    pub(super) fn allocate_grn_id(&mut self) -> GrnId {
+        self.next_grn_id += 1;
+        GrnId(self.next_grn_id)
     }
 
     pub(super) fn allocate_gene_family_id(&mut self) -> GeneFamilyId {

@@ -5,6 +5,7 @@ pub enum DnapError {
     BlankInsulatorName,
     BlankPlacementRegion,
     BlankGenomeName,
+    BlankGrnName,
     BlankTfDisplayName,
     BlankGeneFamilyName,
     BlankGeneFamilyAbbreviation,
@@ -39,6 +40,8 @@ pub enum DnapError {
     InsulatorNotFound,
     GenomeNotFound,
     GenomeInsulatorMismatch,
+    GrnNotFound,
+    GrnGenomeMismatch,
     TfNotFound,
     TfInsulatorMismatch,
 }

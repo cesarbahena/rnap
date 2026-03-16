@@ -30,7 +30,7 @@ The ledger contains implementation obligations and open decisions that are inten
 
 - Allele initial sequence values versus all values arriving through Mutations.
 - Degraded candidate behavior before full authorization.
-- Migrate active Allele uniqueness from `(Locus, Tf)` to shared `(Locus, GRN)`.
+- Complete GRN model beyond the minimal bootstrap bridge used for shared active Alleles. Current code scopes active Allele uniqueness to `(Locus, GRN)`, but full GRN lifecycle, Operons, Signals, and authorization remain deferred.
 
 ## Audit
 
@@ -62,7 +62,7 @@ The ledger contains implementation obligations and open decisions that are inten
 ## Workflow
 
 - Non-human actor identity for agents and services. Likely direction: keep a unified Tf identity model, but defer `TfKind`, delegation fields, ownership, and control relationships until concrete use cases define the configurable structures needed, likely alongside Histone-backed authorization and context.
-- Implement minimal GRN and Operon active work context. Decision approved: Genome is project boundary, GRN is work context from triage onward, GRN owns operational lifecycle state, Operon groups Promoters, a Promoter may belong to only one active Operon at a time, activation requires one triage Tf for each active Promoter membership, and triage assignment is accountability rather than authorization.
+- Complete Operon active work context. Minimal GRN bridge is implemented for session scope and shared Alleles; full Operons remain deferred. Decision approved: Genome is project boundary, GRN is work context from triage onward, GRN owns operational lifecycle state, Operon groups Promoters, a Promoter may belong to only one active Operon at a time, activation requires one triage Tf for each active Promoter membership, and triage assignment is accountability rather than authorization.
 - Allow one GRN to work across multiple Chromosomes through its Alleles.
 - Allow multiple GRNs to mutate the same Locus through separate shared Alleles. Conflict detection/resolution is deferred.
 - Operon lifecycle state. Deferred because GRN owns operational lifecycle state; revisit only when an Operon needs independent workflow status separate from its GRN.

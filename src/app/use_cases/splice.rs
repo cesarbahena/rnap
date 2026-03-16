@@ -4,12 +4,13 @@ impl Dnap {
     pub fn splice(&mut self, input: SpliceAllele) -> Result<SpliceResult, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let allele_id = self.resolve_active_allele_id(
             input.insulator_id,
             input.genome_id,
-            input.created_by,
+            input.grn_id,
             &input.gene_fqn,
         )?;
         let mut allele = self
@@ -68,12 +69,13 @@ impl Dnap {
     pub fn translate(&self, input: TranslateAllele) -> Result<TranslatedAllele, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let allele_id = self.resolve_active_allele_id(
             input.insulator_id,
             input.genome_id,
-            input.created_by,
+            input.grn_id,
             &input.gene_fqn,
         )?;
         let allele = self

@@ -4,12 +4,13 @@ impl Dnap {
     pub fn create_intron(&mut self, input: CreateIntron) -> Result<Intron, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let (target_mrna_locus_id, target_sequence_definition_id) = self.resolve_intron_target(
             input.insulator_id,
             input.genome_id,
-            input.created_by,
+            input.grn_id,
             &input.target_mrna_fqn,
             input.target_sequence_name.as_deref(),
         )?;
@@ -68,13 +69,14 @@ impl Dnap {
     ) -> Result<AppendedIntronSequence, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let target = match input.target_mrna_fqn.as_deref() {
             Some(target_mrna_fqn) => Some(self.resolve_intron_target(
                 input.insulator_id,
                 input.genome_id,
-                input.created_by,
+                input.grn_id,
                 target_mrna_fqn,
                 input.target_sequence_name.as_deref(),
             )?),
@@ -83,6 +85,7 @@ impl Dnap {
         let intron = self.resolve_intron(
             input.insulator_id,
             input.genome_id,
+            input.grn_id,
             input.created_by,
             input.intron_title.as_str(),
             target,
@@ -107,6 +110,7 @@ impl Dnap {
                 self.create_intron(CreateIntron {
                     insulator_id: input.insulator_id,
                     genome_id: input.genome_id,
+                    grn_id: input.grn_id,
                     target_mrna_fqn: self
                         .loci
                         .get(&intron.target_mrna_locus_id)
@@ -135,17 +139,19 @@ impl Dnap {
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
+        grn_id: GrnId,
         created_by: TfId,
         target_mrna_fqn: &str,
         target_sequence_name: Option<&str>,
     ) -> Result<Vec<IntronSummary>, DnapError> {
         self.require_insulator(insulator_id)?;
         self.require_genome_in_insulator(genome_id, insulator_id)?;
+        self.require_grn_in_genome(grn_id, genome_id)?;
         self.require_tf_in_insulator(created_by, insulator_id)?;
         let (target_mrna_locus_id, target_sequence_definition_id) = self.resolve_intron_target(
             insulator_id,
             genome_id,
-            created_by,
+            grn_id,
             target_mrna_fqn,
             target_sequence_name,
         )?;
@@ -165,26 +171,34 @@ impl Dnap {
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
+        grn_id: GrnId,
         created_by: TfId,
         intron_title: &str,
         target: Option<(&str, Option<&str>)>,
     ) -> Result<IntronThread, DnapError> {
         self.require_insulator(insulator_id)?;
         self.require_genome_in_insulator(genome_id, insulator_id)?;
+        self.require_grn_in_genome(grn_id, genome_id)?;
         self.require_tf_in_insulator(created_by, insulator_id)?;
         let target = target
             .map(|(target_mrna_fqn, target_sequence_name)| {
                 self.resolve_intron_target(
                     insulator_id,
                     genome_id,
-                    created_by,
+                    grn_id,
                     target_mrna_fqn,
                     target_sequence_name,
                 )
             })
             .transpose()?;
-        let intron =
-            self.resolve_intron(insulator_id, genome_id, created_by, intron_title, target)?;
+        let intron = self.resolve_intron(
+            insulator_id,
+            genome_id,
+            grn_id,
+            created_by,
+            intron_title,
+            target,
+        )?;
         let sequences = self.intron_sequences_for(intron.id);
         let mut precursors = Vec::new();
         if let Some(precursor_id) = intron.precursor {

@@ -7,6 +7,9 @@ pub struct InsulatorId(pub(crate) u64);
 pub struct GenomeId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct GrnId(pub(crate) u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct TfId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

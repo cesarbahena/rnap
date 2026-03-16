@@ -22,7 +22,12 @@ fn epigenetics_bootstraps_session_then_normal_workflow_commands_use_it() {
     .expect("init tf");
     dispatch(
         &mut state,
-        words("epigenetics use --insulator Acme --genome Billing --tf Cesar"),
+        words("epigenetics init-grn Checkout --insulator Acme --genome Billing --tf Cesar"),
+    )
+    .expect("init grn");
+    dispatch(
+        &mut state,
+        words("epigenetics use --insulator Acme --genome Billing --grn Checkout --tf Cesar"),
     )
     .expect("use session");
     dispatch(
@@ -226,7 +231,12 @@ fn bootstrapped_state() -> LocalState {
     .expect("init tf");
     dispatch(
         &mut state,
-        words("epigenetics use --insulator Acme --genome Billing --tf Cesar"),
+        words("epigenetics init-grn Checkout --insulator Acme --genome Billing --tf Cesar"),
+    )
+    .expect("init grn");
+    dispatch(
+        &mut state,
+        words("epigenetics use --insulator Acme --genome Billing --grn Checkout --tf Cesar"),
     )
     .expect("use session");
     dispatch(

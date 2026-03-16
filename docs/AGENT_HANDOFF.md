@@ -80,7 +80,7 @@ The docs currently define the target model ahead of implementation in several ar
 
 - Code now has the flat `NormalizedArtifact` taxonomy, but workflow behavior still carries old exploration/eRNA graph assumptions in places.
 - Old eRNA exploration graph code/tests were removed; Ribozyme remains Gene-capable only until a concrete graph use case is approved.
-- Code/tests still include per-Tf active Allele assumptions in places; target model is shared active Allele per `(Locus, GRN)`.
+- Code now uses a minimal GRN bridge for active Allele resolution and uniqueness: one active Allele per `(Locus, GRN)`.
 - `Signal`, `Chromosome`, `NormalizedArtifact::Executable`, and full `Ribozyme` taxonomy are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.
@@ -94,7 +94,7 @@ Ask one at a time and keep them tied to durable model semantics:
 - What does an eRNA evaluation return: allow, deny, warn, require, or another result shape?
 - Is eRNA evaluation always side-effect-free, with commands creating Signals after evaluation?
 - What minimum Ribozyme use case should replace the old exploration graph implementation?
-- What is the first migration path from old per-Tf Alleles to shared `(Locus, GRN)` Alleles?
+- What GRN lifecycle command should replace the temporary `dna epigenetics init-grn` bootstrap path?
 
 ## Verification
 

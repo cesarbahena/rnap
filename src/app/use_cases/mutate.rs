@@ -4,6 +4,7 @@ impl Dnap {
     pub fn mutate_new(&mut self, input: MutateNew) -> Result<MutatedAllele, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let family_lookup = require_text(
@@ -22,7 +23,7 @@ impl Dnap {
         let locus_name = require_text(input.locus_name, DnapError::BlankLocusName)?;
 
         if let Some(locus) = self.find_locus(input.genome_id, family.id, &locus_name) {
-            self.require_no_active_allele(locus.id, input.created_by)?;
+            self.require_no_active_allele(locus.id, input.grn_id)?;
         }
 
         let now = SystemTime::now();
@@ -44,6 +45,7 @@ impl Dnap {
         let allele = Allele {
             id: self.allocate_allele_id(),
             genome_id: input.genome_id,
+            grn_id: input.grn_id,
             locus_id: locus.id,
             gene_family_generation_id: generation.id,
             generation: 1,
@@ -67,6 +69,7 @@ impl Dnap {
             allele_id: allele.id,
             insulator_id: input.insulator_id,
             genome_id: input.genome_id,
+            grn_id: input.grn_id,
             locus_id: locus.id,
             generation_id: generation.id,
             mutations: input.mutations,
@@ -96,12 +99,13 @@ impl Dnap {
     pub fn mutate_existing(&mut self, input: MutateExisting) -> Result<MutatedAllele, DnapError> {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        self.require_grn_in_genome(input.grn_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let allele_id = self.resolve_active_allele_id(
             input.insulator_id,
             input.genome_id,
-            input.created_by,
+            input.grn_id,
             &input.gene_fqn,
         )?;
         let mut allele = self
@@ -118,6 +122,7 @@ impl Dnap {
             allele_id: allele.id,
             insulator_id: input.insulator_id,
             genome_id: input.genome_id,
+            grn_id: input.grn_id,
             locus_id: allele.locus_id,
             generation_id: allele.gene_family_generation_id,
             mutations: input.mutations,

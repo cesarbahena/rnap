@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, InsulatorId, IntronId,
+    AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, GrnId, InsulatorId, IntronId,
     IntronSequenceId, LocusId, MutationId, NormalizedArtifact, SequenceDefinitionId, SequenceType,
     TfId, TransposonId,
 };
@@ -75,6 +75,7 @@ pub enum AlleleState {
 pub struct Allele {
     pub id: AlleleId,
     pub genome_id: GenomeId,
+    pub grn_id: GrnId,
     pub locus_id: LocusId,
     pub gene_family_generation_id: GeneFamilyGenerationId,
     pub generation: u32,
