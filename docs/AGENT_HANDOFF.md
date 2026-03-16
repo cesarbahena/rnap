@@ -79,7 +79,7 @@ These were clarified during discussion and may not be fully implemented in code 
 The docs currently define the target model ahead of implementation in several areas:
 
 - Code now has the flat `NormalizedArtifact` taxonomy, but workflow behavior still carries old exploration/eRNA graph assumptions in places.
-- Code/tests still mention older eRNA exploration graph behavior; target model is Ribozyme for that role, but graph-local records are explicitly deferred.
+- Old eRNA exploration graph code/tests were removed; Ribozyme remains Gene-capable only until a concrete graph use case is approved.
 - Code/tests still include per-Tf active Allele assumptions in places; target model is shared active Allele per `(Locus, GRN)`.
 - `Signal`, `Chromosome`, `NormalizedArtifact::Executable`, and full `Ribozyme` taxonomy are not fully implemented.
 

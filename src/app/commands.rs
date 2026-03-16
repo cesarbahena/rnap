@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Allele, Exon, ExplorationGraph, ExplorationGraphId, ExplorationNode, ExplorationNodeId,
-    GeneFamily, GeneFamilyGeneration, GenomeId, Insulator, InsulatorId, InsulatorPlacement,
-    InsulatorPlacementStrategy, Intron, IntronId, IntronSequence, Locus, Mutation,
-    NormalizedArtifact, Sequence, SequenceType, SequenceValue, TfId, Transcriptome, Transposon,
+    Allele, Exon, GeneFamily, GeneFamilyGeneration, GenomeId, Insulator, InsulatorId,
+    InsulatorPlacement, InsulatorPlacementStrategy, Intron, IntronId, IntronSequence, Locus,
+    Mutation, NormalizedArtifact, Sequence, SequenceType, SequenceValue, TfId, Transcriptome,
+    Transposon,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -133,52 +133,6 @@ pub struct TranslateAllele {
 pub struct TranslatedAllele {
     pub allele: Allele,
     pub exons: Vec<Exon>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct CreateExplorationGraph {
-    pub insulator_id: InsulatorId,
-    pub genome_id: GenomeId,
-    pub promoter_gene_fqn: String,
-    pub name: String,
-    pub created_by: TfId,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct CreatedExplorationGraph {
-    pub graph: ExplorationGraph,
-    pub promoter_locus: Locus,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct AddExplorationNode {
-    pub insulator_id: InsulatorId,
-    pub genome_id: GenomeId,
-    pub graph_id: ExplorationGraphId,
-    pub erna_locus_name: String,
-    pub erna_family_abbreviation: Option<String>,
-    pub label: Option<String>,
-    pub position_x: i64,
-    pub position_y: i64,
-    pub created_by: TfId,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AddedExplorationNode {
-    pub node: ExplorationNode,
-    pub erna_locus: Locus,
-    pub created_erna: Option<MutatedAllele>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct AddExplorationEdge {
-    pub insulator_id: InsulatorId,
-    pub genome_id: GenomeId,
-    pub graph_id: ExplorationGraphId,
-    pub from_node_id: ExplorationNodeId,
-    pub to_node_id: ExplorationNodeId,
-    pub label: Option<String>,
-    pub created_by: TfId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

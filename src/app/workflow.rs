@@ -3,9 +3,8 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, ChromosomeId, ExonId, ExplorationEdgeId, ExplorationGraphId, ExplorationNodeId,
-    GeneId, GenomeId, IntronId, IntronSequenceId, LocusId, MutationId, SequenceDefinitionId,
-    SequenceHash, TfId, TranscriptomeId,
+    AlleleId, ChromosomeId, ExonId, GeneId, GenomeId, IntronId, IntronSequenceId, LocusId,
+    MutationId, SequenceDefinitionId, SequenceHash, TfId, TranscriptomeId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -41,40 +40,6 @@ pub struct Exon {
     pub allele_id: AlleleId,
     pub text: String,
     pub depends_on: Vec<ExonId>,
-    pub created_by: TfId,
-    pub created_at: SystemTime,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct ExplorationGraph {
-    pub id: ExplorationGraphId,
-    pub promoter_locus_id: LocusId,
-    pub name: String,
-    pub created_by: TfId,
-    pub created_at: SystemTime,
-    pub updated_at: SystemTime,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct ExplorationNode {
-    pub id: ExplorationNodeId,
-    pub graph_id: ExplorationGraphId,
-    pub erna_locus_id: LocusId,
-    pub label: String,
-    pub position_x: i64,
-    pub position_y: i64,
-    pub created_by: TfId,
-    pub created_at: SystemTime,
-    pub updated_at: SystemTime,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct ExplorationEdge {
-    pub id: ExplorationEdgeId,
-    pub graph_id: ExplorationGraphId,
-    pub from_node_id: ExplorationNodeId,
-    pub to_node_id: ExplorationNodeId,
-    pub label: Option<String>,
     pub created_by: TfId,
     pub created_at: SystemTime,
 }

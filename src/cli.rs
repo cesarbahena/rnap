@@ -3,11 +3,10 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AddExplorationEdge, AddExplorationNode, AppendIntronSequence, AttachEnhancerPromoter,
-    CreateExplorationGraph, CreateGenome, CreateIntron, CreateTf, DefineGeneFamily, DefineSequence,
-    Dnap, DnapError, ExplorationGraphId, ExplorationNodeId, IntronSummary, IntronThread,
-    MutateExisting, MutateNew, NormalizedArtifact, ProvisionInsulator, SequenceMutation,
-    SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
+    AppendIntronSequence, AttachEnhancerPromoter, CreateGenome, CreateIntron, CreateTf,
+    DefineGeneFamily, DefineSequence, Dnap, DnapError, IntronSummary, IntronThread, MutateExisting,
+    MutateNew, NormalizedArtifact, ProvisionInsulator, SequenceMutation, SequenceType,
+    SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -335,122 +334,11 @@ fn explore(state: &mut LocalState, args: &[String]) -> Result<String, CliError> 
     };
 
     match command {
-        "graph" => explore_graph(state, args),
-        "node" => explore_node(state, args),
-        "edge" => explore_edge(state, args),
-        "show" => explore_show(state, args),
         "enhancer" => explore_enhancer(state, args),
         _ => Err(CliError::Usage(format!(
             "unknown explore subcommand `{command}`"
         ))),
     }
-}
-
-fn explore_graph(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let session = current_session(state)?;
-    let promoter_gene_fqn = positional(args, 1, "promoter gene fqn")?;
-    let name = positional(args, 2, "graph name")?;
-    let created = state
-        .dnap
-        .create_exploration_graph(CreateExplorationGraph {
-            insulator_id: session.scope.insulator_id,
-            genome_id: session.scope.genome_id,
-            promoter_gene_fqn,
-            name,
-            created_by: session.actor.tf_id,
-        })?;
-
-    Ok(format!(
-        "created exploration graph {} for `{}`",
-        created.graph.id.raw(),
-        created.promoter_locus.name
-    ))
-}
-
-fn explore_node(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let session = current_session(state)?;
-    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
-    let erna_locus_name = positional(args, 2, "erna name")?;
-    let erna_family_abbreviation = option_value(args, "--family");
-    let label = option_value(args, "--label");
-    let position_x = option_value(args, "--x")
-        .map(|value| parse_i64(&value, "--x"))
-        .transpose()?
-        .unwrap_or(0);
-    let position_y = option_value(args, "--y")
-        .map(|value| parse_i64(&value, "--y"))
-        .transpose()?
-        .unwrap_or(0);
-    let added = state.dnap.add_exploration_node(AddExplorationNode {
-        insulator_id: session.scope.insulator_id,
-        genome_id: session.scope.genome_id,
-        graph_id,
-        erna_locus_name,
-        erna_family_abbreviation,
-        label,
-        position_x,
-        position_y,
-        created_by: session.actor.tf_id,
-    })?;
-    let created = if added.created_erna.is_some() {
-        "created"
-    } else {
-        "reused"
-    };
-
-    Ok(format!(
-        "added exploration node {} ({created} eRNA `{}`)",
-        added.node.id.raw(),
-        added.erna_locus.name
-    ))
-}
-
-fn explore_edge(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let session = current_session(state)?;
-    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
-    let from_node_id = parse_node_id(&positional(args, 2, "from node id")?)?;
-    let to_node_id = parse_node_id(&positional(args, 3, "to node id")?)?;
-    let edge = state.dnap.add_exploration_edge(AddExplorationEdge {
-        insulator_id: session.scope.insulator_id,
-        genome_id: session.scope.genome_id,
-        graph_id,
-        from_node_id,
-        to_node_id,
-        label: option_value(args, "--label"),
-        created_by: session.actor.tf_id,
-    })?;
-
-    Ok(format!("added exploration edge {}", edge.id.raw()))
-}
-
-fn explore_show(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let graph_id = parse_graph_id(&positional(args, 1, "graph id")?)?;
-    let graph = state
-        .dnap
-        .exploration_graph(graph_id)
-        .ok_or_else(|| CliError::NotFound(format!("exploration graph {}", graph_id.raw())))?;
-    let mut output = format!("exploration graph {}: {}", graph.id.raw(), graph.name);
-    for node in state.dnap.exploration_nodes(graph_id) {
-        output.push_str(&format!(
-            "\nnode {}: {} @ {},{}",
-            node.id.raw(),
-            node.label,
-            node.position_x,
-            node.position_y
-        ));
-    }
-    for edge in state.dnap.exploration_edges(graph_id) {
-        output.push_str(&format!(
-            "\nedge {}: {} -> {}",
-            edge.id.raw(),
-            edge.from_node_id.raw(),
-            edge.to_node_id.raw()
-        ));
-        if let Some(label) = &edge.label {
-            output.push_str(&format!(" ({label})"));
-        }
-    }
-    Ok(output)
 }
 
 fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
@@ -674,26 +562,6 @@ fn positional(args: &[String], index: usize, name: &str) -> Result<String, CliEr
         .filter(|value| !value.starts_with("--"))
         .cloned()
         .ok_or_else(|| CliError::Usage(format!("missing {name}")))
-}
-
-fn parse_graph_id(value: &str) -> Result<ExplorationGraphId, CliError> {
-    value
-        .parse::<u64>()
-        .map(ExplorationGraphId::from_raw)
-        .map_err(|_| CliError::Usage(format!("invalid graph id `{value}`")))
-}
-
-fn parse_node_id(value: &str) -> Result<ExplorationNodeId, CliError> {
-    value
-        .parse::<u64>()
-        .map(ExplorationNodeId::from_raw)
-        .map_err(|_| CliError::Usage(format!("invalid node id `{value}`")))
-}
-
-fn parse_i64(value: &str, flag: &str) -> Result<i64, CliError> {
-    value
-        .parse::<i64>()
-        .map_err(|_| CliError::Usage(format!("invalid value for {flag}: `{value}`")))
 }
 
 fn required_option(args: &[String], flag: &str) -> Result<String, CliError> {

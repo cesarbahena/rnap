@@ -44,24 +44,6 @@ impl Dnap {
         self.transcriptomes.get(&allele_id)
     }
 
-    pub fn exploration_graph(&self, id: ExplorationGraphId) -> Option<&ExplorationGraph> {
-        self.exploration_graphs.get(&id)
-    }
-
-    pub fn exploration_nodes(&self, graph_id: ExplorationGraphId) -> Vec<&ExplorationNode> {
-        self.exploration_nodes
-            .values()
-            .filter(|node| node.graph_id == graph_id)
-            .collect()
-    }
-
-    pub fn exploration_edges(&self, graph_id: ExplorationGraphId) -> Vec<&ExplorationEdge> {
-        self.exploration_edges
-            .values()
-            .filter(|edge| edge.graph_id == graph_id)
-            .collect()
-    }
-
     pub fn enhancer_context(&self, enhancer_locus_id: LocusId) -> Option<&EnhancerContext> {
         self.enhancer_contexts.get(&enhancer_locus_id)
     }

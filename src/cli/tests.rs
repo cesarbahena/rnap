@@ -107,53 +107,6 @@ fn translate_errors_when_no_exons_exist() {
 }
 
 #[test]
-fn explore_cli_creates_graph_nodes_and_edges() {
-    let mut state = bootstrapped_state();
-    dispatch(
-        &mut state,
-        words("epigenetics define-family STR Story --artifact promoter --sequence Summary"),
-    )
-    .expect("promoter family");
-    dispatch(
-        &mut state,
-        words("epigenetics define-family EXP Exploration --artifact eRNA --sequence Summary"),
-    )
-    .expect("erna family");
-    dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
-
-    let graph = dispatch(
-        &mut state,
-        words("explore graph checkout CheckoutDiscovery"),
-    )
-    .expect("graph");
-    assert!(graph.contains("created exploration graph 1"));
-
-    let first = dispatch(
-        &mut state,
-        words("explore node 1 PaymentAuthorized --family EXP --x 10 --y 20"),
-    )
-    .expect("first node");
-    assert!(first.contains("added exploration node 1"));
-    assert!(first.contains("created eRNA"));
-
-    let second = dispatch(
-        &mut state,
-        words("explore node 1 ReceiptSent --family EXP --label Receipt"),
-    )
-    .expect("second node");
-    assert!(second.contains("added exploration node 2"));
-
-    let edge = dispatch(&mut state, words("explore edge 1 1 2 --label emits")).expect("edge");
-    assert!(edge.contains("added exploration edge 1"));
-
-    let shown = dispatch(&mut state, words("explore show 1")).expect("show graph");
-    assert!(shown.contains("exploration graph 1: CheckoutDiscovery"));
-    assert!(shown.contains("node 1: PaymentAuthorized @ 10,20"));
-    assert!(shown.contains("node 2: Receipt @ 0,0"));
-    assert!(shown.contains("edge 1: 1 -> 2 (emits)"));
-}
-
-#[test]
 fn explore_cli_attaches_enhancer_to_promoter_property() {
     let mut state = bootstrapped_state();
     dispatch(

@@ -47,38 +47,3 @@ pub struct TranscriptomeId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ExonId(pub(crate) u64);
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ExplorationGraphId(pub(crate) u64);
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ExplorationNodeId(pub(crate) u64);
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ExplorationEdgeId(pub(crate) u64);
-
-impl ExplorationGraphId {
-    pub fn from_raw(value: u64) -> Self {
-        Self(value)
-    }
-
-    pub fn raw(self) -> u64 {
-        self.0
-    }
-}
-
-impl ExplorationNodeId {
-    pub fn from_raw(value: u64) -> Self {
-        Self(value)
-    }
-
-    pub fn raw(self) -> u64 {
-        self.0
-    }
-}
-
-impl ExplorationEdgeId {
-    pub fn raw(self) -> u64 {
-        self.0
-    }
-}

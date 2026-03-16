@@ -43,9 +43,6 @@ pub struct Dnap {
     next_chromosome_id: u64,
     next_transcriptome_id: u64,
     next_exon_id: u64,
-    next_exploration_graph_id: u64,
-    next_exploration_node_id: u64,
-    next_exploration_edge_id: u64,
     next_intron_id: u64,
     next_intron_sequence_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
@@ -61,9 +58,6 @@ pub struct Dnap {
     chromosomes: BTreeMap<LocusId, Chromosome>,
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
     exons: BTreeMap<ExonId, Exon>,
-    exploration_graphs: BTreeMap<ExplorationGraphId, ExplorationGraph>,
-    exploration_nodes: BTreeMap<ExplorationNodeId, ExplorationNode>,
-    exploration_edges: BTreeMap<ExplorationEdgeId, ExplorationEdge>,
     enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
     introns: BTreeMap<IntronId, Intron>,
     intron_sequences: BTreeMap<IntronSequenceId, IntronSequence>,
@@ -172,39 +166,6 @@ impl Dnap {
         })
     }
 
-    pub(super) fn find_locus_by_artifact(
-        &self,
-        insulator_id: InsulatorId,
-        genome_id: GenomeId,
-        normalized_artifact: ArtifactKind,
-        name: &str,
-    ) -> Option<&Locus> {
-        let normalized = normalize_match_text(name);
-        self.loci.values().find(|locus| {
-            locus.insulator_id == insulator_id
-                && locus.genome_id == genome_id
-                && normalize_match_text(&locus.name) == normalized
-                && self.locus_has_artifact(locus.id, normalized_artifact)
-        })
-    }
-
-    pub(super) fn require_locus_artifact(
-        &self,
-        locus_id: LocusId,
-        normalized_artifact: ArtifactKind,
-    ) -> Result<(), DnapError> {
-        if self.locus_has_artifact(locus_id, normalized_artifact) {
-            Ok(())
-        } else {
-            match normalized_artifact {
-                ArtifactKind::Promoter => Err(DnapError::ExplorationGraphPromoterRequired),
-                ArtifactKind::Executable => Err(DnapError::ExplorationNodeErnaRequired),
-                ArtifactKind::Enhancer => Err(DnapError::EnhancerContextEnhancerRequired),
-                ArtifactKind::ManagedRequirement => Err(DnapError::IntronTargetRequired),
-            }
-        }
-    }
-
     fn locus_has_artifact(&self, locus_id: LocusId, normalized_artifact: ArtifactKind) -> bool {
         let Some(locus) = self.loci.get(&locus_id) else {
             return false;
@@ -219,7 +180,6 @@ impl Dnap {
                     NormalizedArtifact::EnterpriseNegotiationHandoverCertificate,
                     ArtifactKind::Enhancer
                 )
-                | (NormalizedArtifact::Executable, ArtifactKind::Executable,)
                 | (
                     NormalizedArtifact::ManagedRequirement,
                     ArtifactKind::ManagedRequirement,
@@ -695,21 +655,6 @@ impl Dnap {
         ExonId(self.next_exon_id)
     }
 
-    pub(super) fn allocate_exploration_graph_id(&mut self) -> ExplorationGraphId {
-        self.next_exploration_graph_id += 1;
-        ExplorationGraphId(self.next_exploration_graph_id)
-    }
-
-    pub(super) fn allocate_exploration_node_id(&mut self) -> ExplorationNodeId {
-        self.next_exploration_node_id += 1;
-        ExplorationNodeId(self.next_exploration_node_id)
-    }
-
-    pub(super) fn allocate_exploration_edge_id(&mut self) -> ExplorationEdgeId {
-        self.next_exploration_edge_id += 1;
-        ExplorationEdgeId(self.next_exploration_edge_id)
-    }
-
     pub(super) fn allocate_intron_id(&mut self) -> IntronId {
         self.next_intron_id += 1;
         IntronId(self.next_intron_id)
@@ -725,7 +670,6 @@ impl Dnap {
 pub(super) enum ArtifactKind {
     Promoter,
     Enhancer,
-    Executable,
     ManagedRequirement,
 }
 
