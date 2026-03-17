@@ -12,10 +12,10 @@ mod ids;
 mod workflow;
 mod use_cases {
     pub(super) mod exploration;
-    pub(super) mod introns;
     pub(super) mod mutate;
     pub(super) mod platform;
     pub(super) mod queries;
+    pub(super) mod semantic_narrowing;
     pub(super) mod splice;
     pub(super) mod transcribe;
 }
@@ -44,8 +44,8 @@ pub struct Dnap {
     next_chromosome_id: u64,
     next_transcriptome_id: u64,
     next_exon_id: u64,
-    next_intron_id: u64,
-    next_intron_sequence_id: u64,
+    next_semantic_narrowing_id: u64,
+    next_semantic_narrowing_sequence_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
@@ -61,8 +61,8 @@ pub struct Dnap {
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
     exons: BTreeMap<ExonId, Exon>,
     enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
-    introns: BTreeMap<IntronId, Intron>,
-    intron_sequences: BTreeMap<IntronSequenceId, IntronSequence>,
+    semantic_narrowings: BTreeMap<SemanticNarrowingId, SemanticNarrowing>,
+    semantic_narrowing_sequences: BTreeMap<SemanticNarrowingSequenceId, SemanticNarrowingSequence>,
 }
 
 pub(super) struct BuildMutations {
@@ -203,7 +203,7 @@ impl Dnap {
         )
     }
 
-    pub(super) fn resolve_intron_target(
+    pub(super) fn resolve_semantic_narrowing_target(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
@@ -218,7 +218,7 @@ impl Dnap {
             .get(&allele_id)
             .ok_or(DnapError::AlleleNotFound)?;
         if !self.locus_has_artifact(allele.locus_id, ArtifactKind::ManagedRequirement) {
-            return Err(DnapError::IntronTargetRequired);
+            return Err(DnapError::SemanticNarrowingTargetRequired);
         }
         let sequence_definition_id = target_sequence_name
             .map(|sequence_name| {
@@ -233,7 +233,7 @@ impl Dnap {
         Ok((allele.locus_id, sequence_definition_id))
     }
 
-    pub(super) fn resolve_intron(
+    pub(super) fn resolve_semantic_narrowing(
         &self,
         insulator_id: InsulatorId,
         genome_id: GenomeId,
@@ -241,83 +241,95 @@ impl Dnap {
         created_by: TfId,
         title: &str,
         target: Option<(LocusId, Option<SequenceDefinitionId>)>,
-    ) -> Result<Intron, DnapError> {
+    ) -> Result<SemanticNarrowing, DnapError> {
         let normalized = normalize_match_text(title);
         let mut matches = self
-            .introns
+            .semantic_narrowings
             .values()
-            .filter(|intron| {
+            .filter(|semantic_narrowing| {
                 self.loci
-                    .get(&intron.target_mrna_locus_id)
+                    .get(&semantic_narrowing.target_mrna_locus_id)
                     .is_some_and(|locus| {
                         locus.insulator_id == insulator_id && locus.genome_id == genome_id
                     })
             })
-            .filter(|intron| {
+            .filter(|semantic_narrowing| {
                 target
                     .map(|(target_mrna_locus_id, target_sequence_definition_id)| {
-                        intron.target_mrna_locus_id == target_mrna_locus_id
-                            && intron.target_sequence_definition_id == target_sequence_definition_id
+                        semantic_narrowing.target_mrna_locus_id == target_mrna_locus_id
+                            && semantic_narrowing.target_sequence_definition_id
+                                == target_sequence_definition_id
                     })
                     .unwrap_or(true)
             })
-            .filter(|intron| intron.normalized_title == normalized)
+            .filter(|semantic_narrowing| semantic_narrowing.normalized_title == normalized)
             .cloned()
             .collect::<Vec<_>>();
         if matches.is_empty() {
             matches = self
-                .introns
+                .semantic_narrowings
                 .values()
-                .filter(|intron| {
+                .filter(|semantic_narrowing| {
                     self.loci
-                        .get(&intron.target_mrna_locus_id)
+                        .get(&semantic_narrowing.target_mrna_locus_id)
                         .is_some_and(|locus| {
                             locus.insulator_id == insulator_id && locus.genome_id == genome_id
                         })
                 })
-                .filter(|intron| {
+                .filter(|semantic_narrowing| {
                     target
                         .map(|(target_mrna_locus_id, target_sequence_definition_id)| {
-                            intron.target_mrna_locus_id == target_mrna_locus_id
-                                && intron.target_sequence_definition_id
+                            semantic_narrowing.target_mrna_locus_id == target_mrna_locus_id
+                                && semantic_narrowing.target_sequence_definition_id
                                     == target_sequence_definition_id
                         })
                         .unwrap_or(true)
                 })
-                .filter(|intron| intron.normalized_title.starts_with(&normalized))
+                .filter(|semantic_narrowing| {
+                    semantic_narrowing.normalized_title.starts_with(&normalized)
+                })
                 .cloned()
                 .collect();
         }
 
         match matches.as_slice() {
-            [intron] => Ok(intron.clone()),
+            [semantic_narrowing] => Ok(semantic_narrowing.clone()),
             [] => {
                 let _ = created_by;
-                Err(DnapError::IntronNotFound)
+                Err(DnapError::SemanticNarrowingNotFound)
             }
-            _ => Err(DnapError::AmbiguousIntron),
+            _ => Err(DnapError::AmbiguousSemanticNarrowing),
         }
     }
 
-    pub(super) fn intron_summary(&self, intron: &Intron) -> IntronSummary {
-        let latest_sequence = self.intron_sequences_for(intron.id).into_iter().last();
+    pub(super) fn semantic_narrowing_summary(
+        &self,
+        semantic_narrowing: &SemanticNarrowing,
+    ) -> SemanticNarrowingSummary {
+        let latest_sequence = self
+            .semantic_narrowing_sequences_for(semantic_narrowing.id)
+            .into_iter()
+            .last();
         let child_count = self
-            .introns
+            .semantic_narrowings
             .values()
-            .filter(|candidate| candidate.precursor == Some(intron.id))
+            .filter(|candidate| candidate.precursor == Some(semantic_narrowing.id))
             .count();
-        IntronSummary {
-            intron: intron.clone(),
+        SemanticNarrowingSummary {
+            semantic_narrowing: semantic_narrowing.clone(),
             latest_sequence,
-            has_precursor: intron.precursor.is_some(),
+            has_precursor: semantic_narrowing.precursor.is_some(),
             child_count,
         }
     }
 
-    pub(super) fn intron_sequences_for(&self, intron_id: IntronId) -> Vec<IntronSequence> {
-        self.intron_sequences
+    pub(super) fn semantic_narrowing_sequences_for(
+        &self,
+        semantic_narrowing_id: SemanticNarrowingId,
+    ) -> Vec<SemanticNarrowingSequence> {
+        self.semantic_narrowing_sequences
             .values()
-            .filter(|sequence| sequence.intron_id == intron_id)
+            .filter(|sequence| sequence.semantic_narrowing_id == semantic_narrowing_id)
             .cloned()
             .collect()
     }
@@ -339,10 +351,13 @@ impl Dnap {
             .map(|definition| definition.name.clone())
     }
 
-    pub(super) fn latest_intron_sequence(&self, intron_id: IntronId) -> Option<IntronSequence> {
-        self.intron_sequences
+    pub(super) fn latest_semantic_narrowing_sequence(
+        &self,
+        semantic_narrowing_id: SemanticNarrowingId,
+    ) -> Option<SemanticNarrowingSequence> {
+        self.semantic_narrowing_sequences
             .values()
-            .rfind(|sequence| sequence.intron_id == intron_id)
+            .rfind(|sequence| sequence.semantic_narrowing_id == semantic_narrowing_id)
             .cloned()
     }
 
@@ -350,23 +365,29 @@ impl Dnap {
         &self,
         target_mrna_locus_id: LocusId,
         sequence_definition_id: SequenceDefinitionId,
-        causes: &[IntronId],
+        causes: &[SemanticNarrowingId],
     ) -> Vec<MutationContext> {
-        self.introns
+        self.semantic_narrowings
             .values()
-            .filter(|intron| intron.target_mrna_locus_id == target_mrna_locus_id)
-            .filter(|intron| {
-                intron.target_sequence_definition_id.is_none()
-                    || intron.target_sequence_definition_id == Some(sequence_definition_id)
+            .filter(|semantic_narrowing| {
+                semantic_narrowing.target_mrna_locus_id == target_mrna_locus_id
             })
-            .filter_map(|intron| {
-                let latest = self.latest_intron_sequence(intron.id);
-                if causes.contains(&intron.id) {
-                    latest.map(|sequence| MutationContext::Cause(intron.id, sequence.id))
+            .filter(|semantic_narrowing| {
+                semantic_narrowing.target_sequence_definition_id.is_none()
+                    || semantic_narrowing.target_sequence_definition_id
+                        == Some(sequence_definition_id)
+            })
+            .filter_map(|semantic_narrowing| {
+                let latest = self.latest_semantic_narrowing_sequence(semantic_narrowing.id);
+                if causes.contains(&semantic_narrowing.id) {
+                    latest
+                        .map(|sequence| MutationContext::Cause(semantic_narrowing.id, sequence.id))
                 } else {
                     Some(match latest {
-                        Some(sequence) => MutationContext::AnsweredContext(intron.id, sequence.id),
-                        None => MutationContext::UnansweredContext(intron.id),
+                        Some(sequence) => {
+                            MutationContext::AnsweredContext(semantic_narrowing.id, sequence.id)
+                        }
+                        None => MutationContext::UnansweredContext(semantic_narrowing.id),
                     })
                 }
             })
@@ -395,7 +416,7 @@ impl Dnap {
             .causes
             .iter()
             .map(|cause| {
-                let intron = self.resolve_intron(
+                let semantic_narrowing = self.resolve_semantic_narrowing(
                     input.insulator_id,
                     input.genome_id,
                     input.grn_id,
@@ -403,10 +424,13 @@ impl Dnap {
                     cause,
                     None,
                 )?;
-                if self.latest_intron_sequence(intron.id).is_none() {
-                    return Err(DnapError::IntronCauseRequiresAnswer);
+                if self
+                    .latest_semantic_narrowing_sequence(semantic_narrowing.id)
+                    .is_none()
+                {
+                    return Err(DnapError::SemanticNarrowingCauseRequiresAnswer);
                 }
-                Ok(intron.id)
+                Ok(semantic_narrowing.id)
             })
             .collect::<Result<Vec<_>, _>>()?;
         let mut touched = Vec::<SequenceDefinitionId>::new();
@@ -424,13 +448,13 @@ impl Dnap {
             }
         }
 
-        let mut used_causes = Vec::<IntronId>::new();
+        let mut used_causes = Vec::<SemanticNarrowingId>::new();
         for (definition_id, value) in requested {
             let context = self.mutation_context(input.locus_id, definition_id, &resolved_causes);
             for context_item in &context {
-                if let MutationContext::Cause(intron_id, _) = context_item {
-                    if !used_causes.contains(intron_id) {
-                        used_causes.push(*intron_id);
+                if let MutationContext::Cause(semantic_narrowing_id, _) = context_item {
+                    if !used_causes.contains(semantic_narrowing_id) {
+                        used_causes.push(*semantic_narrowing_id);
                     }
                 }
             }
@@ -458,7 +482,7 @@ impl Dnap {
             .iter()
             .any(|cause| !used_causes.contains(cause))
         {
-            return Err(DnapError::IntronNotFound);
+            return Err(DnapError::SemanticNarrowingNotFound);
         }
         Ok(touched
             .into_iter()
@@ -677,14 +701,16 @@ impl Dnap {
         ExonId(self.next_exon_id)
     }
 
-    pub(super) fn allocate_intron_id(&mut self) -> IntronId {
-        self.next_intron_id += 1;
-        IntronId(self.next_intron_id)
+    pub(super) fn allocate_semantic_narrowing_id(&mut self) -> SemanticNarrowingId {
+        self.next_semantic_narrowing_id += 1;
+        SemanticNarrowingId(self.next_semantic_narrowing_id)
     }
 
-    pub(super) fn allocate_intron_sequence_id(&mut self) -> IntronSequenceId {
-        self.next_intron_sequence_id += 1;
-        IntronSequenceId(self.next_intron_sequence_id)
+    pub(super) fn allocate_semantic_narrowing_sequence_id(
+        &mut self,
+    ) -> SemanticNarrowingSequenceId {
+        self.next_semantic_narrowing_sequence_id += 1;
+        SemanticNarrowingSequenceId(self.next_semantic_narrowing_sequence_id)
     }
 }
 
@@ -796,10 +822,10 @@ fn sequence_hash(value: &SequenceValue) -> SequenceHash {
     SequenceHash(format!("{hash:016x}"))
 }
 
-fn intron_title_scope_hash(
+fn semantic_narrowing_title_scope_hash(
     target_mrna_locus_id: LocusId,
     target_sequence_definition_id: Option<SequenceDefinitionId>,
-    precursor: Option<IntronId>,
+    precursor: Option<SemanticNarrowingId>,
     normalized_title: &str,
 ) -> String {
     let serialized = format!(

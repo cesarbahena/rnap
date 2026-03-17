@@ -81,7 +81,8 @@ The docs currently define the target model ahead of implementation in several ar
 - Code now has the flat `NormalizedArtifact` taxonomy, but workflow behavior still carries old exploration/eRNA graph assumptions in places.
 - Old eRNA exploration graph code/tests were removed; Ribozyme remains Gene-capable only until a concrete graph use case is approved.
 - Code now uses a minimal GRN bridge for active Allele resolution and uniqueness: one active Allele per `(Locus, GRN)`.
-- `Signal`, `Chromosome`, `NormalizedArtifact::Executable`, and full `Ribozyme` taxonomy are not fully implemented.
+- Current Q/A clarification code is `SemanticNarrowing` (`snRNA`) behavior, not the future raw-requirement `Intron` artifact.
+- `Signal`, real canonical `Chromosome`, raw-requirement `Intron`, and full `Ribozyme` behavior are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.
 

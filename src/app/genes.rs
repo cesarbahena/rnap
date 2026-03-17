@@ -3,9 +3,9 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, GrnId, InsulatorId, IntronId,
-    IntronSequenceId, LocusId, MutationId, NormalizedArtifact, SequenceDefinitionId, SequenceType,
-    TransposonId,
+    AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, GrnId, InsulatorId, LocusId,
+    MutationId, NormalizedArtifact, SemanticNarrowingId, SemanticNarrowingSequenceId,
+    SequenceDefinitionId, SequenceType, TransposonId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -119,9 +119,9 @@ pub struct Mutation {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub enum MutationContext {
-    Cause(IntronId, IntronSequenceId),
-    AnsweredContext(IntronId, IntronSequenceId),
-    UnansweredContext(IntronId),
+    Cause(SemanticNarrowingId, SemanticNarrowingSequenceId),
+    AnsweredContext(SemanticNarrowingId, SemanticNarrowingSequenceId),
+    UnansweredContext(SemanticNarrowingId),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

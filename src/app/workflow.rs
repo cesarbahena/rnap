@@ -3,8 +3,8 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, ChromosomeId, ExonId, GeneId, GenomeId, IntronId, IntronSequenceId, LocusId,
-    MutationId, SequenceDefinitionId, SequenceHash, TranscriptomeId,
+    AlleleId, ChromosomeId, ExonId, GeneId, GenomeId, LocusId, MutationId, SemanticNarrowingId,
+    SemanticNarrowingSequenceId, SequenceDefinitionId, SequenceHash, TranscriptomeId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -50,11 +50,11 @@ pub struct EnhancerContext {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct Intron {
-    pub id: IntronId,
+pub struct SemanticNarrowing {
+    pub id: SemanticNarrowingId,
     pub target_mrna_locus_id: LocusId,
     pub target_sequence_definition_id: Option<SequenceDefinitionId>,
-    pub precursor: Option<IntronId>,
+    pub precursor: Option<SemanticNarrowingId>,
     pub title: String,
     pub body: Option<String>,
     pub normalized_title: String,
@@ -63,9 +63,9 @@ pub struct Intron {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct IntronSequence {
-    pub id: IntronSequenceId,
-    pub intron_id: IntronId,
+pub struct SemanticNarrowingSequence {
+    pub id: SemanticNarrowingSequenceId,
+    pub semantic_narrowing_id: SemanticNarrowingId,
     pub body: String,
     pub created_at: SystemTime,
 }

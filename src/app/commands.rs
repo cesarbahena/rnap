@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     Allele, Exon, GeneFamily, GeneFamilyGeneration, GenomeId, Grn, GrnId, Insulator, InsulatorId,
-    InsulatorPlacement, InsulatorPlacementStrategy, Intron, IntronId, IntronSequence, Locus,
-    Mutation, NormalizedArtifact, Sequence, SequenceType, SequenceValue, TfId, Transcriptome,
-    Transposon,
+    InsulatorPlacement, InsulatorPlacementStrategy, Locus, Mutation, NormalizedArtifact,
+    SemanticNarrowing, SemanticNarrowingId, SemanticNarrowingSequence, Sequence, SequenceType,
+    SequenceValue, TfId, Transcriptome, Transposon,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -159,7 +159,7 @@ pub struct AttachEnhancerPromoter {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct CreateIntron {
+pub struct CreateSemanticNarrowing {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
     pub grn_id: GrnId,
@@ -167,18 +167,18 @@ pub struct CreateIntron {
     pub target_sequence_name: Option<String>,
     pub title: String,
     pub body: Option<String>,
-    pub precursor: Option<IntronId>,
+    pub precursor: Option<SemanticNarrowingId>,
     pub created_by: TfId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct AppendIntronSequence {
+pub struct AppendSemanticNarrowingSequence {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
     pub grn_id: GrnId,
     pub target_mrna_fqn: Option<String>,
     pub target_sequence_name: Option<String>,
-    pub intron_title: String,
+    pub semantic_narrowing_title: String,
     pub body: Option<String>,
     pub follow_up_title: Option<String>,
     pub follow_up_body: Option<String>,
@@ -186,26 +186,26 @@ pub struct AppendIntronSequence {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AppendedIntronSequence {
-    pub intron: Intron,
-    pub sequence: Option<IntronSequence>,
-    pub follow_up: Option<Intron>,
+pub struct AppendedSemanticNarrowingSequence {
+    pub semantic_narrowing: SemanticNarrowing,
+    pub sequence: Option<SemanticNarrowingSequence>,
+    pub follow_up: Option<SemanticNarrowing>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct IntronSummary {
-    pub intron: Intron,
-    pub latest_sequence: Option<IntronSequence>,
+pub struct SemanticNarrowingSummary {
+    pub semantic_narrowing: SemanticNarrowing,
+    pub latest_sequence: Option<SemanticNarrowingSequence>,
     pub has_precursor: bool,
     pub child_count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct IntronThread {
-    pub intron: Intron,
-    pub sequences: Vec<IntronSequence>,
-    pub precursors: Vec<IntronSummary>,
-    pub children: Vec<IntronSummary>,
+pub struct SemanticNarrowingThread {
+    pub semantic_narrowing: SemanticNarrowing,
+    pub sequences: Vec<SemanticNarrowingSequence>,
+    pub precursors: Vec<SemanticNarrowingSummary>,
+    pub children: Vec<SemanticNarrowingSummary>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

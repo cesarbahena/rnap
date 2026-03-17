@@ -37,10 +37,10 @@ pub struct MutationId(pub(crate) u64);
 pub struct GeneId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct IntronId(pub(crate) u64);
+pub struct SemanticNarrowingId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct IntronSequenceId(pub(crate) u64);
+pub struct SemanticNarrowingSequenceId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ChromosomeId(pub(crate) u64);

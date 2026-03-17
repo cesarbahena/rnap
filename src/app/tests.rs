@@ -751,7 +751,7 @@ fn enhancer_context_stores_promoter_property_on_enhancer_locus() {
 }
 
 #[test]
-fn introns_target_mrna_and_can_chain_follow_ups() {
+fn semantic_narrowings_target_mrna_and_can_chain_follow_ups() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family_with_normalized_artifact(
@@ -776,8 +776,8 @@ fn introns_target_mrna_and_can_chain_follow_ups() {
         })
         .expect("target");
 
-    let intron = dnap
-        .create_intron(CreateIntron {
+    let semantic_narrowing = dnap
+        .create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
             grn_id,
@@ -788,15 +788,15 @@ fn introns_target_mrna_and_can_chain_follow_ups() {
             precursor: None,
             created_by: tf_id,
         })
-        .expect("intron");
+        .expect("semantic_narrowing");
     let answered = dnap
-        .append_intron_sequence(AppendIntronSequence {
+        .append_semantic_narrowing_sequence(AppendSemanticNarrowingSequence {
             insulator_id,
             genome_id,
             grn_id,
             target_mrna_fqn: None,
             target_sequence_name: None,
-            intron_title: "clarify-payment-retries".to_owned(),
+            semantic_narrowing_title: "clarify-payment-retries".to_owned(),
             body: Some("Retry twice".to_owned()),
             follow_up_title: Some("Clarify retry ceiling".to_owned()),
             follow_up_body: None,
@@ -804,20 +804,20 @@ fn introns_target_mrna_and_can_chain_follow_ups() {
         })
         .expect("follow up");
 
-    assert_eq!(intron.target_mrna_locus_id, target.locus.id);
-    assert_eq!(answered.intron.id, intron.id);
+    assert_eq!(semantic_narrowing.target_mrna_locus_id, target.locus.id);
+    assert_eq!(answered.semantic_narrowing.id, semantic_narrowing.id);
     assert_eq!(
         answered.sequence.expect("answer").body,
         "Retry twice".to_owned()
     );
     assert_eq!(
         answered.follow_up.expect("follow up").precursor,
-        Some(intron.id)
+        Some(semantic_narrowing.id)
     );
 }
 
 #[test]
-fn introns_reject_rrna_targets() {
+fn semantic_narrowings_reject_rrna_targets() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family_with_normalized_artifact(
@@ -842,7 +842,7 @@ fn introns_reject_rrna_targets() {
     .expect("design");
 
     assert_eq!(
-        dnap.create_intron(CreateIntron {
+        dnap.create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
             grn_id,
@@ -853,12 +853,12 @@ fn introns_reject_rrna_targets() {
             precursor: None,
             created_by: tf_id,
         }),
-        Err(DnapError::IntronTargetRequired)
+        Err(DnapError::SemanticNarrowingTargetRequired)
     );
 }
 
 #[test]
-pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
+pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explicit_causes() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family_with_normalized_artifact(
@@ -885,7 +885,7 @@ pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
     })
     .expect("target");
     let cause = dnap
-        .create_intron(CreateIntron {
+        .create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
             grn_id,
@@ -896,15 +896,15 @@ pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
             precursor: None,
             created_by: tf_id,
         })
-        .expect("cause intron");
+        .expect("cause semantic_narrowing");
     let cause_answer = dnap
-        .append_intron_sequence(AppendIntronSequence {
+        .append_semantic_narrowing_sequence(AppendSemanticNarrowingSequence {
             insulator_id,
             genome_id,
             grn_id,
             target_mrna_fqn: None,
             target_sequence_name: None,
-            intron_title: "how-strict".to_owned(),
+            semantic_narrowing_title: "how-strict".to_owned(),
             body: Some("Paid checkout under 100ms".to_owned()),
             follow_up_title: None,
             follow_up_body: None,
@@ -914,7 +914,7 @@ pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
         .sequence
         .expect("sequence");
     let unanswered = dnap
-        .create_intron(CreateIntron {
+        .create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
             grn_id,
@@ -925,7 +925,7 @@ pub(super) fn mutation_context_captures_relevant_introns_and_explicit_causes() {
             precursor: None,
             created_by: tf_id,
         })
-        .expect("unanswered intron");
+        .expect("unanswered semantic_narrowing");
 
     let mutated = dnap
         .mutate_existing(MutateExisting {

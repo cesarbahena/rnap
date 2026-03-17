@@ -137,7 +137,7 @@ fn explore_cli_attaches_enhancer_to_promoter_property() {
 }
 
 #[test]
-fn q_and_a_cli_create_answer_and_show_introns() {
+fn q_and_a_cli_create_answer_and_show_semantic_narrowings() {
     let mut state = bootstrapped_state();
     dispatch(&mut state, words("mutate --new FRS Checkout")).expect("target");
 

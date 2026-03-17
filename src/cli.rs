@@ -3,10 +3,11 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AppendIntronSequence, AttachEnhancerPromoter, CreateGenome, CreateGrn, CreateIntron, CreateTf,
-    DefineGeneFamily, DefineSequence, Dnap, DnapError, IntronSummary, IntronThread, MutateExisting,
-    MutateNew, NormalizedArtifact, ProvisionInsulator, SequenceMutation, SequenceType,
-    SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
+    AppendSemanticNarrowingSequence, AttachEnhancerPromoter, CreateGenome, CreateGrn,
+    CreateSemanticNarrowing, CreateTf, DefineGeneFamily, DefineSequence, Dnap, DnapError,
+    MutateExisting, MutateNew, NormalizedArtifact, ProvisionInsulator, SemanticNarrowingSummary,
+    SemanticNarrowingThread, SequenceMutation, SequenceType, SequenceValue, SpliceAllele,
+    TranscribeAllele, TranslateAllele,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -417,7 +418,7 @@ fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError>
         .collect::<Vec<_>>();
 
     if positional_values.is_empty() {
-        let summaries = state.dnap.intron_summaries_for(
+        let summaries = state.dnap.semantic_narrowing_summaries_for(
             session.scope.insulator_id,
             session.scope.genome_id,
             session.scope.grn_id,
@@ -427,10 +428,19 @@ fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError>
         )?;
         let mut output = "questions".to_owned();
         for summary in summaries {
-            output.push_str(&format!("\n{}", format_intron_summary(&summary)));
+            output.push_str(&format!(
+                "\n{}",
+                format_semantic_narrowing_summary(&summary)
+            ));
             if all {
-                let thread = state.dnap.intron_thread_by_id(summary.intron.id)?;
-                output.push_str(&format_intron_children_recursive(&state.dnap, &thread, 1)?);
+                let thread = state
+                    .dnap
+                    .semantic_narrowing_thread_by_id(summary.semantic_narrowing.id)?;
+                output.push_str(&format_semantic_narrowing_children_recursive(
+                    &state.dnap,
+                    &thread,
+                    1,
+                )?);
             }
         }
         return Ok(output);
@@ -438,19 +448,24 @@ fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError>
 
     let title = positional_values[0].clone();
     let body = positional_values.get(1).cloned();
-    let intron = state.dnap.create_intron(CreateIntron {
-        insulator_id: session.scope.insulator_id,
-        genome_id: session.scope.genome_id,
-        grn_id: session.scope.grn_id,
-        target_mrna_fqn: target_mrna_fqn.clone(),
-        target_sequence_name: sequence_name,
-        title,
-        body,
-        precursor: None,
-        created_by: session.actor.tf_id,
-    })?;
+    let semantic_narrowing = state
+        .dnap
+        .create_semantic_narrowing(CreateSemanticNarrowing {
+            insulator_id: session.scope.insulator_id,
+            genome_id: session.scope.genome_id,
+            grn_id: session.scope.grn_id,
+            target_mrna_fqn: target_mrna_fqn.clone(),
+            target_sequence_name: sequence_name,
+            title,
+            body,
+            precursor: None,
+            created_by: session.actor.tf_id,
+        })?;
 
-    Ok(format!("asked `{}` for `{target_mrna_fqn}`", intron.title))
+    Ok(format!(
+        "asked `{}` for `{target_mrna_fqn}`",
+        semantic_narrowing.title
+    ))
 }
 
 fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
@@ -481,7 +496,7 @@ fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     }
 
     if answer_body.is_none() && follow_up_title.is_none() {
-        let thread = state.dnap.intron_thread(
+        let thread = state.dnap.semantic_narrowing_thread(
             session.scope.insulator_id,
             session.scope.genome_id,
             session.scope.grn_id,
@@ -489,23 +504,26 @@ fn answer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
             &question_title,
             target_mrna_fqn.as_deref().map(|target| (target, None)),
         )?;
-        return format_intron_thread(&state.dnap, &thread, all);
+        return format_semantic_narrowing_thread(&state.dnap, &thread, all);
     }
 
-    let answered = state.dnap.append_intron_sequence(AppendIntronSequence {
-        insulator_id: session.scope.insulator_id,
-        genome_id: session.scope.genome_id,
-        grn_id: session.scope.grn_id,
-        target_mrna_fqn,
-        target_sequence_name: None,
-        intron_title: question_title,
-        body: answer_body,
-        follow_up_title,
-        follow_up_body,
-        created_by: session.actor.tf_id,
-    })?;
+    let answered =
+        state
+            .dnap
+            .append_semantic_narrowing_sequence(AppendSemanticNarrowingSequence {
+                insulator_id: session.scope.insulator_id,
+                genome_id: session.scope.genome_id,
+                grn_id: session.scope.grn_id,
+                target_mrna_fqn,
+                target_sequence_name: None,
+                semantic_narrowing_title: question_title,
+                body: answer_body,
+                follow_up_title,
+                follow_up_body,
+                created_by: session.actor.tf_id,
+            })?;
 
-    let mut output = format!("answered `{}`", answered.intron.title);
+    let mut output = format!("answered `{}`", answered.semantic_narrowing.title);
     if let Some(follow_up) = answered.follow_up {
         output.push_str(&format!("\nasked follow-up `{}`", follow_up.title));
     }
@@ -563,7 +581,7 @@ fn parse_normalized_artifact(value: &str) -> Result<NormalizedArtifact, CliError
         "mirna" | "microalignment" => Ok(NormalizedArtifact::Microalignment),
         "sirna" | "stopimplementation" => Ok(NormalizedArtifact::StopImplementation),
         "dsrna" | "deferredscope" => Ok(NormalizedArtifact::DeferredScope),
-        "intron" => Ok(NormalizedArtifact::Intron),
+        "semantic_narrowing" => Ok(NormalizedArtifact::SemanticNarrowing),
         "mrna" | "managedrequirement" => Ok(NormalizedArtifact::ManagedRequirement),
         "exon" => Ok(NormalizedArtifact::Exon),
         "rrna" | "resourcereference" => Ok(NormalizedArtifact::ResourceReference),
@@ -640,8 +658,8 @@ fn display_value(value: &SequenceValue) -> String {
     }
 }
 
-fn format_intron_summary(summary: &IntronSummary) -> String {
-    let mut line = summary.intron.title.clone();
+fn format_semantic_narrowing_summary(summary: &SemanticNarrowingSummary) -> String {
+    let mut line = summary.semantic_narrowing.title.clone();
     if let Some(sequence) = &summary.latest_sequence {
         line.push_str(&format!(" -> {}", sequence.body));
     }
@@ -654,33 +672,44 @@ fn format_intron_summary(summary: &IntronSummary) -> String {
     line
 }
 
-fn format_intron_thread(dnap: &Dnap, thread: &IntronThread, all: bool) -> Result<String, CliError> {
-    let mut output = format!("question: {}", thread.intron.title);
-    if let Some(body) = &thread.intron.body {
+fn format_semantic_narrowing_thread(
+    dnap: &Dnap,
+    thread: &SemanticNarrowingThread,
+    all: bool,
+) -> Result<String, CliError> {
+    let mut output = format!("question: {}", thread.semantic_narrowing.title);
+    if let Some(body) = &thread.semantic_narrowing.body {
         output.push_str(&format!("\nbody: {body}"));
     }
     for precursor in &thread.precursors {
         output.push_str(&format!(
             "\nprecursor: {}",
-            format_intron_summary(precursor)
+            format_semantic_narrowing_summary(precursor)
         ));
     }
     for sequence in &thread.sequences {
         output.push_str(&format!("\nanswer: {}", sequence.body));
     }
     for child in &thread.children {
-        output.push_str(&format!("\nfollow-up: {}", format_intron_summary(child)));
+        output.push_str(&format!(
+            "\nfollow-up: {}",
+            format_semantic_narrowing_summary(child)
+        ));
         if all {
-            let child_thread = dnap.intron_thread_by_id(child.intron.id)?;
-            output.push_str(&format_intron_children_recursive(dnap, &child_thread, 1)?);
+            let child_thread = dnap.semantic_narrowing_thread_by_id(child.semantic_narrowing.id)?;
+            output.push_str(&format_semantic_narrowing_children_recursive(
+                dnap,
+                &child_thread,
+                1,
+            )?);
         }
     }
     Ok(output)
 }
 
-fn format_intron_children_recursive(
+fn format_semantic_narrowing_children_recursive(
     dnap: &Dnap,
-    thread: &IntronThread,
+    thread: &SemanticNarrowingThread,
     depth: usize,
 ) -> Result<String, CliError> {
     let indent = "  ".repeat(depth);
@@ -691,10 +720,10 @@ fn format_intron_children_recursive(
     for child in &thread.children {
         output.push_str(&format!(
             "\n{indent}follow-up: {}",
-            format_intron_summary(child)
+            format_semantic_narrowing_summary(child)
         ));
-        let child_thread = dnap.intron_thread_by_id(child.intron.id)?;
-        output.push_str(&format_intron_children_recursive(
+        let child_thread = dnap.semantic_narrowing_thread_by_id(child.semantic_narrowing.id)?;
+        output.push_str(&format_semantic_narrowing_children_recursive(
             dnap,
             &child_thread,
             depth + 1,
