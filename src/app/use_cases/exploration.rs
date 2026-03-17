@@ -42,7 +42,6 @@ impl Dnap {
         let context = EnhancerContext {
             enhancer_locus_id,
             promoter_locus_id,
-            updated_by: input.updated_by,
             updated_at: SystemTime::now(),
         };
         self.enhancer_contexts

@@ -39,7 +39,6 @@ impl Dnap {
             id: self.allocate_transposon_id(),
             locus_id: locus.id,
             gene_family_generation_id: generation.id,
-            created_by: input.created_by,
             created_at: now,
         };
         let allele = Allele {
@@ -51,9 +50,7 @@ impl Dnap {
             generation: 1,
             origin: AlleleOrigin::Transposon(transposon.id),
             state: AlleleState::Mutating,
-            created_by: input.created_by,
             degraded_at: None,
-            degraded_by: None,
             created_at: now,
             updated_at: now,
         };

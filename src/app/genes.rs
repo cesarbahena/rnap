@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, GrnId, InsulatorId, IntronId,
     IntronSequenceId, LocusId, MutationId, NormalizedArtifact, SequenceDefinitionId, SequenceType,
-    TfId, TransposonId,
+    TransposonId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -27,7 +27,6 @@ pub struct GeneFamilyGeneration {
     pub family_id: GeneFamilyId,
     pub generation: u32,
     pub sequences: Vec<SequenceDefinition>,
-    pub created_by: TfId,
     pub created_at: SystemTime,
 }
 
@@ -53,7 +52,6 @@ pub struct Transposon {
     pub id: TransposonId,
     pub locus_id: LocusId,
     pub gene_family_generation_id: GeneFamilyGenerationId,
-    pub created_by: TfId,
     pub created_at: SystemTime,
 }
 
@@ -81,9 +79,7 @@ pub struct Allele {
     pub generation: u32,
     pub origin: AlleleOrigin,
     pub state: AlleleState,
-    pub created_by: TfId,
     pub degraded_at: Option<SystemTime>,
-    pub degraded_by: Option<TfId>,
     pub created_at: SystemTime,
     pub updated_at: SystemTime,
 }
@@ -117,7 +113,6 @@ pub struct Mutation {
     pub value: SequenceValue,
     pub context: Vec<MutationContext>,
     pub state: MutationState,
-    pub created_by: TfId,
     pub created_at: SystemTime,
     pub updated_at: SystemTime,
 }

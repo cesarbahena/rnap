@@ -41,7 +41,6 @@ impl Dnap {
                 allele_id: allele.id,
                 text,
                 depends_on: Vec::new(),
-                created_by: input.created_by,
                 created_at: now,
             };
             self.exons.insert(exon.id, exon.clone());

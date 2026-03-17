@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     AlleleId, ChromosomeId, ExonId, GeneId, GenomeId, IntronId, IntronSequenceId, LocusId,
-    MutationId, SequenceDefinitionId, SequenceHash, TfId, TranscriptomeId,
+    MutationId, SequenceDefinitionId, SequenceHash, TranscriptomeId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -22,7 +22,6 @@ pub struct Transcriptome {
     pub chromosome_id: ChromosomeId,
     pub allele_id: AlleleId,
     pub sequences: Vec<TranscriptSequenceCursor>,
-    pub created_by: TfId,
     pub created_at: SystemTime,
     pub updated_at: SystemTime,
 }
@@ -40,7 +39,6 @@ pub struct Exon {
     pub allele_id: AlleleId,
     pub text: String,
     pub depends_on: Vec<ExonId>,
-    pub created_by: TfId,
     pub created_at: SystemTime,
 }
 
@@ -48,7 +46,6 @@ pub struct Exon {
 pub struct EnhancerContext {
     pub enhancer_locus_id: LocusId,
     pub promoter_locus_id: LocusId,
-    pub updated_by: TfId,
     pub updated_at: SystemTime,
 }
 
@@ -62,7 +59,6 @@ pub struct Intron {
     pub body: Option<String>,
     pub normalized_title: String,
     pub title_scope_hash: String,
-    pub created_by: TfId,
     pub created_at: SystemTime,
 }
 
@@ -71,6 +67,5 @@ pub struct IntronSequence {
     pub id: IntronSequenceId,
     pub intron_id: IntronId,
     pub body: String,
-    pub created_by: TfId,
     pub created_at: SystemTime,
 }

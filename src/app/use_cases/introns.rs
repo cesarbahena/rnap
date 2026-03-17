@@ -55,7 +55,6 @@ impl Dnap {
             body,
             normalized_title,
             title_scope_hash,
-            created_by: input.created_by,
             created_at: SystemTime::now(),
         };
         self.introns.insert(intron.id, intron.clone());
@@ -98,7 +97,6 @@ impl Dnap {
                     id: self.allocate_intron_sequence_id(),
                     intron_id: intron.id,
                     body,
-                    created_by: input.created_by,
                     created_at: SystemTime::now(),
                 };
                 self.intron_sequences.insert(sequence.id, sequence.clone());

@@ -448,7 +448,6 @@ impl Dnap {
                         value,
                         context,
                         state: MutationState::Unexpressed,
-                        created_by: input.created_by,
                         created_at: input.created_at,
                         updated_at: input.created_at,
                     },

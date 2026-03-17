@@ -71,7 +71,6 @@ impl Dnap {
                 chromosome_id,
                 allele_id: allele.id,
                 sequences: latest_cursors,
-                created_by: input.created_by,
                 created_at: now,
                 updated_at: now,
             },

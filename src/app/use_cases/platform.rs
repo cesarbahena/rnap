@@ -142,7 +142,6 @@ impl Dnap {
             family_id,
             generation: 1,
             sequences,
-            created_by: input.created_by,
             created_at: now,
         };
 
