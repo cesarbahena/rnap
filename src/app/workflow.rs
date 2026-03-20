@@ -3,23 +3,14 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, ChromosomeId, ExonId, GeneId, GenomeId, LocusId, MutationId, SemanticNarrowingId,
-    SemanticNarrowingSequenceId, SequenceDefinitionId, SequenceHash, TranscriptomeId,
+    AlleleId, ExonId, LocusId, MutationId, SemanticNarrowingId, SemanticNarrowingSequenceId,
+    SequenceDefinitionId, SequenceHash, TranscriptomeId,
 };
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct Chromosome {
-    pub id: ChromosomeId,
-    pub genome_id: GenomeId,
-    pub locus_id: LocusId,
-    pub genes: Vec<GeneId>,
-    pub alleles: Vec<AlleleId>,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Transcriptome {
     pub id: TranscriptomeId,
-    pub chromosome_id: ChromosomeId,
+    pub locus_id: LocusId,
     pub allele_id: AlleleId,
     pub sequences: Vec<TranscriptSequenceCursor>,
     pub created_at: SystemTime,

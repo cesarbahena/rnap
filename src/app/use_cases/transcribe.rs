@@ -55,11 +55,6 @@ impl Dnap {
         };
 
         let now = SystemTime::now();
-        let chromosome_id = self
-            .chromosomes
-            .get(&allele.locus_id)
-            .map(|chromosome| chromosome.id)
-            .ok_or(DnapError::AlleleNotFound)?;
         let transcriptome = match self.transcriptomes.get(&allele.id).cloned() {
             Some(mut transcriptome) => {
                 transcriptome.sequences = latest_cursors;
@@ -68,7 +63,7 @@ impl Dnap {
             }
             None => Transcriptome {
                 id: self.allocate_transcriptome_id(),
-                chromosome_id,
+                locus_id: allele.locus_id,
                 allele_id: allele.id,
                 sequences: latest_cursors,
                 created_at: now,

@@ -54,14 +54,6 @@ impl Dnap {
             created_at: now,
             updated_at: now,
         };
-        let chromosome = Chromosome {
-            id: self.allocate_chromosome_id(),
-            genome_id: input.genome_id,
-            locus_id: locus.id,
-            genes: Vec::new(),
-            alleles: vec![allele.id],
-        };
-
         let mutations = self.build_mutations(BuildMutations {
             allele_id: allele.id,
             insulator_id: input.insulator_id,
@@ -79,7 +71,6 @@ impl Dnap {
         self.loci.insert(locus.id, locus.clone());
         self.transposons.insert(transposon.id, transposon.clone());
         self.alleles.insert(allele.id, allele.clone());
-        self.chromosomes.insert(locus.id, chromosome);
         for mutation in &mutations {
             self.mutations.insert(mutation.id, mutation.clone());
         }

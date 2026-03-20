@@ -43,9 +43,6 @@ pub struct SemanticNarrowingId(pub(crate) u64);
 pub struct SemanticNarrowingSequenceId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ChromosomeId(pub(crate) u64);
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct TranscriptomeId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

@@ -41,7 +41,6 @@ pub struct Dnap {
     next_transposon_id: u64,
     next_allele_id: u64,
     next_mutation_id: u64,
-    next_chromosome_id: u64,
     next_transcriptome_id: u64,
     next_exon_id: u64,
     next_semantic_narrowing_id: u64,
@@ -57,7 +56,6 @@ pub struct Dnap {
     transposons: BTreeMap<TransposonId, Transposon>,
     alleles: BTreeMap<AlleleId, Allele>,
     mutations: BTreeMap<MutationId, Mutation>,
-    chromosomes: BTreeMap<LocusId, Chromosome>,
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
     exons: BTreeMap<ExonId, Exon>,
     enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
@@ -684,11 +682,6 @@ impl Dnap {
     pub(super) fn allocate_mutation_id(&mut self) -> MutationId {
         self.next_mutation_id += 1;
         MutationId(self.next_mutation_id)
-    }
-
-    pub(super) fn allocate_chromosome_id(&mut self) -> ChromosomeId {
-        self.next_chromosome_id += 1;
-        ChromosomeId(self.next_chromosome_id)
     }
 
     pub(super) fn allocate_transcriptome_id(&mut self) -> TranscriptomeId {
