@@ -44,10 +44,6 @@ impl Dnap {
         self.transcriptomes.get(&allele_id)
     }
 
-    pub fn enhancer_context(&self, enhancer_locus_id: LocusId) -> Option<&EnhancerContext> {
-        self.enhancer_contexts.get(&enhancer_locus_id)
-    }
-
     pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
         let normalized = normalize_match_text(name);
         self.insulators

@@ -3,11 +3,10 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::app::{
-    AppendSemanticNarrowingSequence, AttachEnhancerPromoter, CreateGenome, CreateGrn,
-    CreateSemanticNarrowing, CreateTf, DefineGeneFamily, DefineSequence, Dnap, DnapError,
-    MutateExisting, MutateNew, NormalizedArtifact, ProvisionInsulator, SemanticNarrowingSummary,
-    SemanticNarrowingThread, SequenceMutation, SequenceType, SequenceValue, SpliceAllele,
-    TranscribeAllele, TranslateAllele,
+    AppendSemanticNarrowingSequence, CreateGenome, CreateGrn, CreateSemanticNarrowing, CreateTf,
+    DefineGeneFamily, DefineSequence, Dnap, DnapError, MutateExisting, MutateNew,
+    NormalizedArtifact, ProvisionInsulator, SemanticNarrowingSummary, SemanticNarrowingThread,
+    SequenceMutation, SequenceType, SequenceValue, SpliceAllele, TranscribeAllele, TranslateAllele,
 };
 use crate::session::{
     LocalState, LocalStateStore, Session, SessionActor, SessionError, SessionIssuer, SessionScope,
@@ -50,7 +49,6 @@ fn dispatch(state: &mut LocalState, args: Vec<String>) -> Result<String, CliErro
         "transcribe" => transcribe(state, &args[1..]),
         "splice" => splice(state, &args[1..]),
         "translate" => translate(state, &args[1..]),
-        "explore" => explore(state, &args[1..]),
         "q" => question(state, &args[1..]),
         "a" => answer(state, &args[1..]),
         _ => Err(CliError::Usage(format!("unknown command `{command}`"))),
@@ -366,39 +364,6 @@ fn translate(state: &mut LocalState, args: &[String]) -> Result<String, CliError
         }
     }
     Ok(output)
-}
-
-fn explore(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let Some(command) = args.first().map(String::as_str) else {
-        return Err(CliError::Usage("expected explore subcommand".to_owned()));
-    };
-
-    match command {
-        "enhancer" => explore_enhancer(state, args),
-        _ => Err(CliError::Usage(format!(
-            "unknown explore subcommand `{command}`"
-        ))),
-    }
-}
-
-fn explore_enhancer(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
-    let session = current_session(state)?;
-    let enhancer_gene_fqn = positional(args, 1, "enhancer gene fqn")?;
-    let promoter_gene_fqn = required_option(args, "--promoter")?;
-    state
-        .dnap
-        .attach_enhancer_promoter(AttachEnhancerPromoter {
-            insulator_id: session.scope.insulator_id,
-            genome_id: session.scope.genome_id,
-            grn_id: session.scope.grn_id,
-            enhancer_gene_fqn: enhancer_gene_fqn.clone(),
-            promoter_gene_fqn: promoter_gene_fqn.clone(),
-            updated_by: session.actor.tf_id,
-        })?;
-
-    Ok(format!(
-        "attached enhancer `{enhancer_gene_fqn}` to promoter `{promoter_gene_fqn}`"
-    ))
 }
 
 fn question(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {

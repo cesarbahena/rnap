@@ -149,16 +149,6 @@ pub struct TranslatedAllele {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct AttachEnhancerPromoter {
-    pub insulator_id: InsulatorId,
-    pub genome_id: GenomeId,
-    pub grn_id: GrnId,
-    pub enhancer_gene_fqn: String,
-    pub promoter_gene_fqn: String,
-    pub updated_by: TfId,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct CreateSemanticNarrowing {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,

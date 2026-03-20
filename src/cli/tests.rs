@@ -112,31 +112,6 @@ fn translate_errors_when_no_exons_exist() {
 }
 
 #[test]
-fn explore_cli_attaches_enhancer_to_promoter_property() {
-    let mut state = bootstrapped_state();
-    dispatch(
-        &mut state,
-        words("epigenetics define-family STR Story --artifact promoter --sequence Summary"),
-    )
-    .expect("promoter family");
-    dispatch(
-        &mut state,
-        words("epigenetics define-family RSH Research --artifact enhancer --sequence Summary"),
-    )
-    .expect("enhancer family");
-    dispatch(&mut state, words("mutate --new STR Checkout")).expect("promoter");
-    dispatch(&mut state, words("mutate --new RSH PaymentResearch")).expect("enhancer");
-
-    let output = dispatch(
-        &mut state,
-        words("explore enhancer PaymentResearch --promoter Checkout"),
-    )
-    .expect("attach enhancer");
-
-    assert!(output.contains("attached enhancer `PaymentResearch` to promoter `Checkout`"));
-}
-
-#[test]
 fn q_and_a_cli_create_answer_and_show_semantic_narrowings() {
     let mut state = bootstrapped_state();
     dispatch(&mut state, words("mutate --new FRS Checkout")).expect("target");

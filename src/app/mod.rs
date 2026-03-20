@@ -11,7 +11,6 @@ mod identity;
 mod ids;
 mod workflow;
 mod use_cases {
-    pub(super) mod exploration;
     pub(super) mod mutate;
     pub(super) mod platform;
     pub(super) mod queries;
@@ -58,7 +57,6 @@ pub struct Dnap {
     mutations: BTreeMap<MutationId, Mutation>,
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
     exons: BTreeMap<ExonId, Exon>,
-    enhancer_contexts: BTreeMap<LocusId, EnhancerContext>,
     semantic_narrowings: BTreeMap<SemanticNarrowingId, SemanticNarrowing>,
     semantic_narrowing_sequences: BTreeMap<SemanticNarrowingSequenceId, SemanticNarrowingSequence>,
 }
@@ -189,15 +187,10 @@ impl Dnap {
         };
         matches!(
             (family.normalized_artifact, normalized_artifact),
-            (NormalizedArtifact::Promoter, ArtifactKind::Promoter)
-                | (
-                    NormalizedArtifact::EnterpriseNegotiationHandoverCertificate,
-                    ArtifactKind::Enhancer
-                )
-                | (
-                    NormalizedArtifact::ManagedRequirement,
-                    ArtifactKind::ManagedRequirement,
-                )
+            (
+                NormalizedArtifact::ManagedRequirement,
+                ArtifactKind::ManagedRequirement
+            )
         )
     }
 
@@ -709,8 +702,6 @@ impl Dnap {
 
 #[derive(Clone, Copy)]
 pub(super) enum ArtifactKind {
-    Promoter,
-    Enhancer,
     ManagedRequirement,
 }
 

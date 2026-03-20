@@ -28,8 +28,6 @@ pub enum DnapError {
     AlleleCannotMutate,
     LgtmRequiresUnexpressedMutation,
     ExonsNotFound,
-    EnhancerContextEnhancerRequired,
-    EnhancerContextPromoterRequired,
     SemanticNarrowingTargetRequired,
     BlankSemanticNarrowingTitle,
     BlankSemanticNarrowingAnswer,

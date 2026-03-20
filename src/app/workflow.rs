@@ -34,13 +34,6 @@ pub struct Exon {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct EnhancerContext {
-    pub enhancer_locus_id: LocusId,
-    pub promoter_locus_id: LocusId,
-    pub updated_at: SystemTime,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SemanticNarrowing {
     pub id: SemanticNarrowingId,
     pub target_mrna_locus_id: LocusId,
