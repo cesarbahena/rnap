@@ -542,7 +542,7 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
         genome_id,
         grn_id,
         gene_fqn: mutated.gene_fqn.clone(),
-        exon_texts: vec!["Build checkout".to_owned()],
+        task_realization_texts: vec!["Build checkout".to_owned()],
         lgtm: false,
         created_by: tf_id,
     })
@@ -570,18 +570,18 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
             genome_id,
             grn_id,
             gene_fqn: "FRS-checkout".to_owned(),
-            exon_texts: Vec::new(),
+            task_realization_texts: Vec::new(),
             lgtm: true,
             created_by: tf_id,
         })
         .expect("lgtm acknowledgement");
     assert_eq!(spliced.allele.state, AlleleState::Expressing);
-    assert!(spliced.exons.is_empty());
+    assert!(spliced.task_realizations.is_empty());
     assert_eq!(spliced.untranscribed_unexpressed_mutations, 1);
 }
 
 #[test]
-fn translate_returns_exons_without_changing_allele_state() {
+fn translate_returns_task_realizations_without_changing_allele_state() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
@@ -612,14 +612,14 @@ fn translate_returns_exons_without_changing_allele_state() {
         genome_id,
         grn_id,
         gene_fqn: mutated.gene_fqn.clone(),
-        exon_texts: vec![
+        task_realization_texts: vec![
             "Implement checkout API".to_owned(),
             "Add retry tests".to_owned(),
         ],
         lgtm: false,
         created_by: tf_id,
     })
-    .expect("splice exons");
+    .expect("splice task_realizations");
 
     let translated = dnap
         .translate(TranslateAllele {
@@ -629,14 +629,14 @@ fn translate_returns_exons_without_changing_allele_state() {
             gene_fqn: "checkout".to_owned(),
             created_by: tf_id,
         })
-        .expect("translate exons");
+        .expect("translate task_realizations");
 
     assert_eq!(translated.allele.state, AlleleState::Expressing);
     assert_eq!(
         translated
-            .exons
+            .task_realizations
             .iter()
-            .map(|exon| exon.text.as_str())
+            .map(|task_realization| task_realization.text.as_str())
             .collect::<Vec<_>>(),
         vec!["Implement checkout API", "Add retry tests"]
     );
@@ -647,7 +647,7 @@ fn translate_returns_exons_without_changing_allele_state() {
 }
 
 #[test]
-fn translate_errors_when_the_active_allele_has_no_exons() {
+fn translate_errors_when_the_active_allele_has_no_task_realizations() {
     let mut dnap = Dnap::default();
     let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
@@ -678,7 +678,7 @@ fn translate_errors_when_the_active_allele_has_no_exons() {
             gene_fqn: "checkout".to_owned(),
             created_by: tf_id,
         }),
-        Err(DnapError::ExonsNotFound)
+        Err(DnapError::TaskRealizationsNotFound)
     );
 }
 

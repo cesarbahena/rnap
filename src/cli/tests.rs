@@ -60,7 +60,7 @@ fn epigenetics_bootstraps_session_then_normal_workflow_commands_use_it() {
     assert!(spliced.contains("Expressing"));
 
     let translated =
-        dispatch(&mut state, words("translate FRS-checkout")).expect("translate exons");
+        dispatch(&mut state, words("translate FRS-checkout")).expect("translate task_realizations");
     assert!(translated.contains("translated Expressing"));
     assert!(translated.contains("1. BuildCheckout"));
 
@@ -71,13 +71,15 @@ fn epigenetics_bootstraps_session_then_normal_workflow_commands_use_it() {
 }
 
 #[test]
-fn splice_requires_exon_text_or_lgtm_escape_hatch() {
+fn splice_requires_task_realization_text_or_lgtm_escape_hatch() {
     let mut state = bootstrapped_state();
     dispatch(&mut state, words("mutate --new FRS Checkout")).expect("mutate new");
 
     let error =
         dispatch(&mut state, words("splice checkout")).expect_err("empty splice is invalid");
-    assert!(matches!(error, CliError::Usage(message) if message.contains("Exon text or --lgtm")));
+    assert!(
+        matches!(error, CliError::Usage(message) if message.contains("TaskRealization text or --lgtm"))
+    );
 }
 
 #[test]
@@ -102,13 +104,16 @@ fn lgtm_cli_flow_expresses_without_requiring_transcribe() {
 }
 
 #[test]
-fn translate_errors_when_no_exons_exist() {
+fn translate_errors_when_no_task_realizations_exist() {
     let mut state = bootstrapped_state();
     dispatch(&mut state, words("mutate --new FRS Checkout")).expect("mutate new");
 
-    let error =
-        dispatch(&mut state, words("translate checkout")).expect_err("translate requires exons");
-    assert!(matches!(error, CliError::Dnap(DnapError::ExonsNotFound)));
+    let error = dispatch(&mut state, words("translate checkout"))
+        .expect_err("translate requires task_realizations");
+    assert!(matches!(
+        error,
+        CliError::Dnap(DnapError::TaskRealizationsNotFound)
+    ));
 }
 
 #[test]

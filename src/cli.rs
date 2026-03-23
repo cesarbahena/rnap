@@ -307,14 +307,14 @@ fn splice(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
     let session = current_session(state)?;
     let gene_fqn = positional(args, 0, "gene fqn")?;
     let lgtm = args.iter().any(|arg| arg == "--lgtm");
-    let exon_texts = args[1..]
+    let task_realization_texts = args[1..]
         .iter()
         .filter(|arg| !arg.starts_with("--"))
         .cloned()
         .collect::<Vec<_>>();
-    if exon_texts.is_empty() && !lgtm {
+    if task_realization_texts.is_empty() && !lgtm {
         return Err(CliError::Usage(
-            "splice requires at least one Exon text or --lgtm".to_owned(),
+            "splice requires at least one TaskRealization text or --lgtm".to_owned(),
         ));
     }
     let spliced = state.dnap.splice(SpliceAllele {
@@ -322,14 +322,14 @@ fn splice(state: &mut LocalState, args: &[String]) -> Result<String, CliError> {
         genome_id: session.scope.genome_id,
         grn_id: session.scope.grn_id,
         gene_fqn,
-        exon_texts,
+        task_realization_texts,
         lgtm,
         created_by: session.actor.tf_id,
     })?;
     Ok(format!(
-        "spliced {:?} with {} new exon(s); {} untranscribed unexpressed mutation(s)",
+        "spliced {:?} with {} new task_realization(s); {} untranscribed unexpressed mutation(s)",
         spliced.allele.state,
-        spliced.exons.len(),
+        spliced.task_realizations.len(),
         spliced.untranscribed_unexpressed_mutations
     ))
 }
@@ -346,14 +346,14 @@ fn translate(state: &mut LocalState, args: &[String]) -> Result<String, CliError
     })?;
 
     let mut output = format!("translated {:?}", translated.allele.state);
-    for (index, exon) in translated.exons.iter().enumerate() {
-        output.push_str(&format!("\n{}. {}", index + 1, exon.text));
-        let dependencies = exon
+    for (index, task_realization) in translated.task_realizations.iter().enumerate() {
+        output.push_str(&format!("\n{}. {}", index + 1, task_realization.text));
+        let dependencies = task_realization
             .depends_on
             .iter()
             .filter_map(|dependency_id| {
                 translated
-                    .exons
+                    .task_realizations
                     .iter()
                     .find(|candidate| candidate.id == *dependency_id)
             })
@@ -548,7 +548,7 @@ fn parse_normalized_artifact(value: &str) -> Result<NormalizedArtifact, CliError
         "dsrna" | "deferredscope" => Ok(NormalizedArtifact::DeferredScope),
         "semantic_narrowing" => Ok(NormalizedArtifact::SemanticNarrowing),
         "mrna" | "managedrequirement" => Ok(NormalizedArtifact::ManagedRequirement),
-        "exon" => Ok(NormalizedArtifact::Exon),
+        "task_realization" => Ok(NormalizedArtifact::TaskRealization),
         "rrna" | "resourcereference" => Ok(NormalizedArtifact::ResourceReference),
         "trna" | "taskrealization" => Ok(NormalizedArtifact::TaskRealization),
         "trf" | "taskrealizationframework" => Ok(NormalizedArtifact::TaskRealizationFramework),

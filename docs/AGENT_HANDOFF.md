@@ -82,6 +82,7 @@ The docs currently define the target model ahead of implementation in several ar
 - Old eRNA exploration graph and Enhancer-Promoter context code/tests were removed; Ribozyme and Enhancer remain Gene-capable artifacts until concrete relationship/use cases are approved.
 - Code now uses a minimal GRN bridge for active Allele resolution and uniqueness: one active Allele per `(Locus, GRN)`.
 - Current Q/A clarification code is `SemanticNarrowing` (`snRNA`) behavior, not the future raw-requirement `Intron` artifact.
+- Current `dna splice` records are `TaskRealization`/tRNA behavior, not `Exon`.
 - `Signal`, real canonical `Chromosome`, raw-requirement `Intron`, and full `Ribozyme` behavior are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.

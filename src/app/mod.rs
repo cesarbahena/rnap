@@ -41,7 +41,7 @@ pub struct Dnap {
     next_allele_id: u64,
     next_mutation_id: u64,
     next_transcriptome_id: u64,
-    next_exon_id: u64,
+    next_task_realization_id: u64,
     next_semantic_narrowing_id: u64,
     next_semantic_narrowing_sequence_id: u64,
     insulators: BTreeMap<InsulatorId, Insulator>,
@@ -56,7 +56,7 @@ pub struct Dnap {
     alleles: BTreeMap<AlleleId, Allele>,
     mutations: BTreeMap<MutationId, Mutation>,
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
-    exons: BTreeMap<ExonId, Exon>,
+    task_realizations: BTreeMap<TaskRealizationId, TaskRealization>,
     semantic_narrowings: BTreeMap<SemanticNarrowingId, SemanticNarrowing>,
     semantic_narrowing_sequences: BTreeMap<SemanticNarrowingSequenceId, SemanticNarrowingSequence>,
 }
@@ -577,23 +577,24 @@ impl Dnap {
             .count()
     }
 
-    pub(super) fn ordered_exons(&self, allele_id: AlleleId) -> Vec<Exon> {
+    pub(super) fn ordered_task_realizations(&self, allele_id: AlleleId) -> Vec<TaskRealization> {
         let mut remaining = self
-            .exons
+            .task_realizations
             .values()
-            .filter(|exon| exon.allele_id == allele_id)
+            .filter(|task_realization| task_realization.allele_id == allele_id)
             .cloned()
             .collect::<Vec<_>>();
-        let mut ordered = Vec::<Exon>::new();
+        let mut ordered = Vec::<TaskRealization>::new();
 
         while !remaining.is_empty() {
             let before = remaining.len();
             let mut index = 0;
             while index < remaining.len() {
-                let ready = remaining[index]
-                    .depends_on
-                    .iter()
-                    .all(|dependency| ordered.iter().any(|exon| exon.id == *dependency));
+                let ready = remaining[index].depends_on.iter().all(|dependency| {
+                    ordered
+                        .iter()
+                        .any(|task_realization| task_realization.id == *dependency)
+                });
                 if ready {
                     ordered.push(remaining.remove(index));
                 } else {
@@ -682,9 +683,9 @@ impl Dnap {
         TranscriptomeId(self.next_transcriptome_id)
     }
 
-    pub(super) fn allocate_exon_id(&mut self) -> ExonId {
-        self.next_exon_id += 1;
-        ExonId(self.next_exon_id)
+    pub(super) fn allocate_task_realization_id(&mut self) -> TaskRealizationId {
+        self.next_task_realization_id += 1;
+        TaskRealizationId(self.next_task_realization_id)
     }
 
     pub(super) fn allocate_semantic_narrowing_id(&mut self) -> SemanticNarrowingId {

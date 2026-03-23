@@ -46,4 +46,4 @@ pub struct SemanticNarrowingSequenceId(pub(crate) u64);
 pub struct TranscriptomeId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ExonId(pub(crate) u64);
+pub struct TaskRealizationId(pub(crate) u64);

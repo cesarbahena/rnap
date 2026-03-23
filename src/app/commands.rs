@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Allele, Exon, GeneFamily, GeneFamilyGeneration, GenomeId, Grn, GrnId, Insulator, InsulatorId,
+    Allele, GeneFamily, GeneFamilyGeneration, GenomeId, Grn, GrnId, Insulator, InsulatorId,
     InsulatorPlacement, InsulatorPlacementStrategy, Locus, Mutation, NormalizedArtifact,
     SemanticNarrowing, SemanticNarrowingId, SemanticNarrowingSequence, Sequence, SequenceType,
-    SequenceValue, TfId, Transcriptome, Transposon,
+    SequenceValue, TaskRealization, TfId, Transcriptome, Transposon,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -121,7 +121,7 @@ pub struct SpliceAllele {
     pub genome_id: GenomeId,
     pub grn_id: GrnId,
     pub gene_fqn: String,
-    pub exon_texts: Vec<String>,
+    pub task_realization_texts: Vec<String>,
     pub lgtm: bool,
     pub created_by: TfId,
 }
@@ -129,7 +129,7 @@ pub struct SpliceAllele {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SpliceResult {
     pub allele: Allele,
-    pub exons: Vec<Exon>,
+    pub task_realizations: Vec<TaskRealization>,
     pub untranscribed_unexpressed_mutations: usize,
 }
 
@@ -145,7 +145,7 @@ pub struct TranslateAllele {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct TranslatedAllele {
     pub allele: Allele,
-    pub exons: Vec<Exon>,
+    pub task_realizations: Vec<TaskRealization>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

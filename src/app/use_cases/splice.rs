@@ -33,18 +33,19 @@ impl Dnap {
         let now = SystemTime::now();
         let untranscribed_unexpressed_mutations =
             self.untranscribed_unexpressed_mutation_count(allele.id);
-        let mut exons = Vec::new();
-        for exon_text in input.exon_texts {
-            let text = require_text(exon_text, DnapError::BlankExonText)?;
-            let exon = Exon {
-                id: self.allocate_exon_id(),
+        let mut task_realizations = Vec::new();
+        for task_realization_text in input.task_realization_texts {
+            let text = require_text(task_realization_text, DnapError::BlankTaskRealizationText)?;
+            let task_realization = TaskRealization {
+                id: self.allocate_task_realization_id(),
                 allele_id: allele.id,
                 text,
                 depends_on: Vec::new(),
                 created_at: now,
             };
-            self.exons.insert(exon.id, exon.clone());
-            exons.push(exon);
+            self.task_realizations
+                .insert(task_realization.id, task_realization.clone());
+            task_realizations.push(task_realization);
         }
         for mutation_id in unexpressed_mutation_ids {
             let Some(mutation) = self.mutations.get_mut(&mutation_id) else {
@@ -60,7 +61,7 @@ impl Dnap {
 
         Ok(SpliceResult {
             allele,
-            exons,
+            task_realizations,
             untranscribed_unexpressed_mutations,
         })
     }
@@ -82,11 +83,14 @@ impl Dnap {
             .get(&allele_id)
             .cloned()
             .ok_or(DnapError::AlleleNotFound)?;
-        let exons = self.ordered_exons(allele.id);
-        if exons.is_empty() {
-            return Err(DnapError::ExonsNotFound);
+        let task_realizations = self.ordered_task_realizations(allele.id);
+        if task_realizations.is_empty() {
+            return Err(DnapError::TaskRealizationsNotFound);
         }
 
-        Ok(TranslatedAllele { allele, exons })
+        Ok(TranslatedAllele {
+            allele,
+            task_realizations,
+        })
     }
 }

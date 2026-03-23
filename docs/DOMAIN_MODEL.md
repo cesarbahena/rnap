@@ -392,7 +392,7 @@ enum MutationState {
 
 Mutations are individual and composable. Before expression, mutating the same Sequence updates the same `Unexpressed` Mutation row. `dna splice` expresses all current `Unexpressed` Mutations, changing them to `Expressing`. Mutating a Sequence that already has an `Expressing` Mutation creates a new `Unexpressed` Mutation for that Sequence.
 
-`dna splice` moves the Allele to `Expressing`. `dna splice --lgtm` is an escape hatch: it expresses current `Unexpressed` Mutations without changing Exons when the current Exon DAG is still acceptable.
+`dna splice` moves the Allele to `Expressing`. `dna splice --lgtm` is an escape hatch: it expresses current `Unexpressed` Mutations without changing TaskRealizations when the current TaskRealization DAG is still acceptable.
 
 `dna transcribe` is always allowed in every Allele state. It renders the latest Mutation projection for the current Allele against the committed Genes and candidate Alleles in the Chromosome of the Gene being worked on, including unapproved workflow-driven changes.
 
@@ -432,20 +432,20 @@ struct Gene {
 }
 ```
 
-`Exon` is a refined requirement artifact type. The current `dna splice` implementation creates Exon task records attached to the working Allele. This is an implementation bridge, not the final Exon domain model. The long-term Exon-as-Gene lifecycle is unresolved until the normalized artifact remodel is implemented.
+`TaskRealization` is the tRNA task-realization artifact. The current `dna splice` implementation creates TaskRealization records attached to the working Allele. This is an implementation bridge, not the final Gene-capable TaskRealization lifecycle.
 
 ```rust
-struct Exon {
-    id: ExonId,
+struct TaskRealization {
+    id: TaskRealizationId,
     allele_id: AlleleId,
     text: String,
-    depends_on: Vec<ExonId>,
+    depends_on: Vec<TaskRealizationId>,
     created_at: Timestamp,
     degraded_at: Option<Timestamp>,
 }
 ```
 
-Exons attached to an Allele organize as a DAG through `depends_on`, not a positional list. If Exon A depends on Exon B, B must precede A in the work graph.
+TaskRealizations attached to an Allele organize as a DAG through `depends_on`, not a positional list. If TaskRealization A depends on TaskRealization B, B must precede A in the work graph.
 
 `Intron` is a raw requirement artifact type. Fixed Intron discussion records are not part of the stable foundation. The long-term Intron-as-Gene lifecycle is unresolved until concrete requirement-discussion workflows are approved.
 
@@ -648,7 +648,7 @@ Plain `--<sequence-name> <value>` is invalid for vector sequences because append
 
 ## CLI Splice Entry Point
 
-`dna splice` creates or acknowledges Exons attached to the active mRNA Allele.
+`dna splice` creates or acknowledges TaskRealizations attached to the active mRNA Allele.
 
 ```sh
 dna splice <mrna-gene> "Some hard task" "An even harder one"
@@ -662,13 +662,13 @@ In this form:
 
 - `<mrna-gene>` resolves the active mRNA Allele by Locus name or Gene FQN.
 - Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele.
-- Quoted positional arguments create new Exons attached to that mRNA Allele.
-- `--before-<exon-name>` places the new or selected Exon before an existing Exon by making the existing Exon depend on it.
-- `--after-<exon-name>` places the new or selected Exon after an existing Exon by making it depend on the existing Exon.
-- `--<exon-name>` selects an existing Exon in the mRNA Allele's Exon DAG.
-- `--set-<exon-name> <text>` replaces the text of an existing Exon.
-- `--lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without changing Exons when the existing Exon DAG is still acceptable.
-- Exons attached to the Allele organize as a DAG through `depends_on`.
+- Quoted positional arguments create new TaskRealizations attached to that mRNA Allele.
+- `--before-<task-realization-name>` places the new or selected TaskRealization before an existing TaskRealization by making the existing TaskRealization depend on it.
+- `--after-<task-realization-name>` places the new or selected TaskRealization after an existing TaskRealization by making it depend on the existing TaskRealization.
+- `--<task-realization-name>` selects an existing TaskRealization in the mRNA Allele's TaskRealization DAG.
+- `--set-<task-realization-name> <text>` replaces the text of an existing TaskRealization.
+- `--lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without changing TaskRealizations when the existing TaskRealization DAG is still acceptable.
+- TaskRealizations attached to the Allele organize as a DAG through `depends_on`.
 - `dna splice` is not a mutation staging command.
 
 After `dna splice`, the Allele remains an Allele with `state = Expressing`. `dna select` is the final command that creates the immutable Gene.

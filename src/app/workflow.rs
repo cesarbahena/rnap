@@ -3,8 +3,8 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, ExonId, LocusId, MutationId, SemanticNarrowingId, SemanticNarrowingSequenceId,
-    SequenceDefinitionId, SequenceHash, TranscriptomeId,
+    AlleleId, LocusId, MutationId, SemanticNarrowingId, SemanticNarrowingSequenceId,
+    SequenceDefinitionId, SequenceHash, TaskRealizationId, TranscriptomeId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -25,11 +25,11 @@ pub struct TranscriptSequenceCursor {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct Exon {
-    pub id: ExonId,
+pub struct TaskRealization {
+    pub id: TaskRealizationId,
     pub allele_id: AlleleId,
     pub text: String,
-    pub depends_on: Vec<ExonId>,
+    pub depends_on: Vec<TaskRealizationId>,
     pub created_at: SystemTime,
 }
 

@@ -36,12 +36,12 @@ Slice 004 implements:
 - `dna mutate --new` may create an Allele with zero Mutations.
 - Mutating an `Expressing` Allele is allowed and changes `Allele.state` to `Mutating` when it creates or updates `Unexpressed` Mutations.
 - `dna splice` changes `Allele.state` to `Expressing` and changes current `Unexpressed` Mutations to `Expressing`.
-- `dna splice --lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without editing the existing Exon DAG.
+- `dna splice --lgtm` is an escape hatch that expresses current `Unexpressed` Mutations without editing the existing TaskRealization DAG.
 - `dna transcribe` is always allowed in every Allele state.
 - `dna transcribe` renders the latest Mutation projection, including unapproved mutations such as sgRNA suggested document modifications.
 - `dna transcribe` always shows approval-status comments for mutated and sgRNA Sequences.
 - `Transcriptome` stores render/access cursor metadata for token-saving transcript output, not projected document content.
-- `dna translate` renders Exons attached to the active Allele.
+- `dna translate` renders TaskRealizations attached to the active Allele.
 - `dna translate` does not render Sequences and does not mutate state.
 
 ## CLI
@@ -56,7 +56,7 @@ dna transcribe FRS-checkout-0001
 - It renders latest Allele state, not only the committed/canonical Gene.
 - It always includes approval-status comments for mutated and sgRNA Sequences.
 
-Create or acknowledge Exons on the active mRNA Allele:
+Create or acknowledge TaskRealizations on the active mRNA Allele:
 
 ```sh
 dna splice FRS-checkout-0001 "Some hard task" "An even harder one"
@@ -68,17 +68,17 @@ dna splice FRS-checkout --lgtm
 
 - `dna splice` takes an mRNA Gene FQN as the first positional argument and resolves the active Allele for that work item in the current GRN context.
 - Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele in the current GRN context.
-- Quoted positional arguments create new Exons attached to that mRNA Allele.
-- `--before-<exon-name>` places the new or selected Exon before an existing Exon by making the existing Exon depend on it.
-- `--after-<exon-name>` places the new or selected Exon after an existing Exon by making it depend on the existing Exon.
-- `--<exon-name>` selects an existing Exon in the mRNA Allele's Exon DAG.
-- `--set-<exon-name> <text>` replaces the text of an existing Exon.
-- `--lgtm` expresses current `Unexpressed` Mutations without editing the existing Exon DAG.
-- `dna splice <target>` with neither Exon text nor `--lgtm` is invalid.
-- Exons attached to the Allele organize as a DAG through `depends_on`.
+- Quoted positional arguments create new TaskRealizations attached to that mRNA Allele.
+- `--before-<task-realization-name>` places the new or selected TaskRealization before an existing TaskRealization by making the existing TaskRealization depend on it.
+- `--after-<task-realization-name>` places the new or selected TaskRealization after an existing TaskRealization by making it depend on the existing TaskRealization.
+- `--<task-realization-name>` selects an existing TaskRealization in the mRNA Allele's TaskRealization DAG.
+- `--set-<task-realization-name> <text>` replaces the text of an existing TaskRealization.
+- `--lgtm` expresses current `Unexpressed` Mutations without editing the existing TaskRealization DAG.
+- `dna splice <target>` with neither TaskRealization text nor `--lgtm` is invalid.
+- TaskRealizations attached to the Allele organize as a DAG through `depends_on`.
 - `dna splice` is not a mutation staging command.
 
-Render Exons from the active Allele:
+Render TaskRealizations from the active Allele:
 
 ```sh
 dna translate FRS-checkout-0001
@@ -86,10 +86,10 @@ dna translate FRS-checkout-0001
 
 - `dna translate` takes a Locus name or Gene FQN as the first positional argument.
 - Positional target matching is case-insensitive and kebab-insensitive, not fuzzy. The generation may be omitted when the matcher resolves exactly one active Allele in the current GRN context.
-- `dna translate` renders Exons in dependency order.
-- `dna translate` shows dependency text for Exons that depend on other Exons.
-- `dna translate` errors when the active Allele has no Exons.
-- `dna translate` does not change Allele, Mutation, Exon, or Transcriptome state.
+- `dna translate` renders TaskRealizations in dependency order.
+- `dna translate` shows dependency text for TaskRealizations that depend on other TaskRealizations.
+- `dna translate` errors when the active Allele has no TaskRealizations.
+- `dna translate` does not change Allele, Mutation, TaskRealization, or Transcriptome state.
 
 Mutate existing work:
 
@@ -122,7 +122,7 @@ dna mutate FRS-checkout-0001
 - Implement current Allele projection from latest Mutations.
 - Implement Transcriptome render cursor metadata per Sequence.
 - Implement expression transitions through `dna mutate`, `dna splice`, and `dna splice --lgtm`.
-- Implement `dna translate` as the Exon read side for the active Allele.
+- Implement `dna translate` as the TaskRealization read side for the active Allele.
 
 ## Approved Tests
 
@@ -134,5 +134,5 @@ dna mutate FRS-checkout-0001
 - Changed Sequences are shown again after later Mutations.
 - Repeated edits to the same `Unexpressed` Mutation update the same row and are detected by `SequenceHash` cursor changes.
 - `dna splice --lgtm` expresses `Unexpressed` Mutations without requiring prior transcription.
-- `dna splice <target>` errors when it has neither Exon text nor `--lgtm`.
-- `dna translate` renders Exons and errors when the active Allele has no Exons.
+- `dna splice <target>` errors when it has neither TaskRealization text nor `--lgtm`.
+- `dna translate` renders TaskRealizations and errors when the active Allele has no TaskRealizations.

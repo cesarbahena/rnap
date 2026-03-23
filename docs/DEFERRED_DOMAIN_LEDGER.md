@@ -49,8 +49,8 @@ The ledger contains implementation obligations and open decisions that are inten
 ## Splicing
 
 - Raw-requirement `Intron` artifact lifecycle. Current Q/A clarification code is `SemanticNarrowing`, not Intron.
-- Exact Exon lifecycle after `dna splice` under the NormalizedArtifact model.
-- Reconcile current Exon task records with long-term Exon-as-Gene artifact semantics.
+- Exact TaskRealization lifecycle after `dna splice` under the NormalizedArtifact model.
+- Reconcile current TaskRealization records with long-term Gene-capable TaskRealization artifact semantics.
 
 ## Authorization
 
