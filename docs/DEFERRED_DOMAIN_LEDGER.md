@@ -15,7 +15,7 @@ The ledger contains implementation obligations and open decisions that are inten
 
 ## Document Types
 
-- Continue replacing remaining old exploration/eRNA graph behavior with the approved Ribozyme/executable taxonomy model.
+- Define concrete Ribozyme graph behavior before adding graph-local records.
 - Implement `ArtifactRef` plus narrowly useful biology/backronym wrappers such as `MRna(ArtifactRef)` or `Enhancer(ArtifactRef)` where relationships require a specific NormalizedArtifact.
 - Implement Chromosome as the named canonical scope inside a Genome.
 - Move Locus identity to Chromosome scope while keeping Locus names unique across the containing Genome.
@@ -24,7 +24,7 @@ The ledger contains implementation obligations and open decisions that are inten
 - `SequenceValue` validation during work-type definition versus mutation application.
 - Exact Gene FQN configuration storage and override implementation.
 - Artifact-specific lifecycle, dependency, authorization, and tenant workflow semantics. Deferred until concrete use cases define the needed structures. eRNA is reserved for human-readable executable governance artifacts with IAM-like DSL attributes.
-- Complete downstream NormalizedArtifact migration where workflow behavior still carries old exploration/eRNA assumptions.
+- Keep checking code names against behavior before reusing ontology names; current names must not imply unimplemented artifact lifecycles.
 
 ## Candidate Work
 
@@ -36,7 +36,7 @@ The ledger contains implementation obligations and open decisions that are inten
 
 - Rename DomainEvent to Signal and implement append-only Signal with tenant-scoped `insulator_id`, optional `tf_id`, typed target, typed payload, reason, and timestamp.
 - Keep `degraded_at` as the standard soft-delete/deactivation field for active filtering.
-- Remove per-record actor audit fields such as `created_by`, `degraded_by`, `assigned_by`, and `moved_by` unless a concrete query requires denormalization.
+- Implement Signal audit for actor provenance, reasons, and transition payloads. Per-record actor audit fields have been removed from persisted domain records unless used as command input.
 - Keep behavior-validity timestamps such as HistoneMark validity windows when they affect behavior.
 
 ## Mutations
@@ -69,11 +69,11 @@ The ledger contains implementation obligations and open decisions that are inten
 - Operon lifecycle state. Deferred because GRN owns operational lifecycle state; revisit only when an Operon needs independent workflow status separate from its GRN.
 - PreInitiationComplex structure. Decision approved: keep it as a named discussion concept only; no persisted object, GRN field, participant model, topic model, or generic channel abstraction is approved until concrete use cases define it.
 - Generic discussion-channel abstraction. Deferred because PreInitiationComplex, MediatorComplex, RepressorsComplex, CRISPR, and StructuralMaintenance do not yet have enough shared approved behavior to justify a common object.
-- EnterpriseNegotiationHandoverCertificate association rules. Deferred; it remains a NormalizedArtifact, but exact Promoter/GRN/Operon attachment semantics are not active foundation.
+- EnterpriseNegotiationHandoverCertificate association rules. Deferred; it remains a NormalizedArtifact, but exact Promoter/GRN/Operon attachment semantics are not active foundation. Old Enhancer-to-Promoter context code has been removed.
 - Ribozyme graph capabilities are deferred. For now, Ribozyme is a normal Gene-capable `NormalizedArtifact`; do not implement ExplorationGraph, ExplorationNode, ExplorationEdge, RibozymeGraph, RibozymeNode, RibozymeEdge, or equivalents until a concrete Ribozyme graph use case is approved.
 - Replace the old eRNA exploration role with Ribozyme.
 - Reserve eRNA for `NormalizedArtifact::Executable`, a human-readable executable governance artifact with IAM-like DSL attributes.
-- Add `Executable` and `Ribozyme` to NormalizedArtifact in code.
+- Implement behavior for `Executable` and `Ribozyme`; taxonomy variants exist, behavior is deferred until concrete use cases are approved.
 - Decide and implement operation/revision semantics for real-time graph collaboration. CRDT/OT semantics are deferred.
 - Explore RepressorsComplex behavior only through concrete approved use cases.
 - Explore MediatorComplex behavior only through concrete approved use cases.

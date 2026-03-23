@@ -17,7 +17,7 @@ As `src/app/` grows, split it by durable product boundaries rather than by stora
 - identity: Insulator, placement, Genome, Tf.
 - artifact taxonomy: fixed NormalizedArtifact taxonomy and internal biology/backronym lineage.
 - genes: GeneFamily, GeneFamilyGeneration, SequenceDefinition, Locus, Transposon, Allele, Gene, Mutation.
-- workflow: Transcriptome, Exon, ExplorationGraph, EnterpriseNegotiationHandoverCertificate context, Intron.
+- workflow: Transcriptome cursor, current Exon bridge records, and SemanticNarrowing clarification threads.
 - application use cases: mutation, transcription, splicing, translation, exploration, questions/answers.
 - matching: human-oriented normalized/fuzzy command resolution shared by CLI-facing use cases.
 
@@ -39,7 +39,7 @@ As `src/app/` grows, split it by durable product boundaries rather than by stora
 - Tenant identity: `Insulator`.
 - Project scope: `Genome`.
 - Actor identity: `Tf`.
-- Tenant content: GeneFamily, Locus, Allele, Mutation, Transcriptome cursor, Exon, ExplorationGraph, Intron.
+- Tenant content: GeneFamily, Locus, Allele, Mutation, Transcriptome cursor, current Exon bridge records, and SemanticNarrowing clarification threads.
 - Local CLI session: actor and scope only; no real auth secrets.
 - Authorization: not implemented yet; reserved for Histone/HistoneMark slices.
 - Persistence: local JSON state adapter for CLI workflow testing; not product storage architecture.
