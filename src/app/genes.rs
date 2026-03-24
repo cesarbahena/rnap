@@ -3,9 +3,9 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, GrnId, InsulatorId, LocusId,
-    MutationId, NormalizedArtifact, SemanticNarrowingId, SemanticNarrowingSequenceId,
-    SequenceDefinitionId, SequenceType, TransposonId,
+    AlleleId, ChromosomeId, GeneFamilyGenerationId, GeneFamilyId, GeneId, GenomeId, GrnId,
+    InsulatorId, LocusId, MutationId, NormalizedArtifact, SemanticNarrowingId,
+    SemanticNarrowingSequenceId, SequenceDefinitionId, SequenceType, TransposonId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -42,7 +42,7 @@ pub struct Locus {
     pub id: LocusId,
     pub family_id: GeneFamilyId,
     pub insulator_id: InsulatorId,
-    pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub name: String,
     pub created_at: SystemTime,
 }
@@ -72,7 +72,7 @@ pub enum AlleleState {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Allele {
     pub id: AlleleId,
-    pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub locus_id: LocusId,
     pub gene_family_generation_id: GeneFamilyGenerationId,

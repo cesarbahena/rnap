@@ -22,9 +22,10 @@ This slice implements:
 - `dna epigenetics init-insulator` provisions an Insulator and placement.
 - `dna epigenetics init-genome` creates a Genome inside an Insulator.
 - `dna epigenetics init-tf` creates a local Tf actor inside an Insulator.
+- `dna epigenetics init-chromosome` creates a temporary local Chromosome placement inside a Genome.
 - `dna epigenetics init-grn` creates a temporary local GRN bridge inside a Genome.
 - `dna epigenetics use` writes the active local session.
-- The local session stores actor and scope: Tf, Insulator, Genome, and GRN.
+- The local session stores actor and scope: Tf, Insulator, Genome, Chromosome, and GRN.
 - The local session contains no real auth secret.
 - Future real login/auth should replace the session provider, not normal workflow command behavior.
 - Normal workflow commands read the active session:
@@ -43,8 +44,9 @@ Bootstrap local context:
 dna epigenetics init-insulator Acme --region us-east-1
 dna epigenetics init-genome Billing --insulator Acme
 dna epigenetics init-tf Cesar --insulator Acme
+dna epigenetics init-chromosome Product --insulator Acme --genome Billing
 dna epigenetics init-grn Checkout --insulator Acme --genome Billing --tf Cesar
-dna epigenetics use --insulator Acme --genome Billing --grn Checkout --tf Cesar
+dna epigenetics use --insulator Acme --genome Billing --chromosome Product --grn Checkout --tf Cesar
 ```
 
 Define a local work type for workflow testing:
@@ -75,7 +77,7 @@ dna splice FRS-checkout --lgtm
 
 ## Approved Tests
 
-- Epigenetics bootstrap can create Insulator, Genome, Tf, GRN, active session, and GeneFamily.
+- Epigenetics bootstrap can create Insulator, Genome, Chromosome, Tf, GRN, active session, and GeneFamily.
 - Normal CLI workflow commands use the active session.
 - CLI workflow can mutate, transcribe, and splice an Allele.
 - `dna splice --lgtm` expresses current `Unexpressed` Mutations without changing TaskRealizations.

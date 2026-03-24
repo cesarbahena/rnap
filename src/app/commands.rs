@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Allele, GeneFamily, GeneFamilyGeneration, GenomeId, Grn, GrnId, Insulator, InsulatorId,
-    InsulatorPlacement, InsulatorPlacementStrategy, Locus, Mutation, NormalizedArtifact,
-    SemanticNarrowing, SemanticNarrowingId, SemanticNarrowingSequence, Sequence, SequenceType,
-    SequenceValue, TaskRealization, TfId, Transcriptome, Transposon,
+    Allele, Chromosome, ChromosomeId, GeneFamily, GeneFamilyGeneration, GenomeId, Grn, GrnId,
+    Insulator, InsulatorId, InsulatorPlacement, InsulatorPlacementStrategy, Locus, Mutation,
+    NormalizedArtifact, SemanticNarrowing, SemanticNarrowingId, SemanticNarrowingSequence,
+    Sequence, SequenceType, SequenceValue, TaskRealization, TfId, Transcriptome, Transposon,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -17,6 +17,13 @@ pub struct ProvisionInsulator {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct CreateGenome {
     pub insulator_id: InsulatorId,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreateChromosome {
+    pub insulator_id: InsulatorId,
+    pub genome_id: GenomeId,
     pub name: String,
 }
 
@@ -63,6 +70,7 @@ pub struct DefinedGeneFamily {
 pub struct MutateNew {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub gene_family_abbreviation: String,
     pub locus_name: String,
@@ -75,6 +83,7 @@ pub struct MutateNew {
 pub struct MutateExisting {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub gene_fqn: String,
     pub mutations: Vec<SequenceMutation>,
@@ -101,6 +110,7 @@ pub struct MutatedAllele {
 pub struct TranscribeAllele {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub gene_fqn: String,
     pub full: bool,
@@ -119,6 +129,7 @@ pub struct TranscribedAllele {
 pub struct SpliceAllele {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub gene_fqn: String,
     pub task_realization_texts: Vec<String>,
@@ -137,6 +148,7 @@ pub struct SpliceResult {
 pub struct TranslateAllele {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub gene_fqn: String,
     pub created_by: TfId,
@@ -152,6 +164,7 @@ pub struct TranslatedAllele {
 pub struct CreateSemanticNarrowing {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub target_mrna_fqn: String,
     pub target_sequence_name: Option<String>,
@@ -165,6 +178,7 @@ pub struct CreateSemanticNarrowing {
 pub struct AppendSemanticNarrowingSequence {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
     pub target_mrna_fqn: Option<String>,
     pub target_sequence_name: Option<String>,
@@ -201,6 +215,11 @@ pub struct SemanticNarrowingThread {
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct CreatedGrn {
     pub grn: Grn,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreatedChromosome {
+    pub chromosome: Chromosome,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

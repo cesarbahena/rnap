@@ -294,7 +294,7 @@ fn resolves_genome_override_before_insulator_default() {
 #[test]
 fn mutate_new_can_create_locus_transposon_and_allele_without_initial_mutations() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -308,6 +308,7 @@ fn mutate_new_can_create_locus_transposon_and_allele_without_initial_mutations()
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "FRS".to_owned(),
             locus_name: "Checkout".to_owned(),
@@ -331,7 +332,7 @@ fn mutate_new_can_create_locus_transposon_and_allele_without_initial_mutations()
 #[test]
 fn mutate_new_can_create_initial_sequence_mutations() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -344,6 +345,7 @@ fn mutate_new_can_create_initial_sequence_mutations() {
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "frs".to_owned(),
             locus_name: "Checkout".to_owned(),
@@ -374,7 +376,7 @@ fn mutate_new_can_create_initial_sequence_mutations() {
 #[test]
 fn mutation_sequence_matching_is_kebab_case_insensitive_and_type_checked() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -388,6 +390,7 @@ fn mutation_sequence_matching_is_kebab_case_insensitive_and_type_checked() {
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "FRS".to_owned(),
             locus_name: "Checkout".to_owned(),
@@ -404,6 +407,7 @@ fn mutation_sequence_matching_is_kebab_case_insensitive_and_type_checked() {
         dnap.mutate_existing(MutateExisting {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: mutated.gene_fqn,
             mutations: vec![mutation("some-section", SequenceValue::Bool(true))],
@@ -417,7 +421,7 @@ fn mutation_sequence_matching_is_kebab_case_insensitive_and_type_checked() {
 #[test]
 fn active_allele_can_be_resolved_by_locus_name_without_fuzzy_matching() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -429,6 +433,7 @@ fn active_allele_can_be_resolved_by_locus_name_without_fuzzy_matching() {
     dnap.mutate_new(MutateNew {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_family_abbreviation: "FRS".to_owned(),
         locus_name: "Checkout".to_owned(),
@@ -445,6 +450,7 @@ fn active_allele_can_be_resolved_by_locus_name_without_fuzzy_matching() {
         .mutate_existing(MutateExisting {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "checkout".to_owned(),
             mutations: vec![mutation("Prob", SequenceValue::String("Pain".to_owned()))],
@@ -460,7 +466,7 @@ fn active_allele_can_be_resolved_by_locus_name_without_fuzzy_matching() {
 #[test]
 fn active_allele_fqn_resolution_is_scoped_to_the_grn() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, owner_tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, owner_tf_id) = workspace(&mut dnap);
     let other_tf = dnap
         .create_tf(CreateTf {
             insulator_id,
@@ -480,6 +486,7 @@ fn active_allele_fqn_resolution_is_scoped_to_the_grn() {
     dnap.mutate_new(MutateNew {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_family_abbreviation: "FRS".to_owned(),
         locus_name: "Checkout".to_owned(),
@@ -496,6 +503,7 @@ fn active_allele_fqn_resolution_is_scoped_to_the_grn() {
         .mutate_existing(MutateExisting {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "FRS-checkout".to_owned(),
             mutations: vec![mutation(
@@ -512,7 +520,7 @@ fn active_allele_fqn_resolution_is_scoped_to_the_grn() {
 #[test]
 fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -525,6 +533,7 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "FRS".to_owned(),
             locus_name: "Checkout".to_owned(),
@@ -540,6 +549,7 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
     dnap.splice(SpliceAllele {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_fqn: mutated.gene_fqn.clone(),
         task_realization_texts: vec!["Build checkout".to_owned()],
@@ -552,6 +562,7 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
         .mutate_existing(MutateExisting {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "FRS-checkout".to_owned(),
             mutations: vec![mutation(
@@ -568,6 +579,7 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
         .splice(SpliceAllele {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "FRS-checkout".to_owned(),
             task_realization_texts: Vec::new(),
@@ -583,7 +595,7 @@ fn lgtm_expresses_unexpressed_mutations_without_requiring_transcribe() {
 #[test]
 fn translate_returns_task_realizations_without_changing_allele_state() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -596,6 +608,7 @@ fn translate_returns_task_realizations_without_changing_allele_state() {
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "FRS".to_owned(),
             locus_name: "Checkout".to_owned(),
@@ -610,6 +623,7 @@ fn translate_returns_task_realizations_without_changing_allele_state() {
     dnap.splice(SpliceAllele {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_fqn: mutated.gene_fqn.clone(),
         task_realization_texts: vec![
@@ -625,6 +639,7 @@ fn translate_returns_task_realizations_without_changing_allele_state() {
         .translate(TranslateAllele {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "checkout".to_owned(),
             created_by: tf_id,
@@ -649,7 +664,7 @@ fn translate_returns_task_realizations_without_changing_allele_state() {
 #[test]
 fn translate_errors_when_the_active_allele_has_no_task_realizations() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -661,6 +676,7 @@ fn translate_errors_when_the_active_allele_has_no_task_realizations() {
     dnap.mutate_new(MutateNew {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_family_abbreviation: "FRS".to_owned(),
         locus_name: "Checkout".to_owned(),
@@ -674,6 +690,7 @@ fn translate_errors_when_the_active_allele_has_no_task_realizations() {
         dnap.translate(TranslateAllele {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "checkout".to_owned(),
             created_by: tf_id,
@@ -685,7 +702,7 @@ fn translate_errors_when_the_active_allele_has_no_task_realizations() {
 #[test]
 fn semantic_narrowings_target_mrna_and_can_chain_follow_ups() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
@@ -699,6 +716,7 @@ fn semantic_narrowings_target_mrna_and_can_chain_follow_ups() {
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "REQ".to_owned(),
             locus_name: "Checkout requirements".to_owned(),
@@ -712,6 +730,7 @@ fn semantic_narrowings_target_mrna_and_can_chain_follow_ups() {
         .create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             target_mrna_fqn: "checkout-requirements".to_owned(),
             target_sequence_name: None,
@@ -725,6 +744,7 @@ fn semantic_narrowings_target_mrna_and_can_chain_follow_ups() {
         .append_semantic_narrowing_sequence(AppendSemanticNarrowingSequence {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             target_mrna_fqn: None,
             target_sequence_name: None,
@@ -751,7 +771,7 @@ fn semantic_narrowings_target_mrna_and_can_chain_follow_ups() {
 #[test]
 fn semantic_narrowings_reject_rrna_targets() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
@@ -764,6 +784,7 @@ fn semantic_narrowings_reject_rrna_targets() {
     dnap.mutate_new(MutateNew {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_family_abbreviation: "DSN".to_owned(),
         locus_name: "Checkout design".to_owned(),
@@ -777,6 +798,7 @@ fn semantic_narrowings_reject_rrna_targets() {
         dnap.create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             target_mrna_fqn: "checkout-design".to_owned(),
             target_sequence_name: None,
@@ -792,7 +814,7 @@ fn semantic_narrowings_reject_rrna_targets() {
 #[test]
 pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explicit_causes() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family_with_normalized_artifact(
         &mut dnap,
         insulator_id,
@@ -805,6 +827,7 @@ pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explici
     dnap.mutate_new(MutateNew {
         insulator_id,
         genome_id,
+        chromosome_id,
         grn_id,
         gene_family_abbreviation: "REQ".to_owned(),
         locus_name: "Checkout requirements".to_owned(),
@@ -820,6 +843,7 @@ pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explici
         .create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             target_mrna_fqn: "checkout-requirements".to_owned(),
             target_sequence_name: Some("Some Section".to_owned()),
@@ -833,6 +857,7 @@ pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explici
         .append_semantic_narrowing_sequence(AppendSemanticNarrowingSequence {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             target_mrna_fqn: None,
             target_sequence_name: None,
@@ -849,6 +874,7 @@ pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explici
         .create_semantic_narrowing(CreateSemanticNarrowing {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             target_mrna_fqn: "checkout-requirements".to_owned(),
             target_sequence_name: Some("Some Section".to_owned()),
@@ -863,6 +889,7 @@ pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explici
         .mutate_existing(MutateExisting {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: "checkout-requirements".to_owned(),
             mutations: vec![mutation(
@@ -885,7 +912,7 @@ pub(super) fn mutation_context_captures_relevant_semantic_narrowings_and_explici
 #[test]
 fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() {
     let mut dnap = Dnap::default();
-    let (insulator_id, genome_id, grn_id, tf_id) = workspace(&mut dnap);
+    let (insulator_id, genome_id, chromosome_id, grn_id, tf_id) = workspace(&mut dnap);
     define_gene_family(
         &mut dnap,
         insulator_id,
@@ -898,6 +925,7 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
         .mutate_new(MutateNew {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_family_abbreviation: "FRS".to_owned(),
             locus_name: "Checkout".to_owned(),
@@ -914,6 +942,7 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
         .transcribe(TranscribeAllele {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: mutated.gene_fqn.clone(),
             full: false,
@@ -927,6 +956,7 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
         .transcribe(TranscribeAllele {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: mutated.gene_fqn.clone(),
             full: false,
@@ -939,6 +969,7 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
         .mutate_existing(MutateExisting {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: mutated.gene_fqn,
             mutations: vec![mutation(
@@ -953,6 +984,7 @@ fn transcriptome_tracks_render_cursor_per_sequence_without_storing_projection() 
         .transcribe(TranscribeAllele {
             insulator_id,
             genome_id,
+            chromosome_id,
             grn_id,
             gene_fqn: changed.gene_fqn,
             full: false,
@@ -992,9 +1024,16 @@ fn create_cesar(dnap: &mut Dnap, insulator_id: InsulatorId) -> Tf {
     .expect("valid tf")
 }
 
-fn workspace(dnap: &mut Dnap) -> (InsulatorId, GenomeId, GrnId, TfId) {
+fn workspace(dnap: &mut Dnap) -> (InsulatorId, GenomeId, ChromosomeId, GrnId, TfId) {
     let provisioned = provision_acme(dnap);
     let genome = create_billing_genome(dnap, provisioned.insulator.id);
+    let chromosome = dnap
+        .create_chromosome(CreateChromosome {
+            insulator_id: provisioned.insulator.id,
+            genome_id: genome.id,
+            name: "Product".to_owned(),
+        })
+        .expect("valid chromosome");
     let tf = create_cesar(dnap, provisioned.insulator.id);
     let grn = dnap
         .create_grn(CreateGrn {
@@ -1004,7 +1043,13 @@ fn workspace(dnap: &mut Dnap) -> (InsulatorId, GenomeId, GrnId, TfId) {
             activator: tf.id,
         })
         .expect("valid grn");
-    (provisioned.insulator.id, genome.id, grn.grn.id, tf.id)
+    (
+        provisioned.insulator.id,
+        genome.id,
+        chromosome.chromosome.id,
+        grn.grn.id,
+        tf.id,
+    )
 }
 
 fn define_gene_family(

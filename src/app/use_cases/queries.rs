@@ -69,6 +69,14 @@ impl Dnap {
         })
     }
 
+    pub fn find_chromosome_by_name(&self, genome_id: GenomeId, name: &str) -> Option<&Chromosome> {
+        let normalized = normalize_match_text(name);
+        self.chromosomes.values().find(|chromosome| {
+            chromosome.genome_id == genome_id
+                && normalize_match_text(&chromosome.name) == normalized
+        })
+    }
+
     pub fn find_grn_by_name(&self, genome_id: GenomeId, name: &str) -> Option<&Grn> {
         let normalized = normalize_match_text(name);
         self.grns

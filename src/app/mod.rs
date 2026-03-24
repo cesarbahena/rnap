@@ -32,6 +32,7 @@ pub struct Dnap {
     next_insulator_id: u64,
     next_genome_id: u64,
     next_grn_id: u64,
+    next_chromosome_id: u64,
     next_tf_id: u64,
     next_gene_family_id: u64,
     next_gene_family_generation_id: u64,
@@ -49,6 +50,7 @@ pub struct Dnap {
     placements: BTreeMap<InsulatorId, InsulatorPlacement>,
     genomes: BTreeMap<GenomeId, Genome>,
     grns: BTreeMap<GrnId, Grn>,
+    chromosomes: BTreeMap<ChromosomeId, Chromosome>,
     tfs: BTreeMap<TfId, Tf>,
     gene_families: BTreeMap<GeneFamilyId, GeneFamily>,
     gene_family_generations: BTreeMap<GeneFamilyGenerationId, GeneFamilyGeneration>,
@@ -117,6 +119,22 @@ impl Dnap {
         }
     }
 
+    pub(super) fn require_chromosome_in_genome(
+        &self,
+        id: ChromosomeId,
+        genome_id: GenomeId,
+    ) -> Result<(), DnapError> {
+        let chromosome = self
+            .chromosomes
+            .get(&id)
+            .ok_or(DnapError::ChromosomeNotFound)?;
+        if chromosome.genome_id == genome_id {
+            Ok(())
+        } else {
+            Err(DnapError::ChromosomeGenomeMismatch)
+        }
+    }
+
     pub(super) fn require_tf_in_insulator(
         &self,
         id: TfId,
@@ -174,7 +192,9 @@ impl Dnap {
     ) -> Option<&Locus> {
         let normalized = normalize_match_text(name);
         self.loci.values().find(|locus| {
-            locus.genome_id == genome_id
+            self.chromosomes
+                .get(&locus.chromosome_id)
+                .is_some_and(|chromosome| chromosome.genome_id == genome_id)
                 && locus.family_id == family_id
                 && normalize_match_text(&locus.name) == normalized
         })
@@ -243,7 +263,11 @@ impl Dnap {
                 self.loci
                     .get(&semantic_narrowing.target_mrna_locus_id)
                     .is_some_and(|locus| {
-                        locus.insulator_id == insulator_id && locus.genome_id == genome_id
+                        locus.insulator_id == insulator_id
+                            && self
+                                .chromosomes
+                                .get(&locus.chromosome_id)
+                                .is_some_and(|chromosome| chromosome.genome_id == genome_id)
                     })
             })
             .filter(|semantic_narrowing| {
@@ -266,7 +290,11 @@ impl Dnap {
                     self.loci
                         .get(&semantic_narrowing.target_mrna_locus_id)
                         .is_some_and(|locus| {
-                            locus.insulator_id == insulator_id && locus.genome_id == genome_id
+                            locus.insulator_id == insulator_id
+                                && self
+                                    .chromosomes
+                                    .get(&locus.chromosome_id)
+                                    .is_some_and(|chromosome| chromosome.genome_id == genome_id)
                         })
                 })
                 .filter(|semantic_narrowing| {
@@ -499,13 +527,19 @@ impl Dnap {
             .alleles
             .values()
             .filter(|allele| {
-                allele.genome_id == genome_id
-                    && allele.grn_id == grn_id
+                allele.grn_id == grn_id
                     && !matches!(allele.state, AlleleState::Selected | AlleleState::Degraded)
             })
             .filter_map(|allele| {
                 let locus = self.loci.get(&allele.locus_id)?;
                 if locus.insulator_id != insulator_id {
+                    return None;
+                }
+                if !self
+                    .chromosomes
+                    .get(&locus.chromosome_id)
+                    .is_some_and(|chromosome| chromosome.genome_id == genome_id)
+                {
                     return None;
                 }
                 let family = self.gene_families.get(&locus.family_id)?;
@@ -638,6 +672,11 @@ impl Dnap {
     pub(super) fn allocate_tf_id(&mut self) -> TfId {
         self.next_tf_id += 1;
         TfId(self.next_tf_id)
+    }
+
+    pub(super) fn allocate_chromosome_id(&mut self) -> ChromosomeId {
+        self.next_chromosome_id += 1;
+        ChromosomeId(self.next_chromosome_id)
     }
 
     pub(super) fn allocate_grn_id(&mut self) -> GrnId {

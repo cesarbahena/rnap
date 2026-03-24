@@ -8,6 +8,7 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_grn_in_genome(input.grn_id, input.genome_id)?;
+        self.require_chromosome_in_genome(input.chromosome_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let (target_mrna_locus_id, target_sequence_definition_id) = self
@@ -82,6 +83,7 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_grn_in_genome(input.grn_id, input.genome_id)?;
+        self.require_chromosome_in_genome(input.chromosome_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let target = match input.target_mrna_fqn.as_deref() {
@@ -130,6 +132,7 @@ impl Dnap {
                 self.create_semantic_narrowing(CreateSemanticNarrowing {
                     insulator_id: input.insulator_id,
                     genome_id: input.genome_id,
+                    chromosome_id: input.chromosome_id,
                     grn_id: input.grn_id,
                     target_mrna_fqn: self
                         .loci

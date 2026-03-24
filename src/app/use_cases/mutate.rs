@@ -5,6 +5,7 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_grn_in_genome(input.grn_id, input.genome_id)?;
+        self.require_chromosome_in_genome(input.chromosome_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let family_lookup = require_text(
@@ -31,7 +32,7 @@ impl Dnap {
             id: self.allocate_locus_id(),
             family_id: family.id,
             insulator_id: input.insulator_id,
-            genome_id: input.genome_id,
+            chromosome_id: input.chromosome_id,
             name: locus_name,
             created_at: now,
         };
@@ -43,7 +44,7 @@ impl Dnap {
         };
         let allele = Allele {
             id: self.allocate_allele_id(),
-            genome_id: input.genome_id,
+            chromosome_id: input.chromosome_id,
             grn_id: input.grn_id,
             locus_id: locus.id,
             gene_family_generation_id: generation.id,
@@ -122,6 +123,7 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_grn_in_genome(input.grn_id, input.genome_id)?;
+        self.require_chromosome_in_genome(input.chromosome_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let allele_id = self.resolve_active_allele_id(

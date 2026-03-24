@@ -17,8 +17,8 @@ The ledger contains implementation obligations and open decisions that are inten
 
 - Define concrete Ribozyme graph behavior before adding graph-local records.
 - Implement `ArtifactRef` plus narrowly useful biology/backronym wrappers such as `MRna(ArtifactRef)` or `Enhancer(ArtifactRef)` where relationships require a specific NormalizedArtifact.
-- Implement Chromosome as the named canonical scope inside a Genome.
-- Move Locus identity to Chromosome scope while keeping Locus names unique across the containing Genome.
+- Complete Chromosome behavior beyond current creation/session placement, including movement and degradation semantics.
+- Locus identity now stores Chromosome placement while keeping Locus names unique across the containing Genome.
 - Implement Locus movement between Chromosomes with Signal audit.
 - Schema evolution and rename tracking across GeneFamilyGenerations.
 - `SequenceValue` validation during work-type definition versus mutation application.

@@ -5,6 +5,7 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_grn_in_genome(input.grn_id, input.genome_id)?;
+        self.require_chromosome_in_genome(input.chromosome_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let allele_id = self.resolve_active_allele_id(
@@ -88,6 +89,7 @@ impl Dnap {
         self.require_insulator(input.insulator_id)?;
         self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
         self.require_grn_in_genome(input.grn_id, input.genome_id)?;
+        self.require_chromosome_in_genome(input.chromosome_id, input.genome_id)?;
         self.require_tf_in_insulator(input.created_by, input.insulator_id)?;
 
         let allele_id = self.resolve_active_allele_id(

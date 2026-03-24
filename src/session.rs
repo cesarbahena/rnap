@@ -7,7 +7,7 @@ use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
-use crate::app::{Dnap, GenomeId, GrnId, InsulatorId, TfId};
+use crate::app::{ChromosomeId, Dnap, GenomeId, GrnId, InsulatorId, TfId};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Session {
@@ -30,6 +30,7 @@ pub struct SessionActor {
 pub struct SessionScope {
     pub insulator_id: InsulatorId,
     pub genome_id: GenomeId,
+    pub chromosome_id: ChromosomeId,
     pub grn_id: GrnId,
 }
 

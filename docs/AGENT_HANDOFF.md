@@ -83,7 +83,7 @@ The docs currently define the target model ahead of implementation in several ar
 - Code now uses a minimal GRN bridge for active Allele resolution and uniqueness: one active Allele per `(Locus, GRN)`.
 - Current Q/A clarification code is `SemanticNarrowing` (`snRNA`) behavior, not the future raw-requirement `Intron` artifact.
 - Current `dna splice` records are `TaskRealization`/tRNA behavior, not `Exon`.
-- Minimal append-only `Signal` audit is implemented for current local transitions; real canonical `Chromosome`, raw-requirement `Intron`, and full `Ribozyme` behavior are not fully implemented.
+- Minimal append-only `Signal` audit is implemented for current local transitions; real Chromosome placement is implemented for new Loci; raw-requirement `Intron` and full `Ribozyme` behavior are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.
 

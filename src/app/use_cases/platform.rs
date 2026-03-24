@@ -67,6 +67,34 @@ impl Dnap {
         Ok(genome)
     }
 
+    pub fn create_chromosome(
+        &mut self,
+        input: CreateChromosome,
+    ) -> Result<CreatedChromosome, DnapError> {
+        self.require_insulator(input.insulator_id)?;
+        self.require_genome_in_insulator(input.genome_id, input.insulator_id)?;
+        let name = require_text(input.name, DnapError::BlankChromosomeName)?;
+        let now = SystemTime::now();
+        let chromosome = Chromosome {
+            id: self.allocate_chromosome_id(),
+            genome_id: input.genome_id,
+            name,
+            created_at: now,
+            updated_at: now,
+            degraded_at: None,
+        };
+        self.chromosomes.insert(chromosome.id, chromosome.clone());
+        self.record_signal(
+            input.insulator_id,
+            None,
+            SignalType::ChromosomeCreated,
+            SignalTarget::Chromosome(chromosome.id),
+            None,
+            SignalPayload::Empty,
+        );
+        Ok(CreatedChromosome { chromosome })
+    }
+
     pub fn create_tf(&mut self, input: CreateTf) -> Result<Tf, DnapError> {
         self.require_insulator(input.insulator_id)?;
         let display_name = require_text(input.display_name, DnapError::BlankTfDisplayName)?;

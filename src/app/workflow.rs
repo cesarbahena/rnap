@@ -3,10 +3,20 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, GeneFamilyId, GenomeId, GrnId, InsulatorId, LocusId, MutationId, SemanticNarrowingId,
-    SemanticNarrowingSequenceId, SequenceDefinitionId, SequenceHash, SignalId, TaskRealizationId,
-    TfId, TranscriptomeId, TransposonId,
+    AlleleId, ChromosomeId, GeneFamilyId, GenomeId, GrnId, InsulatorId, LocusId, MutationId,
+    SemanticNarrowingId, SemanticNarrowingSequenceId, SequenceDefinitionId, SequenceHash, SignalId,
+    TaskRealizationId, TfId, TranscriptomeId, TransposonId,
 };
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct Chromosome {
+    pub id: ChromosomeId,
+    pub genome_id: GenomeId,
+    pub name: String,
+    pub created_at: SystemTime,
+    pub updated_at: SystemTime,
+    pub degraded_at: Option<SystemTime>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Transcriptome {
@@ -73,6 +83,7 @@ pub enum SignalType {
     GenomeCreated,
     TfCreated,
     GrnCreated,
+    ChromosomeCreated,
     GeneFamilyDefined,
     LocusCreated,
     TransposonCreated,
@@ -89,6 +100,7 @@ pub enum SignalTarget {
     Insulator(InsulatorId),
     Genome(GenomeId),
     Grn(GrnId),
+    Chromosome(ChromosomeId),
     Tf(TfId),
     GeneFamily(GeneFamilyId),
     Locus(LocusId),
