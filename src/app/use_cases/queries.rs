@@ -44,6 +44,10 @@ impl Dnap {
         self.transcriptomes.get(&allele_id)
     }
 
+    pub fn signals(&self) -> Vec<&Signal> {
+        self.signals.values().collect()
+    }
+
     pub fn find_insulator_by_name(&self, name: &str) -> Option<&Insulator> {
         let normalized = normalize_match_text(name);
         self.insulators

@@ -45,10 +45,18 @@ impl Dnap {
             };
             self.task_realizations
                 .insert(task_realization.id, task_realization.clone());
+            self.record_signal(
+                input.insulator_id,
+                Some(input.created_by),
+                SignalType::TaskRealizationCreated,
+                SignalTarget::TaskRealization(task_realization.id),
+                None,
+                SignalPayload::Empty,
+            );
             task_realizations.push(task_realization);
         }
-        for mutation_id in unexpressed_mutation_ids {
-            let Some(mutation) = self.mutations.get_mut(&mutation_id) else {
+        for mutation_id in &unexpressed_mutation_ids {
+            let Some(mutation) = self.mutations.get_mut(mutation_id) else {
                 continue;
             };
             mutation.state = MutationState::Expressing;
@@ -58,6 +66,16 @@ impl Dnap {
         allele.state = AlleleState::Expressing;
         allele.updated_at = now;
         self.alleles.insert(allele.id, allele.clone());
+        if !unexpressed_mutation_ids.is_empty() {
+            self.record_signal(
+                input.insulator_id,
+                Some(input.created_by),
+                SignalType::MutationsExpressed,
+                SignalTarget::Allele(allele.id),
+                None,
+                SignalPayload::Empty,
+            );
+        }
 
         Ok(SpliceResult {
             allele,

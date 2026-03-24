@@ -3,8 +3,9 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AlleleId, LocusId, MutationId, SemanticNarrowingId, SemanticNarrowingSequenceId,
-    SequenceDefinitionId, SequenceHash, TaskRealizationId, TranscriptomeId,
+    AlleleId, GeneFamilyId, GenomeId, GrnId, InsulatorId, LocusId, MutationId, SemanticNarrowingId,
+    SemanticNarrowingSequenceId, SequenceDefinitionId, SequenceHash, SignalId, TaskRealizationId,
+    TfId, TranscriptomeId, TransposonId,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
@@ -52,4 +53,55 @@ pub struct SemanticNarrowingSequence {
     pub semantic_narrowing_id: SemanticNarrowingId,
     pub body: String,
     pub created_at: SystemTime,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct Signal {
+    pub id: SignalId,
+    pub insulator_id: InsulatorId,
+    pub tf_id: Option<TfId>,
+    pub signal_type: SignalType,
+    pub target: SignalTarget,
+    pub occurred_at: SystemTime,
+    pub reason: Option<String>,
+    pub payload: SignalPayload,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub enum SignalType {
+    InsulatorProvisioned,
+    GenomeCreated,
+    TfCreated,
+    GrnCreated,
+    GeneFamilyDefined,
+    LocusCreated,
+    TransposonCreated,
+    AlleleCreated,
+    MutationChanged,
+    TaskRealizationCreated,
+    MutationsExpressed,
+    SemanticNarrowingCreated,
+    SemanticNarrowingAnswered,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub enum SignalTarget {
+    Insulator(InsulatorId),
+    Genome(GenomeId),
+    Grn(GrnId),
+    Tf(TfId),
+    GeneFamily(GeneFamilyId),
+    Locus(LocusId),
+    Transposon(TransposonId),
+    Allele(AlleleId),
+    Mutation(MutationId),
+    TaskRealization(TaskRealizationId),
+    SemanticNarrowing(SemanticNarrowingId),
+    SemanticNarrowingSequence(SemanticNarrowingSequenceId),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub enum SignalPayload {
+    Empty,
+    Text(String),
 }

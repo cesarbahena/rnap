@@ -28,6 +28,14 @@ impl Dnap {
 
         self.insulators.insert(insulator_id, insulator.clone());
         self.placements.insert(insulator_id, placement.clone());
+        self.record_signal(
+            insulator_id,
+            None,
+            SignalType::InsulatorProvisioned,
+            SignalTarget::Insulator(insulator_id),
+            None,
+            SignalPayload::Empty,
+        );
 
         Ok(ProvisionedInsulator {
             insulator,
@@ -48,6 +56,14 @@ impl Dnap {
         };
 
         self.genomes.insert(genome.id, genome.clone());
+        self.record_signal(
+            input.insulator_id,
+            None,
+            SignalType::GenomeCreated,
+            SignalTarget::Genome(genome.id),
+            None,
+            SignalPayload::Empty,
+        );
         Ok(genome)
     }
 
@@ -66,6 +82,14 @@ impl Dnap {
         };
 
         self.tfs.insert(tf.id, tf.clone());
+        self.record_signal(
+            input.insulator_id,
+            Some(tf.id),
+            SignalType::TfCreated,
+            SignalTarget::Tf(tf.id),
+            None,
+            SignalPayload::Empty,
+        );
         Ok(tf)
     }
 
@@ -86,6 +110,14 @@ impl Dnap {
         };
 
         self.grns.insert(grn.id, grn.clone());
+        self.record_signal(
+            input.insulator_id,
+            Some(input.activator),
+            SignalType::GrnCreated,
+            SignalTarget::Grn(grn.id),
+            None,
+            SignalPayload::Empty,
+        );
         Ok(CreatedGrn { grn })
     }
 
@@ -148,6 +180,14 @@ impl Dnap {
         self.gene_families.insert(family_id, family.clone());
         self.gene_family_generations
             .insert(generation_id, generation.clone());
+        self.record_signal(
+            input.insulator_id,
+            Some(input.created_by),
+            SignalType::GeneFamilyDefined,
+            SignalTarget::GeneFamily(family_id),
+            None,
+            SignalPayload::Empty,
+        );
 
         Ok(DefinedGeneFamily { family, generation })
     }

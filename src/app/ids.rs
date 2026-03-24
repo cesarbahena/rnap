@@ -34,6 +34,9 @@ pub struct AlleleId(pub(crate) u64);
 pub struct MutationId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct SignalId(pub(crate) u64);
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct GeneId(pub(crate) u64);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

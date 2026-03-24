@@ -74,6 +74,40 @@ impl Dnap {
         for mutation in &mutations {
             self.mutations.insert(mutation.id, mutation.clone());
         }
+        self.record_signal(
+            input.insulator_id,
+            Some(input.created_by),
+            SignalType::LocusCreated,
+            SignalTarget::Locus(locus.id),
+            None,
+            SignalPayload::Empty,
+        );
+        self.record_signal(
+            input.insulator_id,
+            Some(input.created_by),
+            SignalType::TransposonCreated,
+            SignalTarget::Transposon(transposon.id),
+            None,
+            SignalPayload::Empty,
+        );
+        self.record_signal(
+            input.insulator_id,
+            Some(input.created_by),
+            SignalType::AlleleCreated,
+            SignalTarget::Allele(allele.id),
+            None,
+            SignalPayload::Empty,
+        );
+        for mutation in &mutations {
+            self.record_signal(
+                input.insulator_id,
+                Some(input.created_by),
+                SignalType::MutationChanged,
+                SignalTarget::Mutation(mutation.id),
+                None,
+                SignalPayload::Empty,
+            );
+        }
 
         Ok(MutatedAllele {
             locus,
@@ -137,6 +171,16 @@ impl Dnap {
         self.alleles.insert(allele.id, allele.clone());
         for mutation in &mutations {
             self.mutations.insert(mutation.id, mutation.clone());
+        }
+        for mutation in &mutations {
+            self.record_signal(
+                input.insulator_id,
+                Some(input.created_by),
+                SignalType::MutationChanged,
+                SignalTarget::Mutation(mutation.id),
+                None,
+                SignalPayload::Empty,
+            );
         }
 
         Ok(MutatedAllele {

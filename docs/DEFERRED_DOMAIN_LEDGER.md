@@ -34,9 +34,9 @@ The ledger contains implementation obligations and open decisions that are inten
 
 ## Audit
 
-- Rename DomainEvent to Signal and implement append-only Signal with tenant-scoped `insulator_id`, optional `tf_id`, typed target, typed payload, reason, and timestamp.
+- Extend minimal append-only Signal audit beyond current local transitions as new workflows are implemented. Current Signal has tenant-scoped `insulator_id`, optional `tf_id`, typed target, typed payload, reason, and timestamp.
 - Keep `degraded_at` as the standard soft-delete/deactivation field for active filtering.
-- Implement Signal audit for actor provenance, reasons, and transition payloads. Per-record actor audit fields have been removed from persisted domain records unless used as command input.
+- Per-record actor audit fields have been removed from persisted domain records unless used as command input.
 - Keep behavior-validity timestamps such as HistoneMark validity windows when they affect behavior.
 
 ## Mutations

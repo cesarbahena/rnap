@@ -40,6 +40,7 @@ pub struct Dnap {
     next_transposon_id: u64,
     next_allele_id: u64,
     next_mutation_id: u64,
+    next_signal_id: u64,
     next_transcriptome_id: u64,
     next_task_realization_id: u64,
     next_semantic_narrowing_id: u64,
@@ -55,6 +56,7 @@ pub struct Dnap {
     transposons: BTreeMap<TransposonId, Transposon>,
     alleles: BTreeMap<AlleleId, Allele>,
     mutations: BTreeMap<MutationId, Mutation>,
+    signals: BTreeMap<SignalId, Signal>,
     transcriptomes: BTreeMap<AlleleId, Transcriptome>,
     task_realizations: BTreeMap<TaskRealizationId, TaskRealization>,
     semantic_narrowings: BTreeMap<SemanticNarrowingId, SemanticNarrowing>,
@@ -676,6 +678,33 @@ impl Dnap {
     pub(super) fn allocate_mutation_id(&mut self) -> MutationId {
         self.next_mutation_id += 1;
         MutationId(self.next_mutation_id)
+    }
+
+    pub(super) fn allocate_signal_id(&mut self) -> SignalId {
+        self.next_signal_id += 1;
+        SignalId(self.next_signal_id)
+    }
+
+    pub(super) fn record_signal(
+        &mut self,
+        insulator_id: InsulatorId,
+        tf_id: Option<TfId>,
+        signal_type: SignalType,
+        target: SignalTarget,
+        reason: Option<String>,
+        payload: SignalPayload,
+    ) {
+        let signal = Signal {
+            id: self.allocate_signal_id(),
+            insulator_id,
+            tf_id,
+            signal_type,
+            target,
+            occurred_at: SystemTime::now(),
+            reason,
+            payload,
+        };
+        self.signals.insert(signal.id, signal);
     }
 
     pub(super) fn allocate_transcriptome_id(&mut self) -> TranscriptomeId {

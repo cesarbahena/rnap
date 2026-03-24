@@ -63,6 +63,14 @@ impl Dnap {
         };
         self.semantic_narrowings
             .insert(semantic_narrowing.id, semantic_narrowing.clone());
+        self.record_signal(
+            input.insulator_id,
+            Some(input.created_by),
+            SignalType::SemanticNarrowingCreated,
+            SignalTarget::SemanticNarrowing(semantic_narrowing.id),
+            None,
+            SignalPayload::Empty,
+        );
 
         Ok(semantic_narrowing)
     }
@@ -106,6 +114,14 @@ impl Dnap {
                 };
                 self.semantic_narrowing_sequences
                     .insert(sequence.id, sequence.clone());
+                self.record_signal(
+                    input.insulator_id,
+                    Some(input.created_by),
+                    SignalType::SemanticNarrowingAnswered,
+                    SignalTarget::SemanticNarrowingSequence(sequence.id),
+                    None,
+                    SignalPayload::Empty,
+                );
                 Ok(sequence)
             })
             .transpose()?;
