@@ -15,6 +15,10 @@ This handoff is for agents continuing DNAp model or implementation work. It is n
 - [decisions/001_agent_workflow.md](decisions/001_agent_workflow.md): accepted agent workflow and decision authority.
 - [decisions/002_ribozyme_graph_deferral.md](decisions/002_ribozyme_graph_deferral.md): accepted deferral of Ribozyme graph-local records until concrete use cases are approved.
 - [decisions/004_verification_scope.md](decisions/004_verification_scope.md): accepted verification rule; run code tests only when code or executable configuration changes.
+- [decisions/006_select_not_approved.md](decisions/006_select_not_approved.md): `dna select` semantics are explicitly not approved; do not implement selection.
+- [decisions/007_executable_defines_workflows.md](decisions/007_executable_defines_workflows.md): eRNA / `NormalizedArtifact::Executable` defines workflows across DNAp.
+- [decisions/008_requirements_rna_capabilities.md](decisions/008_requirements_rna_capabilities.md): accepted requirements-cluster RNA capabilities.
+- [decisions/009_mutate_target_first_cli.md](decisions/009_mutate_target_first_cli.md): `dna mutate` is target-first; first positional argument is always the Locus target/name.
 
 Treat [DISCUSSION_MODEL_PROPOSAL.md](DISCUSSION_MODEL_PROPOSAL.md) and [AUTONOMOUS_DECISION_LOG.md](AUTONOMOUS_DECISION_LOG.md) as superseded recovery context only.
 
@@ -52,8 +56,8 @@ These were clarified during discussion and may not be fully implemented in code 
 - `Executable` is the eRNA normalized artifact variant; avoid redundant `NormalizedArtifact` wording inside variant names.
 - `ExploratoryNarrative` is removed from the active taxonomy and replaced by `Ribozyme`.
 - Ribozyme is modeled as a normal Gene-capable `NormalizedArtifact` for now; graph-local records are deferred until a concrete Ribozyme graph domain is approved.
-- eRNA regulates Gene lifecycle and command state changes by checking dependency state. It is not mainly a `dna select` policy object.
-- eRNA itself declares and evaluates dependency requirements; do not invent a separate dependency graph abstraction unless a concrete use case proves it.
+- eRNA / `NormalizedArtifact::Executable` defines DNAp workflows, including lifecycle gates, command/state transitions, dependency requirements, and governance checks as those workflows are approved.
+- eRNA is not mainly a `dna select` policy object and should not be reduced to one transition. eRNA itself declares and evaluates dependency requirements; do not invent a separate dependency graph abstraction unless a concrete use case proves it.
 - Enhancer remains `EnterpriseNegotiationHandoverCertificate`: an executive/enterprise handover document, not executable governance.
 - Alleles are shared per `(Locus, GRN)`, not per Tf.
 - `Locus.name` is unique within the containing Genome under canonical CLI/name matching. Do not add a domain field named `normalized_locus_name`; derived lookup keys are storage/index details.
@@ -83,15 +87,21 @@ The docs currently define the target model ahead of implementation in several ar
 - Code now uses a minimal GRN bridge for active Allele resolution and uniqueness: one active Allele per `(Locus, GRN)`.
 - Current Q/A clarification code is `SemanticNarrowing` (`snRNA`) behavior, not the future raw-requirement `Intron` artifact.
 - Current `dna splice` records are `TaskRealization`/tRNA behavior, not `Exon`.
+- Requirements cluster: Intron = raw requirement input; mRNA/ManagedRequirement = controlled requirement document; Exon = refined atomic requirement; snRNA = semantic clarification; scaRNA = stabilizing assumption/constraint; tRNA = task/work realization.
+- `dna mutate` target-first invariant: first positional argument is always the Locus title/name target. If it resolves, mutate existing; if it does not resolve, error unless `--new <GeneFamily abbreviation>` is present, then create using that exact target title/name.
 - Minimal append-only `Signal` audit is implemented for current local transitions; real Chromosome placement is implemented for new Loci; raw-requirement `Intron` and full `Ribozyme` behavior are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.
+
+## Explicit Blockers
+
+- `dna select` is not approved. Do not implement it, do not infer its semantics from `Gene`, `AlleleState::Selected`, slice names, candidate structs, tests, or older docs. Ask what selection means in product terms before proposing code.
 
 ## Next Useful Questions
 
 Ask one at a time and keep them tied to durable model semantics:
 
-- What exact command/state transitions does eRNA regulate first?
+- What is the first narrow Executable-defined workflow slice to implement?
 - What facts can eRNA DSL read in the first implementation: Histones, Signals, Gene states, Allele states, Mutation states, Ribozyme artifacts?
 - What does an eRNA evaluation return: allow, deny, warn, require, or another result shape?
 - Is eRNA evaluation always side-effect-free, with commands creating Signals after evaluation?

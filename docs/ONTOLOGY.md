@@ -48,7 +48,7 @@ Example: `NormalizedArtifact::ManagedRequirement` is the artifact taxonomy value
 
 - `Promoter`: user story or idea used to start discussion.
 - `ProblemAssertionManifest`: PAM, structured problem assertion.
-- `Executable`: eRNA, human-readable executable governance artifact with IAM-like DSL attributes, mainly regulating Gene lifecycle and command state changes by checking dependency state.
+- `Executable`: eRNA, human-readable executable workflow-definition artifact with IAM-like DSL attributes. Executable artifacts define workflows across DNAp, including lifecycle gates, command/state transitions, dependency requirements, and governance checks as those workflows are approved.
 - `Ribozyme`: flexible exploration artifact for event storming, draft diagrams, early idea graphs, discovery narratives, and whiteboard collaboration.
 - `ProjectedIntent`: piRNA, projected or explicit intent boundary.
 - `Spacer`: documented risk or risk assessment.
@@ -57,16 +57,16 @@ Example: `NormalizedArtifact::ManagedRequirement` is the artifact taxonomy value
 - `EnterpriseNegotiationHandoverCertificate`: Enhancer, formal enterprise negotiation/research handover artifact.
 - `Silencer`: retirement document.
 - `StrategicNote`: snoRNA, strategic note or ADR-like artifact.
-- `SemanticNarrowing`: snRNA, semantic narrowing artifact.
-- `SemanticConstraintAssumption`: scaRNA, semantic constraint or assumption artifact.
+- `SemanticNarrowing`: snRNA, clarification question/answer artifact that narrows ambiguous meaning.
+- `SemanticConstraintAssumption`: scaRNA, explicit assumption or constraint that stabilizes interpretation when certainty is impossible.
 - `Microalignment`: miRNA, small scope/alignment adjustment.
 - `StopImplementation`: siRNA, authoritative stop/out-of-scope artifact.
 - `DeferredScope`: dsRNA, deferred scope artifact.
-- `Intron`: raw requirement.
-- `ManagedRequirement`: mRNA, managed requirements document.
-- `Exon`: refined requirement.
+- `Intron`: raw requirement input; messy, partial, stakeholder/customer/business statement capture.
+- `ManagedRequirement`: mRNA, controlled managed requirement document.
+- `Exon`: refined atomic requirement; precise, testable requirement extracted/refined from raw Intron material and/or mRNA discussion.
 - `ResourceReference`: rRNA, resource or reference document.
-- `TaskRealization`: tRNA, task realization artifact.
+- `TaskRealization`: tRNA, task/work realization of requirement content.
 - `TaskRealizationFramework`: tRF, task realization framework.
 - `TestRegressionCriteria`: TERC, test plan.
 - `TestObjectiveManifest`: Telomere, executable test case.

@@ -60,8 +60,8 @@ Combined slice 003/004 implements:
 Start a new document:
 
 ```sh
-dna mutate --new FRS 'Checkout'
-dna mutate --new FRS 'Checkout' --some-section 'Awesome section'
+dna mutate 'Checkout' --new FRS
+dna mutate 'Checkout' --new FRS --some-section 'Awesome section'
 ```
 
 - `--new FRS` resolves `FRS` as the effective GeneFamily abbreviation in the current Genome context.

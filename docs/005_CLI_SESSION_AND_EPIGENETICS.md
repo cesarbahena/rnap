@@ -58,7 +58,7 @@ dna epigenetics define-family FRS FeatureRequirements --artifact mRNA --sequence
 Run normal workflow commands:
 
 ```sh
-dna mutate --new FRS Checkout --summary Draft --risk Unknown
+dna mutate Checkout --new FRS --summary Draft --risk Unknown
 dna transcribe FRS-checkout
 dna splice FRS-checkout BuildCheckout
 dna mutate FRS-checkout --summary UpdatedDraft

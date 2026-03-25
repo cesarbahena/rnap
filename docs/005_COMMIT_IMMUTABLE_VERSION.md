@@ -1,34 +1,40 @@
 # 005 Commit Immutable Version
 
+## Status
+
+Blocked. `dna select` semantics are not approved.
+
 ## Capability
 
-Select an Allele and create an immutable committed Gene.
+Unresolved. This slice name is historical build-order language only; it is not approval to implement selection, immutable Gene creation, approval, implementation readiness, or any lifecycle transition.
 
-## Contract
+## Blocking Decision
 
-Use the model in [DOMAIN_MODEL.md](DOMAIN_MODEL.md).
+Before this slice can be implemented, the user must explicitly approve what `dna select` means in product terms.
 
-Slice 005 implements:
+Do **not** infer selection semantics from:
 
-- `Gene`
+- the existence of `Gene`,
+- `AlleleState::Selected`,
+- this slice name,
+- old docs,
+- candidate structs,
+- tests,
+- conventional version-control analogies.
 
-## Behavior
+## Known Open Questions
 
-- Gene is an immutable committed version.
-- Selecting an Allele creates a Gene.
-- Gene stores the committed sequence snapshot.
-- Gene records the source Allele in `selected_from`.
-- Gene generation increments within a Locus.
-- All sequences required by the GeneFamilyGeneration must be present before selection.
-- Empty vector values are missing for commit completeness.
-- The selected Allele must be `Expressing`; current `Unexpressed` Mutations must be expressed through `dna splice` or `dna splice --lgtm` before selection.
-- The selected Allele no longer accepts Mutations after commit.
-- Committed Gene is immutable history; active viewing/transcription of in-progress work uses the current Allele projection.
+Ask one at a time before proposing code:
+
+- Does `dna select` create an immutable Gene, or is immutable Gene creation a separate transition?
+- Is selection a canonical document-version decision, a governance approval checkpoint, implementation readiness, or something else?
+- What facts must be checked before selection: TaskRealizations, Signals, Histones, eRNA, required Sequences, review state, dependency state?
+- Is selection always side-effect-free until a command commits Signals, or does selection itself emit Signals and create records?
 
 ## Implementation Contract
 
-Pending implementation.
+No implementation contract is approved.
 
 ## Approved Tests
 
-Pending.
+No tests are approved.

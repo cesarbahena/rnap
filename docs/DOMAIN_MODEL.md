@@ -582,20 +582,22 @@ CLI sequence-name matching is designed for ease of use:
 
 `dna mutate` is the user-facing command for creating or changing an Allele.
 
-Starting a new document uses `--new` with a GeneFamily abbreviation and a document name as the first positional argument:
+`dna mutate` is target-first: the first positional argument is always the Locus title/name target.
+
+Starting a new document uses the target title/name first and `--new` with a GeneFamily abbreviation:
 
 ```sh
-dna mutate --new FRS 'Checkout' --some-section 'Awesome section'
+dna mutate 'Checkout' --new FRS --some-section 'Awesome section'
 ```
 
 In this form:
 
+- `Checkout` is the new Locus document instance name.
 - `FRS` is resolved as a GeneFamily abbreviation in the current Genome context.
-- `Checkout` is the Locus document instance name.
 - Sequence mutation flags are optional.
 - DNAp creates the Locus, Transposon, and first Allele in one operation. If Sequence mutation flags are present, it also creates or updates `Unexpressed` Mutations.
 
-Mutating existing work omits `--new` and uses the Gene fully qualified name as the first positional argument:
+Mutating existing work omits `--new` and uses the Locus title/name or Gene fully qualified name as the first positional argument:
 
 ```sh
 dna mutate FRS-checkout-0001
@@ -616,7 +618,7 @@ Scalar sequence mutation flags use the sequence name directly:
 Gene reference values use Gene FQNs:
 
 ```sh
-dna mutate --new PRD 'Checkout PRD' --feature FRS-checkout-0001
+dna mutate 'Checkout PRD' --new PRD --feature FRS-checkout-0001
 ```
 
 The CLI resolves `FRS-checkout-0001` to a `GeneId` before storing the Mutation.

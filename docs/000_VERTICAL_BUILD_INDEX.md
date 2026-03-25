@@ -28,7 +28,7 @@ DNAp is the Development Network Alignment Platform: an enterprise multitenant SD
    Run local CLI workflows through a replaceable session boundary and temporary `dna epigenetics` bootstrap namespace.
 
 6. [005_COMMIT_IMMUTABLE_VERSION.md](005_COMMIT_IMMUTABLE_VERSION.md)
-   Select an Allele and create an immutable Gene.
+   Blocked: `dna select` semantics are not approved. Do not implement selection or immutable Gene creation until explicitly decided.
 
 7. [006_AUTHORIZE_WITH_HISTONES.md](006_AUTHORIZE_WITH_HISTONES.md)
    Add Histone-based authorization and contextual evaluation.
