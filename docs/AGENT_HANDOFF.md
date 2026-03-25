@@ -19,6 +19,9 @@ This handoff is for agents continuing DNAp model or implementation work. It is n
 - [decisions/007_executable_defines_workflows.md](decisions/007_executable_defines_workflows.md): eRNA / `NormalizedArtifact::Executable` defines workflows across DNAp.
 - [decisions/008_requirements_rna_capabilities.md](decisions/008_requirements_rna_capabilities.md): accepted requirements-cluster RNA capabilities.
 - [decisions/009_mutate_target_first_cli.md](decisions/009_mutate_target_first_cli.md): `dna mutate` is target-first; first positional argument is always the Locus target/name.
+- [decisions/010_locus_name_storage.md](decisions/010_locus_name_storage.md): persisted `Locus.name` is canonical kebab; title-like names are derived for presentation.
+- [decisions/011_genome_wide_locus_names.md](decisions/011_genome_wide_locus_names.md): Locus names are unique Genome-wide regardless of GeneFamily.
+- [decisions/012_locus_already_exists.md](decisions/012_locus_already_exists.md): `dna mutate <target> --new <family>` errors with `LocusAlreadyExists` when target exists.
 
 Treat [DISCUSSION_MODEL_PROPOSAL.md](DISCUSSION_MODEL_PROPOSAL.md) and [AUTONOMOUS_DECISION_LOG.md](AUTONOMOUS_DECISION_LOG.md) as superseded recovery context only.
 
@@ -60,7 +63,7 @@ These were clarified during discussion and may not be fully implemented in code 
 - eRNA is not mainly a `dna select` policy object and should not be reduced to one transition. eRNA itself declares and evaluates dependency requirements; do not invent a separate dependency graph abstraction unless a concrete use case proves it.
 - Enhancer remains `EnterpriseNegotiationHandoverCertificate`: an executive/enterprise handover document, not executable governance.
 - Alleles are shared per `(Locus, GRN)`, not per Tf.
-- `Locus.name` is unique within the containing Genome under canonical CLI/name matching. Do not add a domain field named `normalized_locus_name`; derived lookup keys are storage/index details.
+- `Locus.name` is unique within the containing Genome under canonical CLI/name matching, regardless of GeneFamily. Do not add a domain field named `normalized_locus_name`; derived lookup keys are storage/index details.
 - `degraded_at` is the soft-delete/current-active filter. `Signal` records actor, reason, and payload. Do not remove `degraded_at` just because audit exists.
 - Avoid `created_by`, `degraded_by`, `assigned_by`, and similar per-record actor audit fields unless a concrete current query requires denormalization.
 - `GRN.activator` and `Locus.activator` are independent concepts. Do not derive one from the other.
@@ -88,7 +91,7 @@ The docs currently define the target model ahead of implementation in several ar
 - Current Q/A clarification code is `SemanticNarrowing` (`snRNA`) behavior, not the future raw-requirement `Intron` artifact.
 - Current `dna splice` records are `TaskRealization`/tRNA behavior, not `Exon`.
 - Requirements cluster: Intron = raw requirement input; mRNA/ManagedRequirement = controlled requirement document; Exon = refined atomic requirement; snRNA = semantic clarification; scaRNA = stabilizing assumption/constraint; tRNA = task/work realization.
-- `dna mutate` target-first invariant: first positional argument is always the Locus title/name target. If it resolves, mutate existing; if it does not resolve, error unless `--new <GeneFamily abbreviation>` is present, then create using that exact target title/name.
+- `dna mutate` target-first invariant: first positional argument is always the Locus target. If it resolves by exact canonical kebab Locus name, mutate existing; if it does not resolve, error unless `--new <GeneFamily abbreviation>` is present, then create using the canonical kebab form of that target. Persisted `Locus.name` is kebab; title-like display is derived.
 - Minimal append-only `Signal` audit is implemented for current local transitions; real Chromosome placement is implemented for new Loci; raw-requirement `Intron` and full `Ribozyme` behavior are not fully implemented.
 
 When implementing, update tests only with explicit approval and make sure test names do not preserve obsolete model language.

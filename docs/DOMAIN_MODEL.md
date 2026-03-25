@@ -224,15 +224,16 @@ struct Locus {
 }
 ```
 
-`Locus.name` is the document instance name used for identity and Gene fully qualified names. It is not a Sequence value.
+`Locus.name` is the canonical kebab document instance name used for identity and future Gene fully qualified names. It is not a Sequence value. Title-like presentation is derived from this canonical kebab value unless a future tenant presentation configuration changes that behavior.
 
 Invariants:
 
 - A Locus belongs to exactly one current Chromosome.
 - A Locus may move between Chromosomes.
 - Locus movement is a domain transition and must be recorded through Signal.
-- `Locus.name` is unique within the containing Genome under DNAp canonical name matching.
-- Implementations may use derived lookup keys or indexes to enforce name matching and uniqueness. Those keys are not domain fields.
+- `Locus.name` is unique within the containing Genome under DNAp canonical kebab matching.
+- New Locus creation stores the canonical kebab form of the provided target.
+- Implementations may use derived lookup keys or indexes to enforce name matching and uniqueness. Those keys are not separate domain fields.
 - `Locus.activator` is the accountable owner of the controlled artifact line.
 
 ## Active Work Context
@@ -592,7 +593,7 @@ dna mutate 'Checkout' --new FRS --some-section 'Awesome section'
 
 In this form:
 
-- `Checkout` is the new Locus document instance name.
+- `Checkout` is canonicalized and stored as the new Locus document instance name, e.g. `checkout`.
 - `FRS` is resolved as a GeneFamily abbreviation in the current Genome context.
 - Sequence mutation flags are optional.
 - DNAp creates the Locus, Transposon, and first Allele in one operation. If Sequence mutation flags are present, it also creates or updates `Unexpressed` Mutations.
